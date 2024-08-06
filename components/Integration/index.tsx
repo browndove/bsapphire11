@@ -6,14 +6,14 @@ import SectionHeader from "../Common/SectionHeader";
 const Integration = () => {
   return (
     <>
-      <section>
+      <section id="career">
         <div className="mx-auto max-w-c-1390 px-4 md:px-8 2xl:px-0">
           {/* <!-- Section Title Start --> */}
           <SectionHeader
             headerInfo={{
               title: `CAREER`,
-              subtitle: `Join our team and drive the future of technology—discover career opportunities in AI, ML, and cybersecurity`,
-              description: `At Blvcksapphire, drive the future of AI, ML, and cybersecurity. Explore exciting career opportunities and make an impact`,
+              subtitle: `Join our team and drive the future of technology—discover career opportunities in AI, ML, and cybersecurity.`,
+              description: `At Blvck Sapphire, drive the future of AI, ML, and cybersecurity. Explore exciting career opportunities and make an impact.`,
             }}
           />
 
@@ -61,7 +61,7 @@ const Integration = () => {
                 <Image
                   width={50}
                   height={50}
-                  src="./images/brand/brand-07.svg"
+                  src="./google.svg"
                   alt="Brand"
                 />
               </div>
@@ -108,7 +108,7 @@ const Integration = () => {
                 <Image
                   width={50}
                   height={50}
-                  src="./images/brand/brand-08.svg"
+                  src="./aws.svg"
                   alt="Brand"
                 />
               </div>
@@ -157,7 +157,7 @@ const Integration = () => {
                 <Image
                   width={50}
                   height={50}
-                  src="./images/brand/brand-09.svg"
+                  src="./mysql.svg"
                   alt="Brand"
                 />
               </div>
@@ -225,7 +225,7 @@ const Integration = () => {
                 <Image
                   width={50}
                   height={50}
-                  src="./images/brand/brand-10.svg"
+                  src="./oracle.svg"
                   alt="Brand"
                 />
               </div>
@@ -274,7 +274,7 @@ const Integration = () => {
                 <Image
                   width={50}
                   height={50}
-                  src="./images/brand/brand-11.svg"
+                  src="./r.svg"
                   alt="Brand"
                 />
               </div>

@@ -28,6 +28,14 @@ Ensuring AI-driven growth while safeguarding trust and integrity.`,
     image: "/replace.jpg",
     imageDark: "/replace.jpg",
   },
+  {
+    id: "tabFour",
+    title: "Integrating Technology with Sustainability for a Better Future",
+    desc1: `We help our clients advance their environmental, social and governance goals by connecting sustainability to their transformations.`,
+    desc2: `We operate our business with a strong commitment to the environment, ethics and human rights; and work to create value in communities around the world.`,
+    image: "/replace.jpg",
+    imageDark: "/replace.jpg",
+  },
 ];
 
 export default featuresTabData;

@@ -21,7 +21,7 @@ const Testimonial = () => {
             <SectionHeader
               headerInfo={{
                 title: `Job Archives`,
-                subtitle: `Join Our Team at Blvcksapphire`,
+                subtitle: `Join Our Team at Blvck Sapphire`,
                 description: ` We're on a mission to redefine the future of technology and cybersecurity. We are excited to offer a range of career opportunities that allow you to be part of our innovative team. Explore the current openings and find out how you can contribute to groundbreaking projects in AI, ML, and cybersecurity while growing your career with us.`,
               }}
             />
@@ -79,7 +79,7 @@ const Testimonial = () => {
               ))}
             </Swiper>
             <a
-                  href="#"
+                  href="https://www.linkedin.com/company/blvck-sapphire/"
                   className="group mt-7.5 inline-flex items-center gap-2.5 text-black hover:text-primary dark:text-white dark:hover:text-primary"
                 >
                   <span className="duration-300 group-hover:pr-2">

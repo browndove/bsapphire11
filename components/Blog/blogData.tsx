@@ -3,17 +3,17 @@ import { Blog } from "@/types/blog";
 const BlogData: Blog[] = [
   {
     _id: 1,
-    mainImage: "/images/blog/blog-01.png",
-    title: "Free advertising for your online business",
+    mainImage: "/stores.png",
+    title: "Storesrader.com",
     metadata:
-      "Lorem ipsum dolor sit amet, consectetur adipiscing elit convallis tortor.",
+      "Storesradar.com is a tool designed to help shoppers in Africa buy goods online from major US, UK, and China retailers.",
   },
   {
     _id: 2,
     mainImage: "/images/blog/blog-02.png",
-    title: "9 simple ways to improve your design skills",
+    title: "Prime Relif",
     metadata:
-      "Lorem ipsum dolor sit amet, consectetur adipiscing elit convallis tortor.",
+      "Prime Relif provides practical and innovative guidance to assist companies in finding the right Design, Installation and Maintenance engineering solutions for their facilities and assets.",
   },
   {
     _id: 2,
