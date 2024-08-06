@@ -7,7 +7,7 @@ const About = () => {
   return (
     <>
       {/* <!-- ===== About Start ===== --> */}
-      <section className="overflow-hidden pb-20 lg:pb-25 xl:pb-30">
+      <section id="about" className="overflow-hidden pb-20 lg:pb-25 xl:pb-30">
         <div className="mx-auto max-w-c-1235 px-4 md:px-8 xl:px-0">
           <div className="flex items-center gap-8 lg:gap-32.5">
             <motion.div
@@ -29,13 +29,13 @@ const About = () => {
               className="animate_left relative mx-auto hidden aspect-[588/526.5] md:block md:w-1/2"
             >
               <Image
-                src="/images/about/about-light-01.png"
+                src="/brain.webp"
                 alt="About"
                 className="dark:hidden"
                 fill
               />
               <Image
-                src="/images/about/about-dark-01.png"
+                src="/brain.webp"
                 alt="About"
                 className="hidden dark:block"
                 fill
@@ -61,7 +61,7 @@ const About = () => {
             >
               <span className="font-medium uppercase text-black dark:text-white">
                 
-                WHO WE ARE
+                WHO WE ARE?
               </span>
               <h2 className="relative mb-6 text-3xl font-bold text-black dark:text-white xl:text-hero">
               Value is at the
@@ -96,7 +96,7 @@ const About = () => {
                   <h3 className="mb-0.5 text-metatitle2 text-black dark:text-white">
                   Leaders in African Technology
                   </h3>
-                  <p>We prioritize cybersecurity to protect our people, clients, and communities, ensuring safe and secure environments for all</p>
+                  <p>We prioritize cybersecurity to protect our people, clients, and communities, ensuring safe and secure environments for all.</p>
                 </div>
               </div>
             </motion.div>

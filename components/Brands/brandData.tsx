@@ -57,6 +57,34 @@ const brandData: Brand[] = [
     image: "/oracle.svg",
     imageLight: "/oracle.svg",
   },
+  {
+    id: 1.0,
+    name: "Client",
+    href: "#",
+    image: "/php.svg",
+    imageLight: "/php.svg",
+  },
+  {
+    id: 1.1,
+    name: "Client",
+    href: "#",
+    image: "/power.svg",
+    imageLight: "/power.svg",
+  },
+  {
+    id: 1.2,
+    name: "Client",
+    href: "#",
+    image: "/python.svg",
+    imageLight: "/python.svg",
+  },
+  {
+    id: 1.3,
+    name: "Client",
+    href: "#",
+    image: "/sap.svg",
+    imageLight: "/sap.svg",
+  },
 ];
 
 export default brandData;
