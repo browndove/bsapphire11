@@ -36,40 +36,21 @@ const Hero = () => {
 
             <div className="animate_right hidden md:w-1/2 lg:block">
               <div className="relative 2xl:-mr-7.5">
-                <Image
-                  src="/images/shape/shape-01.png"
-                  alt="shape"
-                  width={46}
-                  height={246}
-                  className="absolute -left-11.5 top-0"
-                />
-                <Image
-                  src="/images/shape/shape-02.svg"
-                  alt="shape"
-                  width={36.9}
-                  height={36.7}
-                  className="absolute bottom-0 right-0 z-10"
-                />
-                <Image
-                  src="/images/shape/shape-03.svg"
-                  alt="shape"
-                  width={21.64}
-                  height={21.66}
-                  className="absolute -right-6.5 bottom-0 z-1"
-                />
-                <div className="relative aspect-[700/444] w-full">
+                
+                <div className="relative aspect-[700/544] w-full">
   <div className="absolute inset-0 bg-white bg-opacity-30 backdrop-blur-lg rounded-lg">
     <Image
-      className="object-cover"
-      src="/work/two.png"
+      className="h-full w-full"
+      src="/work/hero.png
+      "
       alt="Hero"
       fill
     />
   </div>
-  <div className="absolute inset-0 hidden dark:block bg-white bg-opacity-30 backdrop-blur-lg rounded-lg">
+  <div className=" bg-none hidden dark:block  rounded-lg">
     <Image
-      className="object-cover"
-      src="/work/one.png"
+      className=""
+      src="/work/com.png"
       alt="Hero"
       fill
     />
