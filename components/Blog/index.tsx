@@ -1,9 +1,25 @@
 import React from "react";
 import SectionHeader from "../Common/SectionHeader";
-import BlogItem from "./BlogItem";
-import BlogData from "./blogData";
 
 const Blog = async () => {
+  const blogs = [
+    {
+      title: 'Storesradar.com',
+      description: 'Storesradar.com is a tool designed to help shoppers in Africa buy goods online from major US, UK, and China retailers.',
+      image: 'https://blvcksapphire.com/wp-content/uploads/2024/05/Logo-20-1.png',
+    },
+    {
+      title: 'Prime Relif',
+      description: 'Prime Relif provides practical and innovative guidance to assist companies in finding the right Design, Installation and Maintenance engineering solutions for their facilities and assets.',
+      image: 'https://blvcksapphire.com/wp-content/uploads/2024/05/ezgif.com-crop.webp',
+    },
+    {
+      title: 'Fvlcon',
+      description: 'Fvlcon is an AI/ML technology providing security solutions to institutions in Africa and beyond.',
+      image: 'https://blvcksapphire.com/wp-content/uploads/2024/05/fvlcon_logo-e1714762059630.jpg',
+    },
+  ];
+
   return (
     <section className="py-20 lg:py-25 xl:py-30">
       <div className="mx-auto max-w-c-1315 px-4 md:px-8 xl:px-0">
@@ -11,9 +27,9 @@ const Blog = async () => {
         <div className="animate_top mx-auto text-center">
           <SectionHeader
             headerInfo={{
-              title: `NEWS & BLOGS`,
-              subtitle: `Latest News & Blogs`,
-              description: `Lorem ipsum dolor sit amet, consectetur adipiscing elit. In convallis tortor eros. Donec vitae tortor lacus. Phasellus aliquam ante in maximus.`,
+              title: `Our Key Projects`,
+              subtitle: `Innovative Solutions We're Developing`,
+              description: `Some prominent projects we are working on`,
             }}
           />
         </div>
@@ -22,8 +38,14 @@ const Blog = async () => {
 
       <div className="mx-auto mt-15 max-w-c-1280 px-4 md:px-8 xl:mt-20 xl:px-0">
         <div className="grid grid-cols-1 gap-7.5 md:grid-cols-2 lg:grid-cols-3 xl:gap-10">
-          {BlogData.slice(0, 3).map((blog, key) => (
-            <BlogItem blog={blog} key={key} />
+          {blogs.map((blog, index) => (
+            <div key={index} className="border rounded-lg overflow-hidden shadow-lg bg-white dark:bg-gray-800">
+              <img src={blog.image} alt={blog.title} className="w-full h-48 object-cover" />
+              <div className="p-4">
+                <h2 className="text-xl font-bold mb-2 text-gray-900 dark:text-gray-100">{blog.title}</h2>
+                <p className="text-gray-700 dark:text-gray-300">{blog.description}</p>
+              </div>
+            </div>
           ))}
         </div>
       </div>

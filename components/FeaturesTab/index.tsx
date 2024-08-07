@@ -122,7 +122,7 @@ const FeaturesTab = () => {
               </div>
               <div className="md:w-3/5 lg:w-auto">
                 <button className="text-sm font-medium text-black dark:text-white xl:text-regular">
-                Inclusion, Equity & Diversity
+                Diversity, Equity & Inclusion
                 </button>
               </div>
             </div>

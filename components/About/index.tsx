@@ -29,15 +29,15 @@ const About = () => {
               className="animate_left relative mx-auto hidden aspect-[588/526.5] md:block md:w-1/2"
             >
               <Image
-                src="/brain.webp"
+                src="/work/six.png"
                 alt="About"
-                className="dark:hidden"
+                className="dark:hidden rounded-[10px]"
                 fill
               />
               <Image
-                src="/brain.webp"
+                src="/work/five.png"
                 alt="About"
-                className="hidden dark:block"
+                className="hidden dark:block rounded-[10px]"
                 fill
               />
             </motion.div>
