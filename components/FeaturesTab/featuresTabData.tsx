@@ -13,7 +13,7 @@ Together, we innovate for a sustainable future in Africa.`,
   },
   {
     id: "tabTwo",
-    title: "Leveraging Responsible AI for sustainable and ethical solutions.",
+    title: "Leveraging responsible AI for sustainable and ethical solutions.",
     desc1: `Powerful AI tools like generative AI bring unprecedented opportunities as well as new risks. We help clients to take intentional actions to design, deploy, and use AI to create value and build trust.`,
     desc2: `   
 Ensuring AI-driven growth while safeguarding trust and integrity.`,
@@ -30,7 +30,7 @@ Ensuring AI-driven growth while safeguarding trust and integrity.`,
   },
   {
     id: "tabFour",
-    title: "Integrating Technology with Sustainability for a Better Future",
+    title: "Integrating technology with sustainability for a better future",
     desc1: `We help our clients advance their environmental, social and governance goals by connecting sustainability to their transformations.`,
     desc2: `We operate our business with a strong commitment to the environment, ethics and human rights; and work to create value in communities around the world.`,
     image: "/work/susmainn.png",
