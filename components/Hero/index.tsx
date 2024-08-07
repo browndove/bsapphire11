@@ -41,8 +41,7 @@ const Hero = () => {
   <div className="absolute inset-0 bg-white bg-opacity-30 backdrop-blur-lg rounded-lg">
     <Image
       className="h-full w-full"
-      src="/work/hero.png
-      "
+      src="/work/hero.png"
       alt="Hero"
       fill
     />
