@@ -52,7 +52,7 @@ const closeDialog = () => setIsDialogOpen(false);
                 </a>
 
                 <p className="mb-10 mt-5">
-                Stay Connected and suscribe to our social channels
+                Stay Connected and subscribe to our social channels
                 </p>
 
                 <p className="mb-1.5 text-sectiontitle uppercase tracking-[5px]">
@@ -240,7 +240,7 @@ const closeDialog = () => setIsDialogOpen(false);
                 </li>
                 <li>
                   <a href="#"  onClick={openDialog} className="hover:text-primary cursor-pointer">
-                    Privacy Policy
+                    {/* Privacy Policy */}
                   </a>
                 </li>
                 <li>
