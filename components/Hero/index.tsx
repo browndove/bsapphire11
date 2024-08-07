@@ -57,20 +57,25 @@ const Hero = () => {
                   height={21.66}
                   className="absolute -right-6.5 bottom-0 z-1"
                 />
-                <div className=" relative aspect-[700/444] w-full">
-                  <Image
-                    className="shadow-solid-l dark:hidden"
-                    src="/LP.png"
-                    alt="Hero"
-                    fill
-                  />
-                  <Image
-                    className="hidden shadow-solid-l dark:block"
-                     src="/LP.png"
-                    alt="Hero"
-                    fill
-                  />
-                </div>
+                <div className="relative aspect-[700/444] w-full">
+  <div className="absolute inset-0 bg-white bg-opacity-30 backdrop-blur-lg rounded-lg">
+    <Image
+      className="object-cover"
+      src="/work/two.png"
+      alt="Hero"
+      fill
+    />
+  </div>
+  <div className="absolute inset-0 hidden dark:block bg-white bg-opacity-30 backdrop-blur-lg rounded-lg">
+    <Image
+      className="object-cover"
+      src="/work/one.png"
+      alt="Hero"
+      fill
+    />
+  </div>
+</div>
+
               </div>
             </div>
           </div>

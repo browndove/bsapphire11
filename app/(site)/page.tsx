@@ -8,7 +8,7 @@ import FeaturesTab from "@/components/FeaturesTab";
 import Integration from "@/components/Integration";
 
 import Contact from "@/components/Contact";
-import Blog from "@/components/Blog";
+import Blog from "@/components/Blog"
 import Testimonial from "@/components/Testimonial";
 
 export const metadata: Metadata = {
@@ -25,12 +25,12 @@ export default function Home() {
       <Feature />
       <About />
       <FeaturesTab />
-    
+
       <Integration />
      
       
       <Testimonial />
-      
+      <Blog/>
       <Contact />
     
     </main>
