@@ -11,10 +11,12 @@ import Contact from "@/components/Contact";
 import Blog from "@/components/Blog"
 import Testimonial from "@/components/Testimonial";
 
+
+
 export const metadata: Metadata = {
   title: "Black Shapphire",
-  description: "Official website of Blvcksapphire Ltd.",
-  // other metadata
+  description: "Official website of Blvcksapphire Ltd.",  
+
 };
 
 export default function Home() {
