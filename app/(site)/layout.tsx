@@ -7,6 +7,7 @@ import ScrollToTop from "@/components/ScrollToTop";
 import { ThemeProvider } from "next-themes";
 import { Inter } from "next/font/google";
 import "../globals.css";
+import Head from "@/app/(site)/head"
 const inter = Inter({ subsets: ["latin"] });
 
 import ToasterContext from "../context/ToastContext";
@@ -20,7 +21,7 @@ export default function RootLayout({
     <html lang="en" suppressHydrationWarning>
 
 <head>
-<link rel="icon" href="/top.ico" />
+<Head />
 </head>
 
       <body className={`dark:bg-black ${inter.className}`}>
