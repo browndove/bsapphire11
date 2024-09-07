@@ -62,7 +62,7 @@ const closeDialog = () => setIsDialogOpen(false);
                   href="#"
                   className="text-itemtitle font-medium text-black dark:text-white"
                 >
-                  info@Blvcksapphire.com
+                  info@blvcksapphire.com
                 </a>
               </motion.div>
 
@@ -146,7 +146,7 @@ const closeDialog = () => setIsDialogOpen(false);
                   <h4 className="mb-9 text-itemtitle2 font-medium text-black dark:text-white">
                     Support
                   </h4>
-                  <p>info@Blvcksapphire.com</p>
+                  <p>info@blvcksapphire.com</p>
 
                 
                 </motion.div>
