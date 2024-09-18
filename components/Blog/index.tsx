@@ -11,7 +11,7 @@ const Blog = async () => {
     {
       title: 'Prime Relif',
       description: 'Prime Relif provides practical and innovative guidance to assist companies in finding the right Design, Installation, and Maintenance engineering solutions for their facilities and assets.',
-      image: 'three/cropped-PR_Logo.png',
+      image: 'three/a.png',
     },
     {
       title: 'Fvlcon',
