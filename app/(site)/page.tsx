@@ -14,7 +14,7 @@ import Testimonial from "@/components/Testimonial";
 
 
 export const metadata: Metadata = {
-  title: "Black Shapphire",
+  title: "Blvcksapphire",
   description: "Official website of Blvcksapphire Ltd.",  
   
 };
