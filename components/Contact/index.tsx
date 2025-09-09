@@ -4,10 +4,7 @@ import Image from "next/image";
 import React from "react";
 
 const Contact = () => {
-  /**
-   * Source: https://www.joshwcomeau.com/react/the-perils-of-rehydration/
-   * Reason: To fix rehydration error
-   */
+  
   const [hasMounted, setHasMounted] = React.useState(false);
   React.useEffect(() => {
     setHasMounted(true);
@@ -185,7 +182,7 @@ const Contact = () => {
                   Email Address
                 </h3>
                 <p>
-                  <a href="#">info@Blvcksapphire.com</a>
+                  <a href="#">info@blvcksapphire.com</a>
                 </p>
               </div>
               <div>
