@@ -36,6 +36,7 @@ const Header = () => {
       }`}
     >
       <div className="relative mx-auto max-w-c-1390 items-center justify-between px-4 md:px-8 xl:flex 2xl:px-0">
+        {/* Logo and Mobile Controls Section */}
         <div className="flex w-full items-center justify-between xl:w-1/4">
           <a href="/">
             <Image
@@ -54,6 +55,7 @@ const Header = () => {
             />
           </a>
 
+          {/* Mobile Hamburger */}
           <button
             aria-label="hamburger Toggler"
             className="block xl:hidden"
@@ -91,18 +93,12 @@ const Header = () => {
               </span>
             </span>
           </button>
-          {/* <!-- Hamburger Toggle BTN --> */}
         </div>
 
-        {/* Nav Menu Start   */}
-        <div
-          className={`invisible h-0 w-full items-center justify-between xl:visible xl:flex xl:h-auto xl:w-full ${
-            navigationOpen &&
-            "navbar !visible mt-4 h-auto max-h-[400px] rounded-md bg-white p-7.5 shadow-solid-5 dark:bg-blacksection xl:h-auto xl:p-0 xl:shadow-none xl:dark:bg-transparent"
-          }`}
-        >
+        {/* Desktop Navigation - Always visible on XL+ */}
+        <div className="hidden xl:flex xl:ml-auto items-center gap-8">
           <nav>
-            <ul className="flex flex-col xl:right-[4rem] xl:top-1 xl:absolute gap-5 xl:flex-row xl:items-center xl:gap-10">
+            <ul className="flex items-center gap-6 lg:gap-8 2xl:gap-10">
               {menuData.map((menuItem, key) => (
                 <li key={key} className={menuItem.submenu && "group relative"}>
                   {menuItem.submenu ? (
@@ -132,7 +128,8 @@ const Header = () => {
                               to={item.path}
                               smooth={true}
                               duration={500}
-                              offset={-80} // Adjust this based on your header height
+                              offset={-80}
+                              className="cursor-pointer"
                             >
                               {item.title}
                             </ScrollLink>
@@ -145,12 +142,12 @@ const Header = () => {
                       to={menuItem.path}
                       smooth={true}
                       duration={500}
-                      offset={-80} // Adjust this based on your header height
-                      className={
+                      offset={-80}
+                      className={`transition-colors duration-200 cursor-pointer ${
                         pathUrl === menuItem.path
                           ? "text-primary hover:text-primary"
                           : "hover:text-primary"
-                      }
+                      }`}
                     >
                       {menuItem.title}
                     </ScrollLink>
@@ -159,11 +156,84 @@ const Header = () => {
               ))}
             </ul>
           </nav>
-
-          <div className="mt-7 flex items-center gap-6 xl:mt-0">
-            <ThemeToggler />
-          </div>
+          
+          {/* Desktop Theme Toggle */}
+          <ThemeToggler />
         </div>
+
+        {/* Mobile Navigation Menu */}
+        {navigationOpen && (
+          <div className="absolute top-full left-0 w-full mt-4 bg-white dark:bg-blacksection rounded-md shadow-solid-5 p-7.5 xl:hidden">
+            <nav className="mb-6">
+              <ul className="flex flex-col gap-5">
+                {menuData.map((menuItem, key) => (
+                  <li key={key} className={menuItem.submenu && "group relative"}>
+                    {menuItem.submenu ? (
+                      <>
+                        <button
+                          onClick={() => setDropdownToggler(!dropdownToggler)}
+                          className="flex cursor-pointer items-center justify-between gap-3 hover:text-primary text-sm w-full"
+                        >
+                          {menuItem.title}
+                          <span>
+                            <svg
+                              className="h-3 w-3 cursor-pointer fill-waterloo group-hover:fill-primary"
+                              xmlns="http://www.w3.org/2000/svg"
+                              viewBox="0 0 512 512"
+                            >
+                              <path d="M233.4 406.6c12.5 12.5 32.8 12.5 45.3 0l192-192c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L256 338.7 86.6 169.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3l192 192z" />
+                            </svg>
+                          </span>
+                        </button>
+
+                        {dropdownToggler && (
+                          <ul className="mt-3 pl-4 flex flex-col gap-3">
+                            {menuItem.submenu.map((item, key) => (
+                              <li key={key} className="hover:text-primary">
+                                <ScrollLink
+                                  to={item.path}
+                                  smooth={true}
+                                  duration={500}
+                                  offset={-80}
+                                  className="cursor-pointer text-sm"
+                                >
+                                  {item.title}
+                                </ScrollLink>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </>
+                    ) : (
+                      <ScrollLink
+                        to={menuItem.path}
+                        smooth={true}
+                        duration={500}
+                        offset={-80}
+                        className={`transition-colors duration-200 cursor-pointer text-sm ${
+                          pathUrl === menuItem.path
+                            ? "text-primary hover:text-primary"
+                            : "hover:text-primary"
+                        }`}
+                        onClick={() => setNavigationOpen(false)}
+                      >
+                        {menuItem.title}
+                      </ScrollLink>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            </nav>
+            
+            {/* Mobile Theme Toggle */}
+            <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-gray-600 dark:text-gray-400">Theme</span>
+                <ThemeToggler />
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </header>
   );
