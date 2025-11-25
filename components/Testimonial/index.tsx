@@ -10,6 +10,7 @@ import { Swiper, SwiperSlide } from "swiper/react";
 import { motion } from "framer-motion";
 import SingleTestimonial from "./SingleTestimonial";
 import { testimonialData } from "./testimonialData";
+import JobPosting from "./job-posting";
 
 const Testimonial = () => {
   return (
@@ -97,6 +98,9 @@ const Testimonial = () => {
           </div>
         </motion.div>
       </section>
+      
+      {/* Job Posting Section */}
+      <JobPosting />
     </>
   );
 };
