@@ -22,16 +22,23 @@ export const metadata: Metadata = {
 export default function Home() {
   return (
     <main>
-      <Hero />
+      <section id="home">
+        <Hero />
+      </section>
       <Brands />
       <Feature />
-      <About />
+      <section id="about">
+        <About />
+      </section>
       <FeaturesTab />
 
-      <Integration />
+      <section id="services">
+        <Integration />
+      </section>
      
-      
-      <Testimonial />
+      <section id="career">
+        <Testimonial />
+      </section>
       <Blog/>
       <Contact />
     

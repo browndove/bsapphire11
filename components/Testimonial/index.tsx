@@ -10,7 +10,6 @@ import { Swiper, SwiperSlide } from "swiper/react";
 import { motion } from "framer-motion";
 import SingleTestimonial from "./SingleTestimonial";
 import { testimonialData } from "./testimonialData";
-import JobPosting from "./job-posting";
 
 const Testimonial = () => {
   return (
@@ -79,28 +78,10 @@ const Testimonial = () => {
                 </SwiperSlide>
               ))}
             </Swiper>
-            <a
-                  href="https://www.linkedin.com/company/blvck-sapphire/"
-                  className="group mt-7.5 inline-flex items-center gap-2.5 text-black hover:text-primary dark:text-white dark:hover:text-primary"
-                >
-                  <span className="duration-300 group-hover:pr-2">
-                    Apply
-                  </span>
-                  <svg
-                    width="14"
-                    height="14"
-                    viewBox="0 0 14 14"
-                    fill="currentColor"
-                  >
-                    <path d="M10.4767 6.16701L6.00668 1.69701L7.18501 0.518677L13.6667 7.00034L7.18501 13.482L6.00668 12.3037L10.4767 7.83368H0.333344V6.16701H10.4767Z" />
-                  </svg>
-                </a>
+           
           </div>
         </motion.div>
       </section>
-      
-      {/* Job Posting Section */}
-      <JobPosting />
     </>
   );
 };

@@ -1,10 +1,11 @@
 "use client";
 import Image from "next/image";
+import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Link as ScrollLink } from "react-scroll";
+import { useTheme } from "next-themes";
 
-import ThemeToggler from "./ThemeToggler";
 import menuData from "./menuData";
 
 const Header = () => {
@@ -13,6 +14,46 @@ const Header = () => {
   const [stickyMenu, setStickyMenu] = useState(false);
 
   const pathUrl = usePathname();
+  const isHomePage = pathUrl === "/" || pathUrl === "";
+  const { theme, setTheme } = useTheme();
+
+  // Helper function to render navigation link
+  const renderNavLink = (menuItem: any, isMobile = false) => {
+    const baseClasses = `transition-colors duration-200 cursor-pointer ${
+      isMobile ? "text-sm" : ""
+    } ${
+      pathUrl === menuItem.path
+        ? "text-primary hover:text-primary"
+        : "hover:text-primary"
+    }`;
+
+    if (isHomePage) {
+      // On home page, use scroll links
+      return (
+        <ScrollLink
+          to={menuItem.path}
+          smooth={true}
+          duration={500}
+          offset={-80}
+          className={baseClasses}
+          onClick={isMobile ? () => setNavigationOpen(false) : undefined}
+        >
+          {menuItem.title}
+        </ScrollLink>
+      );
+    } else {
+      // On other pages, use Next.js Link to navigate back to home with section
+      return (
+        <Link
+          href={`/#${menuItem.path}`}
+          className={baseClasses}
+          onClick={isMobile ? () => setNavigationOpen(false) : undefined}
+        >
+          {menuItem.title}
+        </Link>
+      );
+    }
+  };
 
   // Sticky menu
   const handleStickyMenu = () => {
@@ -38,7 +79,7 @@ const Header = () => {
       <div className="relative mx-auto max-w-c-1390 items-center justify-between px-4 md:px-8 xl:flex 2xl:px-0">
         {/* Logo and Mobile Controls Section */}
         <div className="flex w-full items-center justify-between xl:w-1/4">
-          <a href="/">
+          <Link href="/">
             <Image
               src="/main.png"
               alt="logo"
@@ -53,7 +94,7 @@ const Header = () => {
               height={30}
               className="w-full dark:hidden"
             />
-          </a>
+          </Link>
 
           {/* Mobile Hamburger */}
           <button
@@ -124,41 +165,52 @@ const Header = () => {
                       >
                         {menuItem.submenu.map((item, key) => (
                           <li key={key} className="hover:text-primary">
-                            <ScrollLink
-                              to={item.path}
-                              smooth={true}
-                              duration={500}
-                              offset={-80}
-                              className="cursor-pointer"
-                            >
-                              {item.title}
-                            </ScrollLink>
+                            {renderNavLink(item)}
                           </li>
                         ))}
                       </ul>
                     </>
                   ) : (
-                    <ScrollLink
-                      to={menuItem.path}
-                      smooth={true}
-                      duration={500}
-                      offset={-80}
-                      className={`transition-colors duration-200 cursor-pointer ${
-                        pathUrl === menuItem.path
-                          ? "text-primary hover:text-primary"
-                          : "hover:text-primary"
-                      }`}
-                    >
-                      {menuItem.title}
-                    </ScrollLink>
+                    renderNavLink(menuItem)
                   )}
                 </li>
               ))}
             </ul>
           </nav>
           
-          {/* Desktop Theme Toggle */}
-          <ThemeToggler />
+          {/* Desktop Theme Toggle - Only visible on desktop */}
+          <button
+            aria-label="theme toggler"
+            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 transition-colors duration-200"
+          >
+            <svg
+              className="h-5 w-5 text-gray-600 dark:text-gray-300 dark:hidden"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
+              />
+            </svg>
+            <svg
+              className="h-5 w-5 text-gray-300 hidden dark:block"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
+              />
+            </svg>
+          </button>
         </div>
 
         {/* Mobile Navigation Menu */}
@@ -190,35 +242,14 @@ const Header = () => {
                           <ul className="mt-3 pl-4 flex flex-col gap-3">
                             {menuItem.submenu.map((item, key) => (
                               <li key={key} className="hover:text-primary">
-                                <ScrollLink
-                                  to={item.path}
-                                  smooth={true}
-                                  duration={500}
-                                  offset={-80}
-                                  className="cursor-pointer text-sm"
-                                >
-                                  {item.title}
-                                </ScrollLink>
+                                {renderNavLink(item, true)}
                               </li>
                             ))}
                           </ul>
                         )}
                       </>
                     ) : (
-                      <ScrollLink
-                        to={menuItem.path}
-                        smooth={true}
-                        duration={500}
-                        offset={-80}
-                        className={`transition-colors duration-200 cursor-pointer text-sm ${
-                          pathUrl === menuItem.path
-                            ? "text-primary hover:text-primary"
-                            : "hover:text-primary"
-                        }`}
-                        onClick={() => setNavigationOpen(false)}
-                      >
-                        {menuItem.title}
-                      </ScrollLink>
+                      renderNavLink(menuItem, true)
                     )}
                   </li>
                 ))}
@@ -229,7 +260,38 @@ const Header = () => {
             <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
               <div className="flex items-center justify-between">
                 <span className="text-sm text-gray-600 dark:text-gray-400">Theme</span>
-                <ThemeToggler />
+                <button
+                  aria-label="theme toggler"
+                  onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+                  className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 transition-colors duration-200"
+                >
+                  <svg
+                    className="h-4 w-4 text-gray-600 dark:text-gray-300 dark:hidden"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
+                    />
+                  </svg>
+                  <svg
+                    className="h-4 w-4 text-gray-300 hidden dark:block"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
+                    />
+                  </svg>
+                </button>
               </div>
             </div>
           </div>
