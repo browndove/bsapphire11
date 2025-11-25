@@ -141,7 +141,7 @@ export default function JobPosting() {
                           { label: "Base Salary", value: "₵3K - ₵10K/month" },
                           { label: "Equity", value: "Possible equity in company" },
                           { label: "Commission", value: "Performance-based bonuses" },
-                          { label: "Flexibility", value: "Remote-first with in-person meetings" },
+                          { label: "Flexibility", value: "Primarily remote  with in-person stakeholder meetings" },
                           { label: "Time Off", value: "Paid leave & parental support" },
                           { label: "Learning", value: "Training & conference coverage" },
                         ].map((benefit, idx) => (
