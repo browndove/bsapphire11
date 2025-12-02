@@ -76,26 +76,6 @@ const Blog = () => {
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
 
-                {product.hasOverlay && (
-                  <div className="absolute inset-0">
-                    <div className="absolute top-2 sm:top-4 left-2 sm:left-4 w-12 sm:w-16 h-8 sm:h-12 border-2 border-green-500 rounded bg-green-500/30 backdrop-blur-sm">
-                      <div className="absolute -top-5 sm:-top-6 left-0 text-xs font-bold text-green-500 bg-black/80 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded text-shadow">
-                        Person
-                      </div>
-                    </div>
-                    <div className="absolute top-3 sm:top-6 right-4 sm:right-8 w-16 sm:w-20 h-10 sm:h-16 border-2 border-blue-500 rounded bg-blue-500/30 backdrop-blur-sm">
-                      <div className="absolute -top-5 sm:-top-6 right-0 text-xs font-bold text-blue-500 bg-black/80 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded text-shadow">
-                        Vehicle
-                      </div>
-                    </div>
-                    <div className="absolute bottom-4 sm:bottom-8 left-4 sm:left-8 w-8 sm:w-12 h-8 sm:h-12 border-2 border-yellow-500 rounded bg-yellow-500/30 backdrop-blur-sm">
-                      <div className="absolute -bottom-5 sm:-bottom-6 left-0 text-xs font-bold text-yellow-500 bg-black/80 px-1.5 sm:px-2 py-0.5 sm:py-1 rounded text-shadow">
-                        Object
-                      </div>
-                    </div>
-                  </div>
-                )}
-
                 <div className="absolute bottom-2 sm:bottom-3 right-2 sm:right-3 rounded-lg sm:rounded-xl border border-white/40 bg-white/30 backdrop-blur-sm p-2 sm:p-3 shadow-lg">
                   <div className="text-sm sm:text-lg font-bold text-white drop-shadow-sm">{product.impact}</div>
                   <div className="text-xs text-white/90 drop-shadow-sm">{product.metric}</div>
