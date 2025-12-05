@@ -14,8 +14,8 @@ const closeDialog = () => setIsDialogOpen(false);
       <footer className="border-t border-stroke bg-white dark:border-strokedark dark:bg-blacksection">
         <div className="mx-auto max-w-c-1390 px-4 md:px-8 2xl:px-0">
           {/* <!-- Footer Top --> */}
-          <div className="py-20 lg:py-25">
-            <div className="flex flex-wrap gap-8 lg:justify-between lg:gap-0">
+          <div className="py-4 lg:py-6">
+            <div className="flex flex-wrap gap-4 lg:justify-between lg:gap-0">
               <motion.div
                 variants={{
                   hidden: {
@@ -51,22 +51,22 @@ const closeDialog = () => setIsDialogOpen(false);
                   />
                 </a>
 
-                <p className="mb-10 mt-5">
+                <p className="mb-1 mt-1 text-xs text-gray-600 dark:text-gray-400">
                 Stay Connected and subscribe to our social channels
                 </p>
 
-                <p className="mb-1.5 text-sectiontitle uppercase tracking-[5px]">
+                <p className="mb-0.5 text-xs uppercase tracking-[2px] text-gray-500">
                   contact
                 </p>
                 <a
                   href="#"
-                  className="text-itemtitle font-medium text-black dark:text-white"
+                  className="text-sm font-medium text-black dark:text-white"
                 >
                   info@blvcksapphire.com
                 </a>
               </motion.div>
 
-              <div className="flex w-full flex-col gap-8 md:flex-row md:justify-between md:gap-0 lg:w-2/3 xl:w-7/12">
+              <div className="flex w-full flex-col gap-4 md:flex-row md:justify-between md:gap-0 lg:w-2/3 xl:w-7/12">
                 <motion.div
                   variants={{
                     hidden: {
@@ -85,7 +85,7 @@ const closeDialog = () => setIsDialogOpen(false);
                   viewport={{ once: true }}
                   className="animate_top"
                 >
-                  <h4 className="mb-9 text-itemtitle2 font-medium text-black dark:text-white">
+                  <h4 className="mb-2 text-base font-medium text-black dark:text-white">
                     Quick Links
                   </h4>
 
@@ -93,7 +93,7 @@ const closeDialog = () => setIsDialogOpen(false);
                     <li>
                       <a
                         href="#"
-                        className="mb-3 inline-block hover:text-primary"
+                        className="mb-1 inline-block hover:text-primary text-sm"
                       >
                         Home
                       </a>
@@ -101,7 +101,7 @@ const closeDialog = () => setIsDialogOpen(false);
                     <li>
                       <a
                         href="#"
-                        className="mb-3 inline-block hover:text-primary"
+                        className="mb-1 inline-block hover:text-primary text-sm"
                       >
                         About
                       </a>
@@ -109,7 +109,7 @@ const closeDialog = () => setIsDialogOpen(false);
                     <li>
                       <a
                         href="#"
-                        className="mb-3 inline-block hover:text-primary"
+                        className="mb-1 inline-block hover:text-primary text-sm"
                       >
                         Services
                       </a>
@@ -117,7 +117,7 @@ const closeDialog = () => setIsDialogOpen(false);
                     <li>
                       <a
                         href="#"
-                        className="mb-3 inline-block hover:text-primary"
+                        className="mb-1 inline-block hover:text-primary text-sm"
                       >
                         Career
                       </a>
@@ -143,10 +143,10 @@ const closeDialog = () => setIsDialogOpen(false);
                   viewport={{ once: true }}
                   className="animate_top"
                 >
-                  <h4 className="mb-9 text-itemtitle2 font-medium text-black dark:text-white">
+                  <h4 className="mb-2 text-base font-medium text-black dark:text-white">
                     Support
                   </h4>
-                  <p>info@blvcksapphire.com</p>
+                  <p className="text-sm">info@blvcksapphire.com</p>
 
                 
                 </motion.div>
@@ -176,17 +176,17 @@ const closeDialog = () => setIsDialogOpen(false);
                       <input
                         type="text"
                         placeholder="Email address"
-                        className="w-full rounded-full border border-stroke px-6 py-3 shadow-solid-11 focus:border-primary focus:outline-none dark:border-strokedark dark:bg-black dark:shadow-none dark:focus:border-primary"
+                        className="w-full rounded-full border border-stroke px-4 py-2 text-sm shadow-solid-11 focus:border-primary focus:outline-none dark:border-strokedark dark:bg-black dark:shadow-none dark:focus:border-primary"
                       />
 
                       <button
                         aria-label="signup to newsletter"
-                        className="absolute right-0 p-4"
+                        className="absolute right-0 p-2"
                       >
                         <svg
                           className="fill-[#757693] hover:fill-primary dark:fill-white"
-                          width="20"
-                          height="20"
+                          width="16"
+                          height="16"
                           viewBox="0 0 20 20"
                           fill="none"
                           xmlns="http://www.w3.org/2000/svg"
@@ -213,7 +213,7 @@ const closeDialog = () => setIsDialogOpen(false);
           {/* <!-- Footer Top --> */}
 
           {/* <!-- Footer Bottom --> */}
-          <div className="flex flex-col flex-wrap items-center justify-center gap-5 border-t border-stroke py-7 dark:border-strokedark lg:flex-row lg:justify-between lg:gap-0">
+          <div className="flex flex-col flex-wrap items-center justify-center gap-2 border-t border-stroke py-2 dark:border-strokedark lg:flex-row lg:justify-between lg:gap-0">
             <motion.div
               variants={{
                 hidden: {
@@ -232,9 +232,9 @@ const closeDialog = () => setIsDialogOpen(false);
               viewport={{ once: true }}
               className="animate_top"
             >
-              <ul className="flex items-center gap-8">
+              <ul className="flex items-center gap-2">
                 <li>
-                  <a href="#" className="hover:text-primary">
+                  <a href="#" className="hover:text-primary text-sm">
                     English
                   </a>
                 </li>
@@ -244,7 +244,7 @@ const closeDialog = () => setIsDialogOpen(false);
                   </a>
                 </li>
                 <li>
-                  <a href="info@Blvcksapphire.com" className="hover:text-primary">
+                  <a href="info@Blvcksapphire.com" className="hover:text-primary text-sm">
                     Support
                   </a>
                 </li>
@@ -269,7 +269,7 @@ const closeDialog = () => setIsDialogOpen(false);
               viewport={{ once: true }}
               className="animate_top"
             >
-              <p>
+              <p className="text-sm">
                 &copy; {new Date().getFullYear()} Blvck Sapphire. All rights reserved
               </p>
             </motion.div>
@@ -292,7 +292,7 @@ const closeDialog = () => setIsDialogOpen(false);
               viewport={{ once: true }}
               className="animate_top"
             >
-              <ul className="flex items-center gap-5">
+              <ul className="flex items-center gap-2">
                 <li>
                   <a href="#" aria-label="social icon">
                     <svg

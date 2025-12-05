@@ -8,15 +8,19 @@ import { ThemeProvider } from "next-themes";
 import { Inter } from "next/font/google";
 import "../globals.css";
 import Head from "@/app/(site)/head"
+import { usePathname } from "next/navigation";
 const inter = Inter({ subsets: ["latin"] });
 
 import ToasterContext from "../context/ToastContext";
+import { AuthProvider } from "../context/AuthContext";
+import { Toaster } from "@/components/ui/sonner";
 
 export default function RootLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const pathname = usePathname();
   return (
     <html lang="en" suppressHydrationWarning>
 
@@ -30,12 +34,15 @@ export default function RootLayout({
           attribute="class"
           defaultTheme="light"
         >
-          <Lines />
-          <Header />
-          <ToasterContext />
-          {children}
-          <Footer />
-          <ScrollToTop />
+          <AuthProvider>
+            <Lines />
+            <Header />
+            <ToasterContext />
+            {children}
+            {pathname !== '/dashboard' && <Footer />}
+            <ScrollToTop />
+            <Toaster />
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>

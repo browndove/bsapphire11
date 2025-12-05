@@ -1,16 +1,16 @@
-import Signin from "@/components/Auth/Signin";
+import ShadcnLoginForm from "@/components/Auth/ShadcnLoginForm";
 import { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "Login Page - Solid SaaS Boilerplate",
-  description: "This is Login page for Startup Pro",
+  title: "Admin Login - Candidate Dashboard",
+  description: "Login to access the candidate management dashboard",
   // other metadata
 };
 
 const SigninPage = () => {
   return (
     <>
-      <Signin />
+      <ShadcnLoginForm />
     </>
   );
 };

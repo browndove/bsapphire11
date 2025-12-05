@@ -7,7 +7,7 @@ const SingleTestimonial = ({ review }: { review: Testimonial }) => {
   
   const handleCardClick = () => {
     if (slug) {
-      window.location.href = `/job-posting/${slug}`;
+      window.location.href = `/careers/${slug}`;
     }
   };
 
@@ -38,7 +38,7 @@ const SingleTestimonial = ({ review }: { review: Testimonial }) => {
       
       {slug && (
         <Link 
-          href={`/job-posting/${slug}`}
+          href={`/careers/${slug}`}
           className="inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium text-sm transition-colors duration-200"
           onClick={(e) => e.stopPropagation()}
         >
