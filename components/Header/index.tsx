@@ -27,18 +27,6 @@ const Header = () => {
         : "hover:text-primary"
     }`;
 
-    // Special case for dashboard - always use Next.js Link for proper routing
-    if (menuItem.path === "/dashboard") {
-      return (
-        <Link
-          href="/dashboard"
-          className={baseClasses}
-          onClick={isMobile ? () => setNavigationOpen(false) : undefined}
-        >
-          {menuItem.title}
-        </Link>
-      );
-    }
 
     if (isHomePage) {
       // On home page, use scroll links for sections

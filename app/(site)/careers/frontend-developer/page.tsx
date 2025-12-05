@@ -2,11 +2,9 @@
 
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
-import QuestionnaireModal from "@/components/QuestionnaireModal";
 
 const FrontendDeveloperJob = () => {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [isQuestionnaireOpen, setIsQuestionnaireOpen] = useState(false);
 
   return (
     <>
@@ -124,6 +122,7 @@ const FrontendDeveloperJob = () => {
                             "Proficiency in HTML, CSS, and JavaScript",
                             "Experience with React, Vue, or Angular framework",
                             "Understanding of responsive design and web development best practices",
+                            "Understanding of how front-end applications interact with back-end services (e.g., RESTful APIs, Browser API and error handling)",
                             "Experience with Git and version control",
                             "Strong problem-solving skills and attention to detail",
                           ].map((item, idx) => (
@@ -140,7 +139,7 @@ const FrontendDeveloperJob = () => {
                         <h4 className="font-bold text-gray-900 dark:text-white mb-3 sm:mb-4 text-sm sm:text-base">Benefits</h4>
                         <div className="grid sm:grid-cols-2 gap-3 sm:gap-4">
                           {[
-                            { label: "Base Salary", value: "GH₵1,500 - GH₵2,500/month" },
+                            { label: "Base Salary", value: "Competitive salary based on geographic location" },
                             { label: "Work Style", value: "Fully remote with flexible hours" },
                             { label: "Time Off", value: "Paid leave & family support" },
                             { label: "Learning", value: "Training & conference coverage" },
@@ -161,12 +160,12 @@ const FrontendDeveloperJob = () => {
 
                 {/* CTA Buttons */}
                 <div className="mt-6 sm:mt-8 flex justify-center">
-                  <button 
-                    onClick={() => setIsQuestionnaireOpen(true)}
+                  <a 
+                    href="mailto:info@blvcksapphire.com?subject=Front-End Developer Application&body=Hi, I'm interested in applying for the Front-End Developer position at BLVCK SAPPHIRE. Please find my CV attached.%0D%0A%0D%0ABest regards"
                     className="rounded-full bg-blue-600 dark:bg-blue-700 px-6 sm:px-8 py-2.5 sm:py-3 text-xs sm:text-sm font-medium text-white transition-[background-color,box-shadow] duration-150 hover:bg-blue-700 dark:hover:bg-blue-600 shadow-lg hover:shadow-xl text-center"
                   >
                     Apply Now
-                  </button>
+                  </a>
                 </div>
               </div>
             </div>
@@ -174,11 +173,6 @@ const FrontendDeveloperJob = () => {
         </div>
       </section>
 
-      {/* Questionnaire Modal */}
-      <QuestionnaireModal 
-        isOpen={isQuestionnaireOpen}
-        onClose={() => setIsQuestionnaireOpen(false)}
-      />
     </>
   );
 };

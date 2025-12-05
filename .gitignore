@@ -7,6 +7,8 @@
 .pnp.cjs
 .pnp.loader.mjs
 /.yarn/
+**/*.node
+**/node_modules/
 .vscode
 # testing
 /coverage

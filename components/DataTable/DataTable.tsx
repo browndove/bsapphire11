@@ -12,7 +12,13 @@ import {
 } from "@/components/ui/table"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { Select } from "@/components/ui/select"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 export interface Column {
   key: string
@@ -156,14 +162,19 @@ export function DataTable({
           <div className="flex gap-2">
             <Select
               value={filterColumn}
-              onChange={(e) => setFilterColumn(e.target.value)}
+              onValueChange={(value) => setFilterColumn(value)}
             >
-              <option value="">Filter by column</option>
-              {filterableColumns.map((column) => (
-                <option key={column.key} value={column.key}>
-                  {column.label}
-                </option>
-              ))}
+              <SelectTrigger className="w-48">
+                <SelectValue placeholder="Filter by column" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">All columns</SelectItem>
+                {filterableColumns.map((column) => (
+                  <SelectItem key={column.key} value={column.key}>
+                    {column.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
             </Select>
 
             {filterColumn && (
