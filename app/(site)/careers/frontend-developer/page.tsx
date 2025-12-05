@@ -8,7 +8,7 @@ const FrontendDeveloperJob = () => {
 
   return (
     <>
-      <section className="min-h-screen bg-white dark:bg-black py-8 sm:py-12 lg:py-20">
+      <section className="min-h-screen bg-white dark:bg-black pt-20 pb-8 sm:py-12 lg:py-20">
         <div className="mx-auto max-w-6xl px-3 sm:px-6 lg:px-8">
           <div className="mx-auto max-w-4xl">
             {/* Header */}
