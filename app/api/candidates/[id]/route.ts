@@ -47,7 +47,7 @@ export async function PUT(
     const { action, value } = body;
     
     let query = '';
-    let queryParams = [];
+    let queryParams: any[] = [];
     
     switch (action) {
       case 'read':
