@@ -136,7 +136,7 @@ const FrontendDeveloperJob = () => {
                     </ul>
                   </div>
 
-                  {/* Benefits */}
+                  {/* Benefits - Updated with flexible hours */}
                   <div className="space-y-5 text-body-color dark:text-bodydark">
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
                       {[
