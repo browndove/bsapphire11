@@ -2,10 +2,10 @@
 
 import React, { useState, useEffect, useMemo } from "react"
 import { CandidateDataTable, Column } from "@/components/Dashboard/CandidateDataTable"
+import CandidateQuestionnaireView from "@/components/Dashboard/CandidateQuestionnaireView"
 import { Download, Users, FileText, Calendar, LogOut, MoreVertical, Eye, Star, Trash2, Mail, Archive } from "lucide-react"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { useAuth } from "@/app/context/AuthContext"
-import CandidateQuestionnaireView from './CandidateQuestionnaireView'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import {
@@ -118,6 +118,7 @@ export default function DatabaseDashboard() {
   const [designToolsFilter, setDesignToolsFilter] = useState<string>('all')
   const [frontendBackendFilter, setFrontendBackendFilter] = useState<string>('all')
   const [salaryFilter, setSalaryFilter] = useState<string>('all')
+  const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null)
 
   // Action handlers for candidate operations
   const handleMarkAsRead = async (candidate: Candidate) => {
@@ -206,7 +207,7 @@ export default function DatabaseDashboard() {
   }
 
   const handleViewDetails = (candidate: Candidate) => {
-    toast.info(`${candidate.first_name} ${candidate.last_name}\nEmail: ${candidate.email} | Framework: ${formatEnumValue(candidate.main_framework)} | Location: ${formatLocation(candidate.location)}`);
+    setSelectedCandidate(candidate);
   }
 
   // Table columns configuration
@@ -713,6 +714,18 @@ export default function DatabaseDashboard() {
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+
+      {/* Candidate Detail View */}
+      {selectedCandidate && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-gray-900 rounded-lg max-w-4xl w-full max-h-[90vh] overflow-auto">
+            <CandidateQuestionnaireView 
+              candidate={selectedCandidate} 
+              onClose={() => setSelectedCandidate(null)}
+            />
+          </div>
+        </div>
+      )}
     </div>
   )
 }

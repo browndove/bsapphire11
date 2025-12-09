@@ -23,7 +23,7 @@ interface FormData {
   gitUsage: string;
   designTools: string;
   frontendBackend: string;
-  salaryExpectations: string;
+  salaryExpectation: string;
   cvFileId?: number;
 }
 
@@ -107,7 +107,7 @@ const questions = [
   {
     title: "Salary Expectations",
     subtitle: "What salary range would you expect for an entry-level remote position with flexible working hours?",
-    field: "salaryExpectations",
+    field: "salaryExpectation",
     options: [
       { value: "1500_2000", label: "GHS 1,500 – GHS 2,000" },
       { value: "2000_2500", label: "GHS 2,000 – GHS 2,500" },

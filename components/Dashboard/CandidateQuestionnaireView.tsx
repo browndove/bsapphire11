@@ -1,9 +1,6 @@
 "use client"
 
 import * as React from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Label } from "@/components/ui/label"
-import { Separator } from "@/components/ui/separator"
 
 interface CandidateQuestionnaireViewProps {
   candidate: {
@@ -23,6 +20,7 @@ interface CandidateQuestionnaireViewProps {
     salary_expectation?: string
     created_at: string
   }
+  onClose?: () => void
 }
 
 // Helper function to format enum values for display
@@ -61,232 +59,118 @@ const formatEnumValue = (value: string): string => {
     .join(' ')
 }
 
-// Helper function to get badge styling based on value (monochrome)
-const getBadgeClass = (field: string, value: string): string => {
-  if (!value) return "bg-gray-100 dark:bg-gray-800 text-gray-500 dark:text-gray-400 border-gray-200 dark:border-gray-700"
-  
-  switch (field) {
-    case 'framework':
-      if (value.includes('react') || value.includes('nextjs')) return "bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 border-gray-900 dark:border-gray-100"
-      if (value === 'no_framework') return "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700"
-      return "bg-gray-700 dark:bg-gray-300 text-white dark:text-gray-900 border-gray-700 dark:border-gray-300"
-    case 'git':
-      if (value.includes('collaborative') || value.includes('own_repos')) return "bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 border-gray-900 dark:border-gray-100"
-      if (value.includes('basic') || value.includes('local')) return "bg-gray-600 dark:bg-gray-400 text-white dark:text-gray-900 border-gray-600 dark:border-gray-400"
-      return "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700"
-    case 'design':
-      if (value === 'figma') return "bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 border-gray-900 dark:border-gray-100"
-      if (value === 'prefer_coding_only') return "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700"
-      return "bg-gray-700 dark:bg-gray-300 text-white dark:text-gray-900 border-gray-700 dark:border-gray-300"
-    case 'frontend':
-      if (value.includes('write_api_calls')) return "bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 border-gray-900 dark:border-gray-100"
-      if (value.includes('tutorials') || value.includes('no_backend')) return "bg-gray-600 dark:bg-gray-400 text-white dark:text-gray-900 border-gray-600 dark:border-gray-400"
-      return "bg-gray-700 dark:bg-gray-300 text-white dark:text-gray-900 border-gray-700 dark:border-gray-300"
-    case 'salary':
-      if (value.includes('2500_3000')) return "bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 border-gray-900 dark:border-gray-100"
-      if (value.includes('2000_2500')) return "bg-gray-700 dark:bg-gray-300 text-white dark:text-gray-900 border-gray-700 dark:border-gray-300"
-      return "bg-gray-600 dark:bg-gray-400 text-white dark:text-gray-900 border-gray-600 dark:border-gray-400"
-    default:
-      return "bg-gray-700 dark:bg-gray-300 text-white dark:text-gray-900 border-gray-700 dark:border-gray-300"
-  }
-}
-
-export default function CandidateQuestionnaireView({ candidate }: CandidateQuestionnaireViewProps) {
+export default function CandidateQuestionnaireView({ candidate, onClose }: CandidateQuestionnaireViewProps) {
   const fullName = [candidate.first_name, candidate.middle_name, candidate.last_name]
     .filter(Boolean)
     .join(' ')
 
   return (
-    <Card className="w-full max-w-2xl">
-      <CardHeader>
-        <CardTitle className="flex items-center justify-between">
-          <span>Questionnaire Responses</span>
-          <div className="inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-semibold bg-gray-100 text-gray-600">
-            ID: {candidate.id}
-          </div>
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        {/* Personal Information */}
-        <div className="space-y-4">
-          <div>
-            <Label className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-              Personal Information
-            </Label>
-            <Separator className="mt-1 mb-3" />
-          </div>
-          
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <Label htmlFor="full-name" className="text-xs font-medium text-gray-600 dark:text-gray-400">
-                Full Name
-              </Label>
-              <div className="p-2 bg-gray-50 dark:bg-gray-800 rounded-md border">
-                <span className="text-sm">{fullName}</span>
-              </div>
-            </div>
-            
-            <div className="space-y-1">
-              <Label htmlFor="email" className="text-xs font-medium text-gray-600 dark:text-gray-400">
-                Email Address
-              </Label>
-              <div className="p-2 bg-gray-50 dark:bg-gray-800 rounded-md border">
-                <span className="text-sm">{candidate.email}</span>
-              </div>
-            </div>
-          </div>
+    <main className=" bg-background flex items-center justify-center">
+      <div className="mx-auto max-w-4xl px-4 py-8">
+        <div className="mb-6">
+          <h1 className="text-2xl font-light text-foreground">Application Summary</h1>
+          <p className="text-xs text-muted-foreground mt-1">Candidate information and responses</p>
+        </div>
 
-          {(candidate.portfolio_url || candidate.github_url) && (
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-4 mb-6">
+          {/* Personal Information */}
+          <div className="border border-border rounded-md p-4">
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-foreground mb-3">Personal</h2>
+            <div className="space-y-2 text-sm">
+              <div className="flex justify-between gap-2">
+                <span className="text-muted-foreground">First Name</span>
+                <span className="text-foreground font-light">{candidate.first_name}</span>
+              </div>
+              <div className="flex justify-between gap-2">
+                <span className="text-muted-foreground">Last Name</span>
+                <span className="text-foreground font-light">{candidate.last_name}</span>
+              </div>
+              {candidate.middle_name && (
+                <div className="flex justify-between gap-2">
+                  <span className="text-muted-foreground">Middle Name</span>
+                  <span className="text-foreground font-light">{candidate.middle_name}</span>
+                </div>
+              )}
+              <div className="flex justify-between gap-2">
+                <span className="text-muted-foreground">Email</span>
+                <span className="text-foreground font-light text-xs truncate">{candidate.email}</span>
+              </div>
               {candidate.portfolio_url && (
-                <div className="space-y-1">
-                  <Label htmlFor="portfolio-url" className="text-xs font-medium text-gray-600 dark:text-gray-400">
-                    Portfolio URL
-                  </Label>
-                  <div className="p-2 bg-gray-50 dark:bg-gray-800 rounded-md border">
-                    <a href={candidate.portfolio_url} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:text-blue-800 underline">
-                      {candidate.portfolio_url}
-                    </a>
-                  </div>
+                <div className="flex justify-between gap-2">
+                  <span className="text-muted-foreground">Portfolio</span>
+                  <span className="text-foreground font-light text-xs truncate">{candidate.portfolio_url}</span>
                 </div>
               )}
-              
               {candidate.github_url && (
-                <div className="space-y-1">
-                  <Label htmlFor="github-url" className="text-xs font-medium text-gray-600 dark:text-gray-400">
-                    GitHub URL
-                  </Label>
-                  <div className="p-2 bg-gray-50 dark:bg-gray-800 rounded-md border">
-                    <a href={candidate.github_url} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:text-blue-800 underline">
-                      {candidate.github_url}
-                    </a>
-                  </div>
+                <div className="flex justify-between gap-2">
+                  <span className="text-muted-foreground">GitHub</span>
+                  <span className="text-foreground font-light text-xs truncate">{candidate.github_url}</span>
                 </div>
               )}
             </div>
-          )}
-
-          <div className="space-y-1">
-            <Label htmlFor="location" className="text-xs font-medium text-gray-600 dark:text-gray-400">
-              Location
-            </Label>
-            <div className="p-2 bg-gray-50 dark:bg-gray-800 rounded-md border">
-              <div className={`inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-semibold ${getBadgeClass('location', candidate.location)}`}>
-                {formatEnumValue(candidate.location)}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Technical Skills */}
-        <div className="space-y-4">
-          <div>
-            <Label className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-              Technical Skills & Experience
-            </Label>
-            <Separator className="mt-1 mb-3" />
           </div>
 
+          {/* Location & Compensation */}
           <div className="space-y-4">
-            <div className="space-y-1">
-              <Label htmlFor="framework" className="text-xs font-medium text-gray-600 dark:text-gray-400">
-                Main Framework
-              </Label>
-              <div className="p-2 bg-gray-50 dark:bg-gray-800 rounded-md border">
-                <div className={`inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-semibold ${getBadgeClass('framework', candidate.main_framework)}`}>
-                  {formatEnumValue(candidate.main_framework)}
-                </div>
+            <div className="border border-border rounded-md p-4">
+              <h2 className="text-xs font-semibold uppercase tracking-wider text-foreground mb-3">Location</h2>
+              <div className="flex justify-between gap-2 text-sm">
+                <span className="text-muted-foreground">Region</span>
+                <span className="text-foreground font-light">{formatEnumValue(candidate.location)}</span>
               </div>
             </div>
-
-            <div className="space-y-1">
-              <Label htmlFor="ui-structure" className="text-xs font-medium text-gray-600 dark:text-gray-400">
-                UI Structure Approach
-              </Label>
-              <div className="p-2 bg-gray-50 dark:bg-gray-800 rounded-md border">
-                <div className={`inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-semibold ${getBadgeClass('ui', candidate.ui_structure)}`}>
-                  {formatEnumValue(candidate.ui_structure)}
-                </div>
+            <div className="border border-border rounded-md p-4">
+              <h2 className="text-xs font-semibold uppercase tracking-wider text-foreground mb-3">Compensation</h2>
+              <div className="flex justify-between gap-2 text-sm">
+                <span className="text-muted-foreground">Salary</span>
+                <span className="text-foreground font-light">
+                  {candidate.salary_expectation ? formatEnumValue(candidate.salary_expectation) : 'Not specified'}
+                </span>
               </div>
             </div>
+          </div>
+        </div>
 
-            <div className="space-y-1">
-              <Label htmlFor="git-usage" className="text-xs font-medium text-gray-600 dark:text-gray-400">
-                Git Usage Level
-              </Label>
-              <div className="p-2 bg-gray-50 dark:bg-gray-800 rounded-md border">
-                <div className={`inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-semibold ${getBadgeClass('git', candidate.git_usage)}`}>
-                  {formatEnumValue(candidate.git_usage)}
-                </div>
-              </div>
+        {/* Technical Experience */}
+        <div className="border border-border rounded-md p-4 mb-6">
+          <h2 className="text-xs font-semibold uppercase tracking-wider text-foreground mb-3">Technical</h2>
+          <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+            <div className="flex justify-between gap-2">
+              <span className="text-muted-foreground">Framework</span>
+              <span className="text-foreground font-light">{formatEnumValue(candidate.main_framework)}</span>
             </div>
-
-            <div className="space-y-1">
-              <Label htmlFor="design-tools" className="text-xs font-medium text-gray-600 dark:text-gray-400">
-                Design Tools Preference
-              </Label>
-              <div className="p-2 bg-gray-50 dark:bg-gray-800 rounded-md border">
-                <div className={`inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-semibold ${getBadgeClass('design', candidate.design_tools)}`}>
-                  {formatEnumValue(candidate.design_tools)}
-                </div>
-              </div>
+            <div className="flex justify-between gap-2">
+              <span className="text-muted-foreground">UI Structure</span>
+              <span className="text-foreground font-light text-xs">{formatEnumValue(candidate.ui_structure)}</span>
             </div>
-
+            <div className="flex justify-between gap-2">
+              <span className="text-muted-foreground">Git Usage</span>
+              <span className="text-foreground font-light">{formatEnumValue(candidate.git_usage)}</span>
+            </div>
+            <div className="flex justify-between gap-2">
+              <span className="text-muted-foreground">Design Tools</span>
+              <span className="text-foreground font-light">{formatEnumValue(candidate.design_tools)}</span>
+            </div>
             {candidate.frontend_backend && (
-              <div className="space-y-1">
-                <Label htmlFor="frontend-backend" className="text-xs font-medium text-gray-600 dark:text-gray-400">
-                  Frontend-Backend Interaction
-                </Label>
-                <div className="p-2 bg-gray-50 dark:bg-gray-800 rounded-md border">
-                  <div className={`inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-semibold ${getBadgeClass('frontend', candidate.frontend_backend)}`}>
-                    {formatEnumValue(candidate.frontend_backend)}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {candidate.salary_expectation && (
-              <div className="space-y-1">
-                <Label htmlFor="salary-expectation" className="text-xs font-medium text-gray-600 dark:text-gray-400">
-                  Salary Expectation
-                </Label>
-                <div className="p-2 bg-gray-50 dark:bg-gray-800 rounded-md border">
-                  <div className={`inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-semibold ${getBadgeClass('salary', candidate.salary_expectation)}`}>
-                    {formatEnumValue(candidate.salary_expectation)}
-                  </div>
-                </div>
+              <div className="col-span-2 flex justify-between gap-2">
+                <span className="text-muted-foreground">Frontend-Backend</span>
+                <span className="text-foreground font-light">{formatEnumValue(candidate.frontend_backend)}</span>
               </div>
             )}
           </div>
         </div>
 
-        {/* Application Info */}
-        <div className="space-y-4">
-          <div>
-            <Label className="text-sm font-semibold text-gray-700 dark:text-gray-300">
-              Application Information
-            </Label>
-            <Separator className="mt-1 mb-3" />
-          </div>
-          
-          <div className="space-y-1">
-            <Label htmlFor="applied-date" className="text-xs font-medium text-gray-600 dark:text-gray-400">
-              Application Date
-            </Label>
-            <div className="p-2 bg-gray-50 dark:bg-gray-800 rounded-md border">
-              <span className="text-sm">
-                {new Date(candidate.created_at).toLocaleDateString('en-US', {
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit'
-                })}
-              </span>
-            </div>
-          </div>
+        <div className="flex gap-3">
+          {onClose && (
+            <button 
+              onClick={onClose}
+              className="flex-1 px-4 py-2 bg-primary text-primary-foreground text-sm font-medium rounded-md hover:opacity-90 transition-opacity"
+            >
+              Close
+            </button>
+          )}
         </div>
-      </CardContent>
-    </Card>
+      </div>
+    </main>
   )
 }
