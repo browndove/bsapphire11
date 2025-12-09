@@ -1,7 +1,7 @@
 "use client"
 
 import React, { useState, useMemo } from "react"
-import { Search, Filter, Download, ChevronLeft, ChevronRight, X } from "lucide-react"
+import { Search, Download, ChevronLeft, ChevronRight } from "lucide-react"
 import {
   Table,
   TableBody,
@@ -13,13 +13,6 @@ import {
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import { Label } from "@/components/ui/label"
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
 
 export interface Column {
   key: string
@@ -59,25 +52,6 @@ export function CandidateDataTable({
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc")
   const [currentPage, setCurrentPage] = useState(1)
   
-  // Advanced filters for questionnaire answers
-  const [frameworkFilter, setFrameworkFilter] = useState<string>("")
-  const [uiStructureFilter, setUiStructureFilter] = useState<string>("")
-  const [gitUsageFilter, setGitUsageFilter] = useState<string>("")
-  const [designToolsFilter, setDesignToolsFilter] = useState<string>("")
-  const [locationFilter, setLocationFilter] = useState<string>("")
-  const [cvStatusFilter, setCvStatusFilter] = useState<string>("")
-
-  // Get unique values for filter dropdowns
-  const uniqueFrameworks = useMemo(() => 
-    Array.from(new Set(data.map(row => row.main_framework))).filter(Boolean), [data])
-  const uniqueUiStructures = useMemo(() => 
-    Array.from(new Set(data.map(row => row.ui_structure))).filter(Boolean), [data])
-  const uniqueGitUsage = useMemo(() => 
-    Array.from(new Set(data.map(row => row.git_usage))).filter(Boolean), [data])
-  const uniqueDesignTools = useMemo(() => 
-    Array.from(new Set(data.map(row => row.design_tools))).filter(Boolean), [data])
-  const uniqueLocations = useMemo(() => 
-    Array.from(new Set(data.map(row => row.location))).filter(Boolean), [data])
 
   // Filter and search data
   const filteredData = useMemo(() => {
@@ -97,32 +71,8 @@ export function CandidateDataTable({
       )
     }
 
-    // Apply questionnaire filters
-    if (frameworkFilter) {
-      filtered = filtered.filter(row => row.main_framework === frameworkFilter)
-    }
-    if (uiStructureFilter) {
-      filtered = filtered.filter(row => row.ui_structure === uiStructureFilter)
-    }
-    if (gitUsageFilter) {
-      filtered = filtered.filter(row => row.git_usage === gitUsageFilter)
-    }
-    if (designToolsFilter) {
-      filtered = filtered.filter(row => row.design_tools === designToolsFilter)
-    }
-    if (locationFilter) {
-      filtered = filtered.filter(row => row.location === locationFilter)
-    }
-    if (cvStatusFilter) {
-      if (cvStatusFilter === 'uploaded') {
-        filtered = filtered.filter(row => row.cv_filename)
-      } else if (cvStatusFilter === 'missing') {
-        filtered = filtered.filter(row => !row.cv_filename)
-      }
-    }
-
     return filtered
-  }, [data, searchTerm, frameworkFilter, uiStructureFilter, gitUsageFilter, designToolsFilter, locationFilter, cvStatusFilter, columns])
+  }, [data, searchTerm, columns])
 
   // Sort data
   const sortedData = useMemo(() => {
@@ -172,17 +122,6 @@ export function CandidateDataTable({
     window.URL.revokeObjectURL(url)
   }
 
-  const clearAllFilters = () => {
-    setFrameworkFilter("")
-    setUiStructureFilter("")
-    setGitUsageFilter("")
-    setDesignToolsFilter("")
-    setLocationFilter("")
-    setCvStatusFilter("")
-    setSearchTerm("")
-  }
-
-  const hasActiveFilters = frameworkFilter || uiStructureFilter || gitUsageFilter || designToolsFilter || locationFilter || cvStatusFilter || searchTerm
 
   return (
     <div className="space-y-6 p-6">
@@ -228,152 +167,6 @@ export function CandidateDataTable({
         </div>
       )}
 
-      {/* Advanced Filters */}
-      <div className="bg-gray-50 dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl p-6">
-        <div className="flex items-center gap-3 mb-6">
-          <Filter className="h-4 w-4 text-gray-500 dark:text-gray-400" />
-          <span className="text-sm font-light text-gray-700 dark:text-gray-300">
-            Filter by Questionnaire Answers
-          </span>
-          {hasActiveFilters && (
-            <button
-              onClick={clearAllFilters}
-              className="ml-auto flex items-center gap-2 px-3 py-1.5 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-all duration-200"
-            >
-              <X className="h-3 w-3" />
-              <span className="font-light">Clear All</span>
-            </button>
-          )}
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
-          {/* Framework Filter */}
-          <div className="space-y-2">
-            <Label htmlFor="framework-filter" className="text-xs font-light text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-              Framework
-            </Label>
-            <Select value={frameworkFilter || "all"} onValueChange={(value) => setFrameworkFilter(value === "all" ? "" : value)}>
-              <SelectTrigger id="framework-filter" className="h-9">
-                <SelectValue placeholder="All Frameworks" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Frameworks</SelectItem>
-                {uniqueFrameworks.map((framework) => (
-                  <SelectItem key={framework} value={framework}>
-                    {formatEnumValue(framework)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* UI Structure Filter */}
-          <div className="space-y-2">
-            <Label htmlFor="ui-structure-filter" className="text-xs font-light text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-              UI Structure
-            </Label>
-            <Select value={uiStructureFilter || "all"} onValueChange={(value) => setUiStructureFilter(value === "all" ? "" : value)}>
-              <SelectTrigger id="ui-structure-filter" className="h-9">
-                <SelectValue placeholder="All UI Structures" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All UI Structures</SelectItem>
-                {uniqueUiStructures.map((structure) => (
-                  <SelectItem key={structure} value={structure}>
-                    {formatEnumValue(structure)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Git Usage Filter */}
-          <div className="space-y-2">
-            <Label htmlFor="git-usage-filter" className="text-xs font-light text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-              Git Usage
-            </Label>
-            <Select value={gitUsageFilter || "all"} onValueChange={(value) => setGitUsageFilter(value === "all" ? "" : value)}>
-              <SelectTrigger id="git-usage-filter" className="h-9">
-                <SelectValue placeholder="All Git Usage" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Git Usage</SelectItem>
-                {uniqueGitUsage.map((usage) => (
-                  <SelectItem key={usage} value={usage}>
-                    {formatEnumValue(usage)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Design Tools Filter */}
-          <div className="space-y-2">
-            <Label htmlFor="design-tools-filter" className="text-xs font-light text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-              Design Tools
-            </Label>
-            <Select value={designToolsFilter || "all"} onValueChange={(value) => setDesignToolsFilter(value === "all" ? "" : value)}>
-              <SelectTrigger id="design-tools-filter" className="h-9">
-                <SelectValue placeholder="All Design Tools" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Design Tools</SelectItem>
-                {uniqueDesignTools.map((tool) => (
-                  <SelectItem key={tool} value={tool}>
-                    {formatEnumValue(tool)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Location Filter */}
-          <div className="space-y-2">
-            <Label htmlFor="location-filter" className="text-xs font-light text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-              Location
-            </Label>
-            <Select value={locationFilter || "all"} onValueChange={(value) => setLocationFilter(value === "all" ? "" : value)}>
-              <SelectTrigger id="location-filter" className="h-9">
-                <SelectValue placeholder="All Locations" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All Locations</SelectItem>
-                {uniqueLocations.map((location) => (
-                  <SelectItem key={location} value={location}>
-                    {location === 'greater_accra' ? 'Greater Accra' : 
-                     location === 'outside_greater_accra' ? 'Outside Greater Accra' : 
-                     formatEnumValue(location)}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* CV Status Filter */}
-          <div className="space-y-2">
-            <Label htmlFor="cv-status-filter" className="text-xs font-light text-gray-500 dark:text-gray-400 uppercase tracking-wide">
-              CV Status
-            </Label>
-            <Select value={cvStatusFilter || "all"} onValueChange={(value) => setCvStatusFilter(value === "all" ? "" : value)}>
-              <SelectTrigger id="cv-status-filter" className="h-9">
-                <SelectValue placeholder="All CV Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">All CV Status</SelectItem>
-                <SelectItem value="uploaded">CV Uploaded</SelectItem>
-                <SelectItem value="missing">CV Missing</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-        </div>
-      </div>
-
-      {/* Results Summary */}
-      {hasActiveFilters && (
-        <div className="text-sm text-gray-600 dark:text-gray-400">
-          Showing {filteredData.length} of {data.length} candidates
-        </div>
-      )}
 
       {/* Table */}
       <div className="border border-gray-100 dark:border-gray-800 rounded-xl overflow-hidden">

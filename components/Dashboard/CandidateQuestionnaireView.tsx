@@ -11,12 +11,16 @@ interface CandidateQuestionnaireViewProps {
     first_name: string
     middle_name?: string
     last_name: string
+    portfolio_url?: string
+    github_url?: string
     email: string
     location: string
     main_framework: string
     ui_structure: string
     git_usage: string
     design_tools: string
+    frontend_backend?: string
+    salary_expectation?: string
     created_at: string
   }
 }
@@ -41,7 +45,14 @@ const formatEnumValue = (value: string): string => {
     'basic_commands_occasional': 'Basic Commands (Occasional)',
     'local_machine_only': 'Local Machine Only',
     'other_tools': 'Other Design Tools',
-    'prefer_coding_only': 'Prefer Coding Only'
+    'prefer_coding_only': 'Prefer Coding Only',
+    'api_calls_tutorials': 'API Calls (Tutorials)',
+    'write_api_calls': 'Write API Calls',
+    'no_backend_preference': 'No Backend Preference',
+    'receive_data_props': 'Receive Data as Props',
+    'ghs_1500_2000': 'GHS 1,500 - 2,000',
+    'ghs_2000_2500': 'GHS 2,000 - 2,500',
+    'ghs_2500_3000': 'GHS 2,500 - 3,000'
   }
   
   return specialCases[value] || value
@@ -67,6 +78,14 @@ const getBadgeClass = (field: string, value: string): string => {
       if (value === 'figma') return "bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 border-gray-900 dark:border-gray-100"
       if (value === 'prefer_coding_only') return "bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 border-gray-200 dark:border-gray-700"
       return "bg-gray-700 dark:bg-gray-300 text-white dark:text-gray-900 border-gray-700 dark:border-gray-300"
+    case 'frontend':
+      if (value.includes('write_api_calls')) return "bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 border-gray-900 dark:border-gray-100"
+      if (value.includes('tutorials') || value.includes('no_backend')) return "bg-gray-600 dark:bg-gray-400 text-white dark:text-gray-900 border-gray-600 dark:border-gray-400"
+      return "bg-gray-700 dark:bg-gray-300 text-white dark:text-gray-900 border-gray-700 dark:border-gray-300"
+    case 'salary':
+      if (value.includes('2500_3000')) return "bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 border-gray-900 dark:border-gray-100"
+      if (value.includes('2000_2500')) return "bg-gray-700 dark:bg-gray-300 text-white dark:text-gray-900 border-gray-700 dark:border-gray-300"
+      return "bg-gray-600 dark:bg-gray-400 text-white dark:text-gray-900 border-gray-600 dark:border-gray-400"
     default:
       return "bg-gray-700 dark:bg-gray-300 text-white dark:text-gray-900 border-gray-700 dark:border-gray-300"
   }
@@ -116,6 +135,36 @@ export default function CandidateQuestionnaireView({ candidate }: CandidateQuest
               </div>
             </div>
           </div>
+
+          {(candidate.portfolio_url || candidate.github_url) && (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {candidate.portfolio_url && (
+                <div className="space-y-1">
+                  <Label htmlFor="portfolio-url" className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                    Portfolio URL
+                  </Label>
+                  <div className="p-2 bg-gray-50 dark:bg-gray-800 rounded-md border">
+                    <a href={candidate.portfolio_url} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:text-blue-800 underline">
+                      {candidate.portfolio_url}
+                    </a>
+                  </div>
+                </div>
+              )}
+              
+              {candidate.github_url && (
+                <div className="space-y-1">
+                  <Label htmlFor="github-url" className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                    GitHub URL
+                  </Label>
+                  <div className="p-2 bg-gray-50 dark:bg-gray-800 rounded-md border">
+                    <a href={candidate.github_url} target="_blank" rel="noopener noreferrer" className="text-sm text-blue-600 hover:text-blue-800 underline">
+                      {candidate.github_url}
+                    </a>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="space-y-1">
             <Label htmlFor="location" className="text-xs font-medium text-gray-600 dark:text-gray-400">
@@ -182,6 +231,32 @@ export default function CandidateQuestionnaireView({ candidate }: CandidateQuest
                 </div>
               </div>
             </div>
+
+            {candidate.frontend_backend && (
+              <div className="space-y-1">
+                <Label htmlFor="frontend-backend" className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                  Frontend-Backend Interaction
+                </Label>
+                <div className="p-2 bg-gray-50 dark:bg-gray-800 rounded-md border">
+                  <div className={`inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-semibold ${getBadgeClass('frontend', candidate.frontend_backend)}`}>
+                    {formatEnumValue(candidate.frontend_backend)}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {candidate.salary_expectation && (
+              <div className="space-y-1">
+                <Label htmlFor="salary-expectation" className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                  Salary Expectation
+                </Label>
+                <div className="p-2 bg-gray-50 dark:bg-gray-800 rounded-md border">
+                  <div className={`inline-flex items-center rounded-md border px-2.5 py-0.5 text-xs font-semibold ${getBadgeClass('salary', candidate.salary_expectation)}`}>
+                    {formatEnumValue(candidate.salary_expectation)}
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
 

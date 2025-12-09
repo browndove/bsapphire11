@@ -8,8 +8,6 @@ export const metadata = {
 
 export default function DashboardPage() {
   return (
-    <ProtectedRoute>
-      <DatabaseDashboard />
-    </ProtectedRoute>
+    <DatabaseDashboard />
   )
 }

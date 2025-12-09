@@ -9,6 +9,21 @@ import CandidateQuestionnaireView from './CandidateQuestionnaireView'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
+import {
   Popover,
   PopoverContent,
   PopoverTrigger,
@@ -27,6 +42,8 @@ interface Candidate {
   ui_structure: string
   git_usage: string
   design_tools: string
+  frontend_backend: string
+  salary_expectation: string
   cv_file_id?: string
   created_at: string
   cv_filename?: string
@@ -93,8 +110,14 @@ export default function DatabaseDashboard() {
   })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [showProfileMenu, setShowProfileMenu] = useState(false)
-  const [statusFilter, setStatusFilter] = useState<'all' | 'starred' | 'archived' | 'unread' | 'with_cv'>('all')
+  const [statusFilter, setStatusFilter] = useState<'all' | 'starred' | 'archived' | 'unread'>('all')
+  const [locationFilter, setLocationFilter] = useState<string>('all')
+  const [frameworkFilter, setFrameworkFilter] = useState<string>('all')
+  const [uiStructureFilter, setUiStructureFilter] = useState<string>('all')
+  const [gitUsageFilter, setGitUsageFilter] = useState<string>('all')
+  const [designToolsFilter, setDesignToolsFilter] = useState<string>('all')
+  const [frontendBackendFilter, setFrontendBackendFilter] = useState<string>('all')
+  const [salaryFilter, setSalaryFilter] = useState<string>('all')
 
   // Action handlers for candidate operations
   const handleMarkAsRead = async (candidate: Candidate) => {
@@ -216,19 +239,6 @@ export default function DatabaseDashboard() {
       render: (value) => formatEnumValue(value)
     },
     {
-      key: "cv_filename",
-      label: "CV Status",
-      render: (value) => (
-        <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-          value 
-            ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300' 
-            : 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
-        }`}>
-          {value ? 'CV Uploaded' : 'CV Missing'}
-        </span>
-      )
-    },
-    {
       key: "created_at",
       label: "Applied Date",
       sortable: true,
@@ -321,8 +331,9 @@ export default function DatabaseDashboard() {
       setError(null)
       
       const response = await fetch('/api/candidates')
+      
       if (!response.ok) {
-        throw new Error('Failed to fetch candidates')
+        throw new Error(`Failed to fetch candidates: ${response.status}`)
       }
       
       const data = await response.json()
@@ -340,13 +351,17 @@ export default function DatabaseDashboard() {
       const withCV = candidates.filter((candidate: Candidate) => candidate.cv_filename)
       
       const frameworkCounts = candidates.reduce((acc: any, candidate: Candidate) => {
-        acc[candidate.main_framework] = (acc[candidate.main_framework] || 0) + 1
+        if (candidate.main_framework) {
+          acc[candidate.main_framework] = (acc[candidate.main_framework] || 0) + 1
+        }
         return acc
       }, {})
       
-      const topFramework = Object.keys(frameworkCounts).reduce((a, b) => 
-        frameworkCounts[a] > frameworkCounts[b] ? a : b, ''
-      )
+      const topFramework = Object.keys(frameworkCounts).length > 0 
+        ? Object.keys(frameworkCounts).reduce((a, b) => 
+            frameworkCounts[a] > frameworkCounts[b] ? a : b
+          )
+        : ''
       
       setStats({
         totalCandidates: candidates.length,
@@ -362,21 +377,48 @@ export default function DatabaseDashboard() {
     }
   }
 
-  // Filter candidates based on status
+  // Filter candidates based on all filters
   const filteredCandidates = useMemo(() => {
+    let filtered = candidates
+
+    // Status filter
     switch (statusFilter) {
       case 'starred':
-        return candidates.filter(c => c.is_starred === true || c.is_starred === 1)
+        filtered = filtered.filter(c => c.is_starred === true || c.is_starred === 1)
+        break
       case 'archived':
-        return candidates.filter(c => c.is_archived === true || c.is_archived === 1)
+        filtered = filtered.filter(c => c.is_archived === true || c.is_archived === 1)
+        break
       case 'unread':
-        return candidates.filter(c => !c.is_read || c.is_read === 0)
-      case 'with_cv':
-        return candidates.filter(c => c.cv_filename)
-      default:
-        return candidates
+        filtered = filtered.filter(c => !c.is_read || c.is_read === 0)
+        break
     }
-  }, [candidates, statusFilter])
+
+    // Questionnaire field filters
+    if (locationFilter !== 'all') {
+      filtered = filtered.filter(c => c.location === locationFilter)
+    }
+    if (frameworkFilter !== 'all') {
+      filtered = filtered.filter(c => c.main_framework === frameworkFilter)
+    }
+    if (uiStructureFilter !== 'all') {
+      filtered = filtered.filter(c => c.ui_structure === uiStructureFilter)
+    }
+    if (gitUsageFilter !== 'all') {
+      filtered = filtered.filter(c => c.git_usage === gitUsageFilter)
+    }
+    if (designToolsFilter !== 'all') {
+      filtered = filtered.filter(c => c.design_tools === designToolsFilter)
+    }
+    if (frontendBackendFilter !== 'all') {
+      filtered = filtered.filter(c => c.frontend_backend === frontendBackendFilter)
+    }
+    if (salaryFilter !== 'all') {
+      filtered = filtered.filter(c => c.salary_expectation === salaryFilter)
+    }
+
+    return filtered
+  }, [candidates, statusFilter, locationFilter, frameworkFilter, uiStructureFilter, gitUsageFilter, designToolsFilter, frontendBackendFilter, salaryFilter])
 
   useEffect(() => {
     fetchCandidates()
@@ -456,31 +498,174 @@ export default function DatabaseDashboard() {
           </div>
         </div>
 
-        {/* Subtle Filter Bar */}
-        <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-4 mb-4">
-          <div className="flex items-center gap-4">
-            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Show:</span>
-            <div className="flex gap-2">
-              {[
-                { key: 'all', label: 'All', count: candidates.length },
-                { key: 'starred', label: 'Starred', count: candidates.filter(c => c.is_starred === true || c.is_starred === 1).length },
-                { key: 'unread', label: 'Unread', count: candidates.filter(c => !c.is_read || c.is_read === 0).length },
-                { key: 'with_cv', label: 'With CV', count: candidates.filter(c => c.cv_filename).length },
-                { key: 'archived', label: 'Archived', count: candidates.filter(c => c.is_archived === true || c.is_archived === 1).length },
-              ].map((filter) => (
-                <button
-                  key={filter.key}
-                  onClick={() => setStatusFilter(filter.key as any)}
-                  className={`px-3 py-1.5 text-sm rounded-md transition-colors ${
-                    statusFilter === filter.key
-                      ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800'
-                      : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 border border-transparent'
-                  }`}
-                >
-                  {filter.label} ({filter.count})
-                </button>
-              ))}
+        {/* Filter Bar with Shadcn Dropdowns */}
+        <div className="bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 p-6 mb-4">
+          <div className="flex items-center gap-3 mb-4">
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Filter by:</span>
+          </div>
+          
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4 mb-4">
+            {/* Status Filter */}
+            <div>
+              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">Status</label>
+              <Select value={statusFilter} onValueChange={(value) => setStatusFilter(value as any)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="starred">Starred</SelectItem>
+                  <SelectItem value="unread">Unread</SelectItem>
+                  <SelectItem value="archived">Archived</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
+
+            {/* Location Filter */}
+            <div>
+              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">Location</label>
+              <Select value={locationFilter} onValueChange={setLocationFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All Locations" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Locations</SelectItem>
+                  <SelectItem value="greater_accra">Greater Accra</SelectItem>
+                  <SelectItem value="outside_greater_accra">Outside Greater Accra</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Framework Filter */}
+            <div>
+              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">Framework</label>
+              <Select value={frameworkFilter} onValueChange={setFrameworkFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All Frameworks" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Frameworks</SelectItem>
+                  <SelectItem value="react">React</SelectItem>
+                  <SelectItem value="nextjs">Next.js</SelectItem>
+                  <SelectItem value="react_and_nextjs">React & Next.js</SelectItem>
+                  <SelectItem value="other_framework">Other Framework</SelectItem>
+                  <SelectItem value="no_framework">No Framework</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* UI Structure Filter */}
+            <div>
+              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">UI Structure</label>
+              <Select value={uiStructureFilter} onValueChange={setUiStructureFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All Structures" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Structures</SelectItem>
+                  <SelectItem value="larger_sections">Large Sections</SelectItem>
+                  <SelectItem value="small_reusable_components">Small Components</SelectItem>
+                  <SelectItem value="work_on_existing">Existing Codebase</SelectItem>
+                  <SelectItem value="single_component">Single Component</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Git Usage Filter */}
+            <div>
+              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">Git Usage</label>
+              <Select value={gitUsageFilter} onValueChange={setGitUsageFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All Git Usage" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Git Usage</SelectItem>
+                  <SelectItem value="collaborative_branches_prs">Collaborative</SelectItem>
+                  <SelectItem value="own_repos_regular_commits">Own Projects</SelectItem>
+                  <SelectItem value="local_machine_only">Local Projects</SelectItem>
+                  <SelectItem value="basic_commands_occasional">Basic Commands</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Design Tools Filter */}
+            <div>
+              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">Design Tools</label>
+              <Select value={designToolsFilter} onValueChange={setDesignToolsFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All Design Tools" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Design Tools</SelectItem>
+                  <SelectItem value="figma">Figma</SelectItem>
+                  <SelectItem value="prefer_coding_only">Prefer Coding</SelectItem>
+                  <SelectItem value="sketch">Sketch</SelectItem>
+                  <SelectItem value="other_tools">Other Tools</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4 mb-4">
+            {/* Frontend-Backend Filter */}
+            <div>
+              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">Frontend-Backend</label>
+              <Select value={frontendBackendFilter} onValueChange={setFrontendBackendFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All Preferences" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Preferences</SelectItem>
+                  <SelectItem value="api_calls_tutorials">Rarely API</SelectItem>
+                  <SelectItem value="write_api_calls">Write API Calls</SelectItem>
+                  <SelectItem value="no_backend_preference">Prefer No Backend</SelectItem>
+                  <SelectItem value="receive_data_props">Receive Data Props</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Salary Filter */}
+            <div>
+              <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">Salary Range</label>
+              <Select value={salaryFilter} onValueChange={setSalaryFilter}>
+                <SelectTrigger>
+                  <SelectValue placeholder="All Salary Ranges" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Salary Ranges</SelectItem>
+                  <SelectItem value="ghs_1500_2000">GHS 1,500 - 2,000</SelectItem>
+                  <SelectItem value="ghs_2000_2500">GHS 2,000 - 2,500</SelectItem>
+                  <SelectItem value="ghs_2500_3000">GHS 2,500 - 3,000</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* Clear Filters Button */}
+            <div className="flex items-end">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setStatusFilter('all')
+                  setLocationFilter('all')
+                  setFrameworkFilter('all')
+                  setUiStructureFilter('all')
+                  setGitUsageFilter('all')
+                  setDesignToolsFilter('all')
+                  setFrontendBackendFilter('all')
+                  setSalaryFilter('all')
+                }}
+                className="w-full"
+              >
+                Clear All
+              </Button>
+            </div>
+          </div>
+
+          {/* Results Count */}
+          <div className="pt-4 border-t border-gray-200 dark:border-gray-700">
+            <p className="text-sm text-gray-600 dark:text-gray-400">
+              Showing <span className="font-medium">{filteredCandidates.length}</span> of <span className="font-medium">{candidates.length}</span> candidates
+            </p>
           </div>
         </div>
 
@@ -497,50 +682,36 @@ export default function DatabaseDashboard() {
         </div>
       </div>
 
-      {/* Profile Avatar */}
-      <div className="fixed bottom-6 right-6 z-50">
-        <div className="relative">
-          <button
-            onClick={() => setShowProfileMenu(!showProfileMenu)}
-            className="relative"
-          >
-            <Avatar className="h-12 w-12 border-2 border-white dark:border-gray-800 shadow-lg hover:shadow-xl transition-all duration-200 hover:scale-105 active:scale-95">
-              <AvatarFallback className="bg-blue-500 dark:bg-gray-800 text-white">
-                <Users className="h-5 w-5" />
-              </AvatarFallback>
-            </Avatar>
-            {/* Online indicator */}
-            <div className="absolute -bottom-0 -right-0 h-4 w-4 rounded-full bg-green-500 border-2 border-white dark:border-gray-800"></div>
-          </button>
-          
-          {showProfileMenu && (
-            <div className="absolute bottom-14 right-0 w-64 bg-white dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-800 shadow-lg p-4">
-              <div className="flex items-center space-x-3 mb-4">
-                <Avatar className="h-10 w-10">
-                  <AvatarFallback className="bg-blue-500 dark:bg-gray-800 text-white">
-                    <Users className="h-4 w-4" />
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-medium text-gray-900 dark:text-white">
-                    Admin User
-                  </p>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
-                    {user?.email}
-                  </p>
-                </div>
+      {/* Profile Dropdown */}
+      <div className="fixed bottom-6 left-6 z-50">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" className="relative h-10 w-10 rounded-full p-0">
+              <Avatar className="h-10 w-10 border border-gray-200 dark:border-gray-700 shadow-sm hover:shadow-md transition-all duration-200">
+                <AvatarFallback className="bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400">
+                  <Users className="h-4 w-4" />
+                </AvatarFallback>
+              </Avatar>
+              {/* Online indicator */}
+              <div className="absolute -bottom-0 -right-0 h-3 w-3 rounded-full bg-green-500 border-2 border-white dark:border-gray-800"></div>
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent className="w-56" align="start" forceMount>
+            <DropdownMenuLabel className="font-normal">
+              <div className="flex flex-col space-y-1">
+                <p className="text-sm font-medium leading-none">Admin User</p>
+                <p className="text-xs leading-none text-muted-foreground">
+                  {user?.email}
+                </p>
               </div>
-              
-              <button
-                onClick={logout}
-                className="w-full flex items-center justify-center gap-2 px-3 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-colors"
-              >
-                <LogOut className="h-4 w-4" />
-                Sign Out
-              </button>
-            </div>
-          )}
-        </div>
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={logout} className="text-red-600 dark:text-red-400 focus:text-red-600 dark:focus:text-red-400">
+              <LogOut className="mr-2 h-4 w-4" />
+              <span>Sign out</span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     </div>
   )

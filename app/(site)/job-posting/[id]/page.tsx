@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { notFound } from "next/navigation";
+import QuestionnaireModal from "@/components/QuestionnaireModal";
 
 // Job posting data - in a real app, this would come from a database
 const jobPostings = {
@@ -49,6 +50,7 @@ const jobPostings = {
 
 export default function JobPostingPage({ params }: { params: { id: string } }) {
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isModalOpen, setIsModalOpen] = useState(false);
   
   const jobPosting = jobPostings[params.id as keyof typeof jobPostings];
   
@@ -184,12 +186,12 @@ export default function JobPostingPage({ params }: { params: { id: string } }) {
 
               {/* CTA Buttons */}
               <div className="mt-6 sm:mt-8 flex flex-col sm:flex-row gap-3 sm:gap-4">
-                <a 
-                  href={`mailto:${jobPosting.applyEmail}?subject=${jobPosting.title} Application&body=Hi, I'm interested in applying for the ${jobPosting.title} position at ${jobPosting.company}. Please find my application details below.`}
+                <button 
+                  onClick={() => setIsModalOpen(true)}
                   className="flex-1 rounded-full bg-blue-600 dark:bg-blue-700 px-4 sm:px-6 py-2.5 sm:py-3 text-xs sm:text-sm font-medium text-white transition-[background-color,box-shadow] duration-150 hover:bg-blue-700 dark:hover:bg-blue-600 shadow-lg hover:shadow-xl text-center"
                 >
                   Apply Now
-                </a>
+                </button>
                 <a 
                   href={jobPosting.learnMoreUrl}
                   target="_blank"
@@ -204,5 +206,11 @@ export default function JobPostingPage({ params }: { params: { id: string } }) {
         </div>
       </div>
     </section>
+
+    {/* Questionnaire Modal */}
+    <QuestionnaireModal 
+      isOpen={isModalOpen} 
+      onClose={() => setIsModalOpen(false)} 
+    />
   );
 }

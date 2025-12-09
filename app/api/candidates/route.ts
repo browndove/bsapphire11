@@ -8,49 +8,66 @@ const pool = new Pool({
 // Map form values to database enum values
 const mapFormToDbValues = (formData: any) => {
   const locationMap: { [key: string]: string } = {
-    'greater-accra': 'greater_accra',
-    'outside-accra': 'outside_greater_accra'
+    'greater_accra': 'greater_accra',
+    'outside_greater_accra': 'outside_greater_accra'
   };
 
   const frameworkMap: { [key: string]: string } = {
     'react': 'react',
     'nextjs': 'nextjs',
-    'both': 'react_and_nextjs',
-    'other': 'other_framework',
-    'vanilla': 'no_framework'
+    'both_react_nextjs': 'react_and_nextjs',
+    'other_modern': 'other_framework',
+    'no_framework': 'no_framework'
+  };
+
+  const frontendBackendMap: { [key: string]: string } = {
+    'rarely_api': 'api_calls_tutorials',
+    'write_api_calls': 'write_api_calls',
+    'prefer_no_backend': 'no_backend_preference',
+    'receive_data_props': 'receive_data_props'
+  };
+
+  const salaryExpectationMap: { [key: string]: string } = {
+    '1500_2000': 'ghs_1500_2000',
+    '2000_2500': 'ghs_2000_2500',
+    '2500_3000': 'ghs_2500_3000'
   };
 
   const uiStructureMap: { [key: string]: string } = {
-    'small-components': 'small_reusable_components',
-    'large-sections': 'larger_sections',
-    'single-component': 'single_component',
-    'existing-codebase': 'work_on_existing'
+    'few_large_sections': 'larger_sections',
+    'small_reusable_components': 'small_reusable_components',
+    'existing_codebase': 'work_on_existing',
+    'single_component': 'single_component'
   };
 
   const gitUsageMap: { [key: string]: string } = {
-    'own-repos': 'own_repos_regular_commits',
     'collaborative': 'collaborative_branches_prs',
-    'basic-usage': 'basic_commands_occasional',
-    'local-only': 'local_machine_only'
+    'own_projects': 'own_repos_regular_commits',
+    'local_projects': 'local_machine_only',
+    'basic_commands': 'basic_commands_occasional'
   };
 
   const designToolsMap: { [key: string]: string } = {
     'figma': 'figma',
+    'prefer_coding': 'prefer_coding_only',
     'sketch': 'sketch',
-    'other-tools': 'other_tools',
-    'prefer-coding': 'prefer_coding_only'
+    'other_tools': 'other_tools'
   };
 
   return {
     firstName: formData.firstName,
     middleName: formData.middleName || null,
     lastName: formData.lastName,
+    portfolioUrl: formData.portfolioUrl,
+    githubUrl: formData.githubUrl,
     email: formData.email,
     location: locationMap[formData.location],
-    mainFramework: frameworkMap[formData.framework],
+    mainFramework: frameworkMap[formData.mainFramework],
     uiStructure: uiStructureMap[formData.uiStructure],
     gitUsage: gitUsageMap[formData.gitUsage],
-    designTools: designToolsMap[formData.designTools]
+    designTools: designToolsMap[formData.designTools],
+    frontendBackend: frontendBackendMap[formData.frontendBackend],
+    salaryExpectation: salaryExpectationMap[formData.salaryExpectation]
   };
 };
 
@@ -58,7 +75,7 @@ export async function POST(request: NextRequest) {
   try {
     const formData = await request.json();
     
-    // Validate required fields
+    // Validate required fields (portfolioUrl and githubUrl are optional)
     if (!formData.firstName || !formData.lastName || !formData.email) {
       return NextResponse.json(
         { error: 'Missing required fields: firstName, lastName, email' },
@@ -99,9 +116,9 @@ export async function POST(request: NextRequest) {
     // Insert into database
     const insertQuery = `
       INSERT INTO candidate_responses (
-        first_name, middle_name, last_name, email, location, 
-        main_framework, ui_structure, git_usage, design_tools, cv_file_id
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+        first_name, middle_name, last_name, portfolio_url, github_url, email, location, 
+        main_framework, ui_structure, git_usage, design_tools, frontend_backend, salary_expectation, cv_file_id
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
       RETURNING id, created_at
     `;
 
@@ -109,12 +126,16 @@ export async function POST(request: NextRequest) {
       mappedData.firstName,
       mappedData.middleName,
       mappedData.lastName,
+      mappedData.portfolioUrl,
+      mappedData.githubUrl,
       mappedData.email,
       mappedData.location,
       mappedData.mainFramework,
       mappedData.uiStructure,
       mappedData.gitUsage,
       mappedData.designTools,
+      mappedData.frontendBackend,
+      mappedData.salaryExpectation,
       formData.cvFileId || null
     ];
 
@@ -150,6 +171,7 @@ export async function GET() {
     const query = `
       SELECT cr.id, cr.first_name, cr.middle_name, cr.last_name, cr.email, cr.location, 
              cr.main_framework, cr.ui_structure, cr.git_usage, cr.design_tools, 
+             cr.frontend_backend, cr.salary_expectation,
              cr.cv_file_id, cr.created_at, cr.is_read, cr.is_starred, cr.is_archived,
              cf.filename as cv_filename, cf.original_name as cv_original_name, 
              cf.file_size as cv_file_size, cf.mime_type as cv_mime_type
