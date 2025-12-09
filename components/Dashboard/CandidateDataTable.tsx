@@ -59,16 +59,32 @@ export function CandidateDataTable({
 
     // Apply search filter
     if (searchTerm) {
-      filtered = filtered.filter((row) =>
-        columns.some((column) => {
+      console.log('Search term:', searchTerm)
+      console.log('Data length before filter:', data.length)
+      console.log('Sample data item:', data[0])
+      
+      filtered = filtered.filter((row) => {
+        const columnMatch = columns.some((column) => {
           const value = row[column.key]
-          return value?.toString().toLowerCase().includes(searchTerm.toLowerCase())
-        }) ||
-        // Also search in questionnaire fields
-        [row.first_name, row.middle_name, row.last_name, row.email].some(field =>
-          field?.toString().toLowerCase().includes(searchTerm.toLowerCase())
-        )
-      )
+          const match = value?.toString().toLowerCase().includes(searchTerm.toLowerCase())
+          if (match) {
+            console.log(`Match found in column ${column.key}:`, value)
+          }
+          return match
+        })
+        
+        const fieldMatch = [row.first_name, row.middle_name, row.last_name, row.email].some(field => {
+          const match = field?.toString().toLowerCase().includes(searchTerm.toLowerCase())
+          if (match) {
+            console.log('Match found in field:', field)
+          }
+          return match
+        })
+        
+        return columnMatch || fieldMatch
+      })
+      
+      console.log('Data length after filter:', filtered.length)
     }
 
     return filtered

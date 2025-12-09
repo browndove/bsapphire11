@@ -14,10 +14,10 @@ const FrontendDeveloperJob = () => {
             {/* Header */}
             <div className="mb-12.5 lg:mb-15 xl:mb-20">
               <div className="inline-flex items-center rounded-full bg-primary/10 border border-primary/20 px-4 py-2 mb-5">
-                <span className="font-medium uppercase text-primary">We're Hiring</span>
+                <span className="font-medium uppercase text-primary">We are hiring</span>
               </div>
               <h1 className="mb-5 text-3xl font-bold text-black dark:text-white xl:text-hero">
-                Front-End Developer
+                Entry level Front End Developer
               </h1>
               <p className="text-body-color dark:text-bodydark mb-7.5">
                 Join our team and help build the future of AI and cybersecurity solutions in Africa and beyond.
@@ -45,7 +45,7 @@ const FrontendDeveloperJob = () => {
                 </div>
                 <div className="rounded-lg border border-stroke dark:border-strokedark bg-white dark:bg-blacksection p-7.5 shadow-solid-3 dark:shadow-none">
                   <div className="text-sm text-body-color dark:text-bodydark mb-2">Experience</div>
-                  <div className="font-semibold text-black dark:text-white">1-3 Years</div>
+                  <div className="font-semibold text-black dark:text-white">1+ Years</div>
                 </div>
                 <div className="rounded-lg border border-stroke dark:border-strokedark bg-white dark:bg-blacksection p-7.5 shadow-solid-3 dark:shadow-none">
                   <div className="text-sm text-body-color dark:text-bodydark mb-2">Salary</div>
@@ -140,7 +140,7 @@ const FrontendDeveloperJob = () => {
                   <div className="space-y-5 text-body-color dark:text-bodydark">
                     <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
                       {[
-                        { label: "Flexible Hours", value: "Flexible hours and fully remote work environment" },
+                        { label: "Fully Remote", value: "Work from anywhere with flexible schedule" },
                         { label: "Professional Development", value: "Learning & growth opportunities" },
                         { label: "Competitive Salary", value: "Market-rate compensation" },
                         { label: "Time Off", value: "Paid leave & parental support" },
