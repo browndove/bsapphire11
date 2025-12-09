@@ -28,9 +28,7 @@ const FrontendDeveloperJob = () => {
             <div className="rounded-lg border border-stroke dark:border-strokedark bg-white dark:bg-blacksection p-7.5 xl:p-12.5 shadow-solid-3 dark:shadow-none mb-10">
               <h2 className="text-xl font-semibold text-black dark:text-white xl:text-itemtitle mb-5">About the Role</h2>
               <p className="text-body-color dark:text-bodydark mb-7.5 leading-relaxed">
-                We are seeking a talented Front-End Developer to join our innovative team at BLVCK SAPPHIRE. 
-                You'll be working on cutting-edge AI and cybersecurity solutions that are transforming 
-                communities across Africa and beyond.
+                We are seeking a motivated and talented Front-End Developer to join our team and support the development of user-facing features for our web applications. The ideal candidate is an entry-level developer with a solid foundation in front-end technologies, at least 1 year of hands-on experience, a passion for clean, efficient code, and a strong background in UX/UI design.
               </p>
 
               {/* Job Details Grid */}
