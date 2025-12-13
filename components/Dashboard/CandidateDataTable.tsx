@@ -184,58 +184,118 @@ export function CandidateDataTable({
       )}
 
 
-      {/* Table */}
-      <div className="border border-gray-100 dark:border-gray-800 rounded-xl overflow-hidden">
-        <Table>
-          <TableHeader>
-            <TableRow className="border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-900">
-              {columns.map((column) => (
-                <TableHead
-                  key={column.key}
-                  className={`font-light text-xs text-gray-600 dark:text-gray-400 uppercase tracking-wide ${
-                    column.sortable
-                      ? "cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors duration-200"
-                      : ""
-                  }`}
-                  onClick={() => column.sortable && handleSort(column.key)}
-                >
-                  <div className="flex items-center gap-2">
-                    {column.label}
-                    {column.sortable && sortColumn === column.key && (
-                      <span className="text-xs text-gray-400">
-                        {sortDirection === "asc" ? "↑" : "↓"}
-                      </span>
-                    )}
-                  </div>
-                </TableHead>
-              ))}
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {paginatedData.length === 0 ? (
-              <TableRow>
-                <TableCell
-                  colSpan={columns.length}
-                  className="text-center py-12 text-gray-400 dark:text-gray-500 font-light"
-                >
-                  No candidates found
-                </TableCell>
+      {/* Desktop Table */}
+      <div className="hidden md:block border border-gray-100 dark:border-gray-800 rounded-xl overflow-hidden">
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow className="border-gray-100 dark:border-gray-800 bg-gray-50 dark:bg-gray-900">
+                {columns.map((column) => (
+                  <TableHead
+                    key={column.key}
+                    className={`font-light text-xs text-gray-600 dark:text-gray-400 uppercase tracking-wide whitespace-nowrap ${
+                      column.sortable
+                        ? "cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors duration-200"
+                        : ""
+                    }`}
+                    onClick={() => column.sortable && handleSort(column.key)}
+                  >
+                    <div className="flex items-center gap-2">
+                      {column.label}
+                      {column.sortable && sortColumn === column.key && (
+                        <span className="text-xs text-gray-400">
+                          {sortDirection === "asc" ? "↑" : "↓"}
+                        </span>
+                      )}
+                    </div>
+                  </TableHead>
+                ))}
               </TableRow>
-            ) : (
-              paginatedData.map((row, index) => (
-                <TableRow key={index} className="border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors duration-200">
-                  {columns.map((column) => (
-                    <TableCell key={column.key} className="text-sm text-gray-700 dark:text-gray-300 font-light">
-                      {column.render
-                        ? column.render(row[column.key], row)
-                        : row[column.key]}
-                    </TableCell>
-                  ))}
+            </TableHeader>
+            <TableBody>
+              {paginatedData.length === 0 ? (
+                <TableRow>
+                  <TableCell
+                    colSpan={columns.length}
+                    className="text-center py-12 text-gray-400 dark:text-gray-500 font-light"
+                  >
+                    No candidates found
+                  </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
+              ) : (
+                paginatedData.map((row, index) => (
+                  <TableRow key={index} className="border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-900 transition-colors duration-200">
+                    {columns.map((column) => (
+                      <TableCell key={column.key} className="text-sm text-gray-700 dark:text-gray-300 font-light whitespace-nowrap">
+                        {column.render
+                          ? column.render(row[column.key], row)
+                          : row[column.key]}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      </div>
+
+      {/* Mobile Card Layout */}
+      <div className="md:hidden space-y-4">
+        {paginatedData.length === 0 ? (
+          <div className="text-center py-12 text-gray-400 dark:text-gray-500 font-light border border-gray-100 dark:border-gray-800 rounded-xl">
+            No candidates found
+          </div>
+        ) : (
+          paginatedData.map((row, index) => (
+            <div key={index} className="bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-800 rounded-xl p-4 space-y-3">
+              {/* Header with name and actions */}
+              <div className="flex items-start justify-between">
+                <div className="min-w-0 flex-1">
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 truncate">
+                    {row.first_name} {row.last_name}
+                  </h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 truncate">
+                    {row.email}
+                  </p>
+                </div>
+                <div className="ml-4 flex-shrink-0">
+                  {columns.find(col => col.key === 'actions')?.render?.(null, row)}
+                </div>
+              </div>
+              
+              {/* Details Grid */}
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div>
+                  <span className="text-gray-500 dark:text-gray-400 font-light">Location</span>
+                  <p className="text-gray-900 dark:text-gray-100 font-medium">
+                    {columns.find(col => col.key === 'location')?.render?.(row.location, row) || row.location}
+                  </p>
+                </div>
+                <div>
+                  <span className="text-gray-500 dark:text-gray-400 font-light">Framework</span>
+                  <p className="text-gray-900 dark:text-gray-100 font-medium">
+                    {columns.find(col => col.key === 'main_framework')?.render?.(row.main_framework, row) || row.main_framework}
+                  </p>
+                </div>
+                <div>
+                  <span className="text-gray-500 dark:text-gray-400 font-light">Applied Date</span>
+                  <p className="text-gray-900 dark:text-gray-100 font-medium">
+                    {columns.find(col => col.key === 'created_at')?.render?.(row.created_at, row) || row.created_at}
+                  </p>
+                </div>
+                {row.cv_filename && (
+                  <div>
+                    <span className="text-gray-500 dark:text-gray-400 font-light">CV</span>
+                    <p className="text-blue-600 dark:text-blue-400 font-medium text-xs">
+                      Available for download
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          ))
+        )}
       </div>
 
       {/* Enhanced Pagination */}
@@ -246,51 +306,21 @@ export function CandidateDataTable({
             <span className="font-medium text-gray-700 dark:text-gray-300">{Math.min(currentPage * pageSize, sortedData.length)}</span> of{" "}
             <span className="font-medium text-gray-700 dark:text-gray-300">{sortedData.length}</span> results
           </div>
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => setCurrentPage(1)}
-              disabled={currentPage === 1}
-              className="px-3 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 disabled:text-gray-300 dark:disabled:text-gray-600 disabled:cursor-not-allowed transition-colors duration-200"
-            >
-              First
-            </button>
+          <div className="flex items-center justify-center gap-2">
             <button
               onClick={() => setCurrentPage(currentPage - 1)}
               disabled={currentPage === 1}
               className="flex items-center gap-1 px-3 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 disabled:text-gray-300 dark:disabled:text-gray-600 disabled:cursor-not-allowed border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-all duration-200"
             >
               <ChevronLeft className="h-4 w-4" />
-              <span className="font-light">Previous</span>
+              <span className="hidden sm:inline font-light">Previous</span>
             </button>
             
-            {/* Page Numbers */}
-            <div className="flex items-center gap-1 mx-2">
-              {Array.from({ length: Math.min(5, totalPages) }, (_, i) => {
-                let pageNum;
-                if (totalPages <= 5) {
-                  pageNum = i + 1;
-                } else if (currentPage <= 3) {
-                  pageNum = i + 1;
-                } else if (currentPage >= totalPages - 2) {
-                  pageNum = totalPages - 4 + i;
-                } else {
-                  pageNum = currentPage - 2 + i;
-                }
-                
-                return (
-                  <button
-                    key={pageNum}
-                    onClick={() => setCurrentPage(pageNum)}
-                    className={`px-3 py-2 text-sm rounded-lg transition-all duration-200 ${
-                      currentPage === pageNum
-                        ? 'bg-gray-900 dark:bg-gray-100 text-white dark:text-gray-900 font-medium'
-                        : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 hover:bg-gray-100 dark:hover:bg-gray-800'
-                    }`}
-                  >
-                    {pageNum}
-                  </button>
-                );
-              })}
+            {/* Current Page Indicator */}
+            <div className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 rounded-lg">
+              <span className="font-medium">{currentPage}</span>
+              <span className="text-gray-500 dark:text-gray-400">of</span>
+              <span className="font-medium">{totalPages}</span>
             </div>
             
             <button
@@ -298,15 +328,8 @@ export function CandidateDataTable({
               disabled={currentPage === totalPages}
               className="flex items-center gap-1 px-3 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 disabled:text-gray-300 dark:disabled:text-gray-600 disabled:cursor-not-allowed border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-all duration-200"
             >
-              <span className="font-light">Next</span>
+              <span className="hidden sm:inline font-light">Next</span>
               <ChevronRight className="h-4 w-4" />
-            </button>
-            <button
-              onClick={() => setCurrentPage(totalPages)}
-              disabled={currentPage === totalPages}
-              className="px-3 py-2 text-sm text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100 disabled:text-gray-300 dark:disabled:text-gray-600 disabled:cursor-not-allowed transition-colors duration-200"
-            >
-              Last
             </button>
           </div>
         </div>

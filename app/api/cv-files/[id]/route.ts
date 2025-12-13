@@ -16,6 +16,10 @@ export async function GET(
       return NextResponse.json({ error: 'Invalid file ID' }, { status: 400 });
     }
 
+    // Check if inline viewing is requested
+    const { searchParams } = new URL(request.url);
+    const isInline = searchParams.get('inline') === 'true';
+
     // Retrieve file from database
     const query = `
       SELECT filename, original_name, file_content, file_size, mime_type
@@ -31,12 +35,24 @@ export async function GET(
 
     const file = result.rows[0];
 
+    // Determine Content-Disposition based on request type and file type
+    let contentDisposition = `attachment; filename="${file.original_name}"`;
+    
+    if (isInline && file.mime_type === 'application/pdf') {
+      // For PDF files with inline=true, use inline disposition for browser viewing
+      contentDisposition = `inline; filename="${file.original_name}"`;
+    }
+
     // Return file as response
     return new NextResponse(file.file_content, {
       headers: {
         'Content-Type': file.mime_type,
-        'Content-Disposition': `attachment; filename="${file.original_name}"`,
+        'Content-Disposition': contentDisposition,
         'Content-Length': file.file_size.toString(),
+        // Add headers to prevent caching issues with PDFs
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+        'Expires': '0',
       },
     });
 

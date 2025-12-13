@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useMemo } from "react"
 import { CandidateDataTable, Column } from "@/components/Dashboard/CandidateDataTable"
 import CandidateQuestionnaireView from "@/components/Dashboard/CandidateQuestionnaireView"
+import PDFViewerModal from "@/components/PDFViewer/PDFViewerModal"
 import { Download, Users, FileText, Calendar, LogOut, MoreVertical, Eye, Star, Trash2, Mail, Archive } from "lucide-react"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import { useAuth } from "@/app/context/AuthContext"
@@ -119,6 +120,12 @@ export default function DatabaseDashboard() {
   const [frontendBackendFilter, setFrontendBackendFilter] = useState<string>('all')
   const [salaryFilter, setSalaryFilter] = useState<string>('all')
   const [selectedCandidate, setSelectedCandidate] = useState<Candidate | null>(null)
+  const [pdfViewerOpen, setPdfViewerOpen] = useState(false)
+  const [selectedPdfFile, setSelectedPdfFile] = useState<{
+    fileId: string
+    fileName: string
+    originalName: string
+  } | null>(null)
 
   // Action handlers for candidate operations
   const handleMarkAsRead = async (candidate: Candidate) => {
@@ -210,6 +217,17 @@ export default function DatabaseDashboard() {
     setSelectedCandidate(candidate);
   }
 
+  const handleViewPDF = (candidate: Candidate) => {
+    if (candidate.cv_file_id && candidate.cv_mime_type === 'application/pdf') {
+      setSelectedPdfFile({
+        fileId: candidate.cv_file_id,
+        fileName: candidate.cv_filename || 'CV',
+        originalName: candidate.cv_original_name || candidate.cv_filename || 'CV.pdf'
+      });
+      setPdfViewerOpen(true);
+    }
+  }
+
   // Table columns configuration
   const columns: Column[] = [
     {
@@ -280,6 +298,15 @@ export default function DatabaseDashboard() {
                     <Eye className="h-4 w-4" />
                     View Details
                   </button>
+                  {row.cv_filename && row.cv_mime_type === 'application/pdf' && (
+                    <button
+                      onClick={() => handleViewPDF(row)}
+                      className="flex items-center gap-2 w-full px-2 py-1.5 text-sm text-left hover:bg-gray-100 dark:hover:bg-gray-800 rounded-sm transition-colors"
+                    >
+                      <FileText className="h-4 w-4" />
+                      View PDF
+                    </button>
+                  )}
                   <button
                     onClick={() => handleMarkAsRead(row)}
                     className="flex items-center gap-2 w-full px-2 py-1.5 text-sm text-left hover:bg-gray-100 dark:hover:bg-gray-800 rounded-sm transition-colors"
@@ -725,6 +752,20 @@ export default function DatabaseDashboard() {
             />
           </div>
         </div>
+      )}
+
+      {/* PDF Viewer Modal */}
+      {selectedPdfFile && (
+        <PDFViewerModal
+          isOpen={pdfViewerOpen}
+          onClose={() => {
+            setPdfViewerOpen(false);
+            setSelectedPdfFile(null);
+          }}
+          fileId={selectedPdfFile.fileId}
+          fileName={selectedPdfFile.fileName}
+          originalName={selectedPdfFile.originalName}
+        />
       )}
     </div>
   )
