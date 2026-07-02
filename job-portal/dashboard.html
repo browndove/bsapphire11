@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard | Recruiting portal</title>
+  <link rel="stylesheet" href="assets/portal.css">
+</head>
+<body>
+  <div class="portal-shell">
+    <div id="portal-sidebar-mount"></div>
+    <div class="portal-main">
+      <div class="portal-topbar">
+        <div class="portal-head-block" style="flex:1;min-width:220px;margin-bottom:0;">
+          <h1 class="portal-title">Dashboard</h1>
+          <p class="hint">Your hiring pipeline at a glance. Everything here syncs locally until you plug in an API.</p>
+        </div>
+        <a href="applications.html" class="btn btn-ghost btn-sm">Inbox</a>
+        <a href="posting-edit.html" class="btn btn-primary">New posting</a>
+      </div>
+
+      <div class="grid-stats" id="stats-row" style="margin-top:2rem;"></div>
+
+      <h2 style="font-size:1rem;margin-bottom:0.85rem;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.08em;">Pipeline</h2>
+      <div class="pipeline-row" id="pipeline-row"></div>
+
+      <div class="card">
+        <h3>How it fits together</h3>
+        <ul class="hint" style="max-width:50rem;line-height:1.75;padding-left:1.25rem;">
+          <li><strong>Posts</strong> start as drafts under <strong>Job postings</strong>; only <strong>Published</strong> roles mirror the careers page.</li>
+          <li><strong>Screening blocks</strong> define both the candidate form (later) and the <strong>filter chips</strong> in Applications.</li>
+          <li>Open an applicant row for <strong>stage + notes</strong> reviewers need day to day.</li>
+        </ul>
+      </div>
+
+      <div class="card">
+        <h3>Published roles — jump to inbox</h3>
+        <p class="hint" style="margin-bottom:0.75rem;">Shows only live postings.</p>
+        <div class="toolbar" style="margin-bottom:0;" id="published-links"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="assets/mock-store.js"></script>
+  <script src="assets/portal.js"></script>
+  <script>
+    if (!PortalAuth.isAuthed()) window.location.href = 'login.html';
+    else {
+      portalBootstrap();
+
+    (function () {
+      var jobs = PortalStore.getJobs();
+      var apps = PortalStore.getApplications();
+      var pub = jobs.filter(function (j) {
+        return j.status === 'published';
+      });
+      var draft = jobs.filter(function (j) {
+        return j.status === 'draft';
+      });
+      var lbl = PortalStages.labels;
+
+      document.getElementById('stats-row').innerHTML =
+        '<div class="stat-card"><strong>' +
+        apps.length +
+        '</strong><span>Applications</span></div>' +
+        '<div class="stat-card"><strong>' +
+        pub.length +
+        '</strong><span>Live postings</span></div>' +
+        '<div class="stat-card"><strong>' +
+        draft.length +
+        '</strong><span>Drafts</span></div>' +
+        '<div class="stat-card"><strong>' +
+        jobs.length +
+        '</strong><span>Total postings</span></div>';
+
+      var stages = PortalStore.PIPELINE_STATUSES.map(function (k) {
+        return {
+          key: k,
+          count: apps.filter(function (a) {
+            return a.status === k;
+          }).length
+        };
+      });
+      document.getElementById('pipeline-row').innerHTML = stages
+        .map(function (s) {
+          return (
+            '<div class="pipeline-step"><span>' +
+            escapeHtml(lbl[s.key] || s.key) +
+            '</span><strong>' +
+            s.count +
+            '</strong></div>'
+          );
+        })
+        .join('');
+
+      function escapeHtml(str) {
+        return String(str)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;');
+      }
+
+      var links = pub
+        .map(function (j) {
+          return (
+            '<a class="btn btn-ghost btn-sm" href="applications.html?job=' +
+            encodeURIComponent(j.id) +
+            '">' +
+            j.title +
+            '</a>'
+          );
+        })
+        .join('');
+      document.getElementById('published-links').innerHTML =
+        links || '<span class="hint">No published jobs yet — publish one to start collecting.</span>';
+    })();
+    }
+  </script>
+</body>
+</html>

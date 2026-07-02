@@ -1,0 +1,82 @@
+JOB PORTAL — BACKEND HANDOFF (design prototype in /job-portal)
+==============================================================
+
+PURPOSE
+-------
+This folder is isolated from the public marketing HTML. It sketches the recruiter UI,
+navigation, and client-side demo data wiring. Replace localStorage/session checks
+with your API.
+
+
+SHARED LOGIN (all users today)
+------------------------------
+Frontend: POST credentials once; backend issues httpOnly session cookie OR returns
+JWT stored in memory (not localStorage if you need XSS safety).
+
+Suggested contract:
+  POST /api/portal/login
+    body: { "password": "<shared secret>" }
+    200 → Set-Cookie: portal_sess=...
+    401 → invalid
+
+All authenticated routes validate session server-side.
+
+
+DATA MODEL (suggested)
+----------------------
+JobPosting
+  id, title, department, location,
+  status: draft | published | closed,
+  publishedAt (nullable),
+  description (HTML/markdown reference),
+  screeningQuestions[] (ordered)
+
+ScreeningQuestion
+  id (stable string, referenced in answers),
+  label,
+  type: single | multi | text,
+  filterable (bool; meaningful when options exist),
+  options[] (for single/multi chips on public apply + recruiter filters)
+
+Application
+  id, jobId, submittedAt,
+  candidateName, email,
+  answers: { [questionId]: string | string[] }
+
+Public site must only list postings with status=published.
+
+
+PAGE → API MAP
+--------------
+/login.html           → replaces verifyDemoPassword with POST /login
+/index.html           → redirects; could call GET /me
+/dashboard.html       → GET /metrics or aggregate GET /jobs + GET /applications
+/postings.html        → GET /jobs (+ optional archived)
+/posting-edit.html    → GET /jobs/:id, PUT /jobs/:id, POST /jobs (create)
+/applications.html    → GET /applications?jobId=…, server-side filtering OR
+                         same payloads with query params reflecting chip state
+
+FILTERING
+---------
+Recruiter UI builds AND logic across screening dimensions:
+each filterable question with at least one selected option constrains results.
+Implement the same predicates in SQL/Elastic or filter in app layer keyed by answers JSON.
+
+
+PUBLIC WEBSITE INTEGRATION (later)
+----------------------------------
+1) Careers list: GET /public/jobs?status=published
+2) Job detail: GET /public/jobs/:slugOrId (HTML or JSON consumed by frontend)
+3) Apply: multipart POST /public/jobs/:id/applications
+   Attachments (CV/cover letter) stored in object storage with virus scan.
+
+Current demo password (replace in production): portal-demo
+
+
+FILES
+-----
+assets/portal.css     — standalone styles (Blvck Sapphire-ish tokens)
+assets/portal.js      — session helpers + sidebar (sidebar HTML is inlined in JS)
+assets/mock-store.js  — DELETE when wiring APIs; seeded local demo data
+
+

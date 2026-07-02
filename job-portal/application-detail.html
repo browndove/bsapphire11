@@ -1,0 +1,191 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Applicant | Recruiting portal</title>
+  <link rel="stylesheet" href="assets/portal.css">
+</head>
+<body>
+  <div class="portal-shell">
+    <div id="portal-sidebar-mount"></div>
+    <div class="portal-main">
+      <p class="hint" style="margin-bottom:0.5rem;">
+        <a id="back-link" href="applications.html">← Applications inbox</a>
+      </p>
+      <div class="portal-topbar">
+        <div class="portal-head-block" style="flex:1;min-width:200px;margin-bottom:0;">
+          <h1 class="portal-title" id="cand-name">Applicant</h1>
+          <p class="hint" id="cand-role"></p>
+        </div>
+        <span id="stage-badge-mount"></span>
+      </div>
+
+      <div class="help-callout" style="margin-top:1rem;">
+        <strong style="color:var(--text);">Workflow:</strong> move the <strong>stage</strong> as you review, and leave fast <strong>notes</strong> your team sees on the record (your API replaces local storage).
+      </div>
+
+      <div class="detail-grid" style="margin-top:1.25rem;">
+        <div class="card">
+          <h3>Contact</h3>
+          <p style="margin:0.5rem 0;"><strong>Email</strong><br><a href="#" id="cand-email-link"></a></p>
+          <p style="margin:0.5rem 0;"><strong>Phone</strong><br><span id="cand-phone"></span></p>
+          <p style="margin:0.35rem 0;"><strong class="hint">Applied</strong><br><span id="cand-date"></span></p>
+          <p style="margin:0.35rem 0;"><strong class="hint">Source</strong><br><span id="cand-source"></span></p>
+          <label class="field" style="margin-top:1rem;" for="cand-stage">Pipeline stage</label>
+          <select id="cand-stage"></select>
+        </div>
+        <div class="card">
+          <h3>Team notes</h3>
+          <label class="field" for="cand-notes" style="text-transform:none;letter-spacing:0;font-weight:600;color:var(--text);">Interview notes · next steps · referral context</label>
+          <textarea id="cand-notes" placeholder="Type once, teammates read everywhere this profile appears…"></textarea>
+          <p class="field-hint" id="notes-saved" style="min-height:1.25rem;color:var(--success);font-weight:600;"></p>
+          <button type="button" class="btn btn-primary btn-sm" id="btn-save">Save changes</button>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Screening answers</h3>
+        <div class="answer-grid" id="answers-mount"></div>
+      </div>
+    </div>
+  </div>
+
+  <script src="assets/mock-store.js"></script>
+  <script src="assets/portal.js"></script>
+  <script>
+    if (!PortalAuth.isAuthed()) window.location.href = 'login.html';
+    else {
+      portalBootstrap();
+
+    (function () {
+      var qs = new URLSearchParams(location.search);
+      var id = qs.get('id');
+      var jobFilter = qs.get('job');
+
+      if (!id) {
+        window.location.href = 'applications.html';
+        return;
+      }
+
+      document.getElementById('back-link').href =
+        jobFilter ?
+          'applications.html?job=' + encodeURIComponent(jobFilter) :
+          'applications.html';
+
+      var appInitial = PortalStore.getApplication(id);
+      if (!appInitial) {
+        window.location.href = 'applications.html';
+        return;
+      }
+
+      var job = PortalStore.getJob(appInitial.jobId);
+
+      document.getElementById('cand-name').textContent =
+        appInitial.candidateName || 'Applicant';
+      document.getElementById('cand-role').textContent = job
+        ? job.title + (job.location ? ' · ' + job.location : '')
+        : appInitial.jobId;
+
+      function escapeHtml(s) {
+        return String(s)
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;');
+      }
+
+      var em = document.getElementById('cand-email-link');
+      em.textContent = appInitial.email || '';
+      em.href =
+        appInitial.email && appInitial.email.indexOf('@') > 0 ?
+          'mailto:' + appInitial.email :
+          '#';
+
+      document.getElementById('cand-phone').textContent =
+        appInitial.phone || '—';
+
+      document.getElementById('cand-date').textContent = String(
+        appInitial.submittedAt || ''
+      ).replace('T', ' ');
+      document.getElementById('cand-source').textContent =
+        appInitial.source || 'Website';
+
+      var stageSel = document.getElementById('cand-stage');
+      stageSel.innerHTML = PortalStore.PIPELINE_STATUSES.map(function (st) {
+        return (
+          '<option value="' +
+          escapeHtml(st) +
+          '">' +
+          escapeHtml(PortalStages.labels[st] || st) +
+          '</option>'
+        );
+      }).join('');
+      stageSel.value = appInitial.status;
+
+      document.getElementById('cand-notes').value = appInitial.notes || '';
+
+      var lbl = PortalStages.labels[appInitial.status] || appInitial.status;
+      var tg = PortalStages.tagClassByStatus[appInitial.status] || 'tag-closed';
+      document.getElementById('stage-badge-mount').innerHTML =
+        '<span class="tag ' + tg + '" style="font-size:0.78rem;padding:0.35rem 0.75rem;">' +
+        escapeHtml(lbl) +
+        '</span>';
+
+      var aq = [];
+      var qdefs = {};
+      if (job && job.screeningQuestions)
+        job.screeningQuestions.forEach(function (q) {
+          qdefs[q.id] = q;
+        });
+      Object.keys(appInitial.answers || {}).forEach(function (qid) {
+        aq.push({ id: qid, label: qdefs[qid] ? qdefs[qid].label : qid });
+      });
+
+      document.getElementById('answers-mount').innerHTML = aq.length
+        ? aq
+            .map(function (row) {
+              var raw = appInitial.answers[row.id];
+              var val =
+                Array.isArray(raw) ? raw.join(', ') : String(raw);
+              return (
+                '<dl class="answer-row">' +
+                '<dt>' +
+                escapeHtml(row.label) +
+                '</dt><dd>' +
+                escapeHtml(val) +
+                '</dd></dl>'
+              );
+            })
+            .join('')
+        :
+            '<p class="hint">No structured screening answers captured yet.</p>';
+
+      var saveToast = document.getElementById('notes-saved');
+      var saveTimer;
+
+      document.getElementById('btn-save').addEventListener('click', function () {
+        var refreshed = PortalStore.getApplication(id) || appInitial;
+        refreshed.status = document.getElementById('cand-stage').value;
+        refreshed.notes = document.getElementById('cand-notes').value;
+        PortalStore.upsertApplication(refreshed);
+        lbl = PortalStages.labels[refreshed.status] || refreshed.status;
+        tg =
+          PortalStages.tagClassByStatus[refreshed.status] ||
+          'tag-closed';
+        document.getElementById('stage-badge-mount').innerHTML =
+          '<span class="tag ' +
+          tg +
+          '" style="font-size:0.78rem;padding:0.35rem 0.75rem;">' +
+          escapeHtml(lbl) +
+          '</span>';
+        saveToast.textContent = 'Saved. Wire PATCH /applications/' + id + ' to persist server-side.';
+        clearTimeout(saveTimer);
+        saveTimer = setTimeout(function () {
+          saveToast.textContent = '';
+        }, 4000);
+      });
+    })();
+    }
+  </script>
+</body>
+</html>
