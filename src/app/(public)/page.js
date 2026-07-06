@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import BgCanvas from '@/components/BgCanvas';
+import HeroVideo from '@/components/HeroVideo';
 import TypewriterCode from '@/components/TypewriterCode';
 
 export default function Home() {
@@ -13,25 +14,23 @@ export default function Home() {
         {/* Hero Section */}
         <section className="hero" id="home">
           <div className="container hero-content" style={{ textAlign: 'center', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            <h1 className="hero-title fade-in-up">
+            <h1 className="hero-title">
               Intelligent solutions.<br />
               Infinite scale.
             </h1>
-            <p className="hero-subtitle fade-in-up delay-1" style={{ maxWidth: '1100px', marginLeft: 'auto', marginRight: 'auto' }}>
+            <p className="hero-subtitle" style={{ maxWidth: '1100px', marginLeft: 'auto', marginRight: 'auto' }}>
               Blvck Sapphire builds intelligent, purely functional AI systems tailored for complex enterprise challenges. We deliver practical solutions so you can work smarter and more efficiently.
             </p>
 
-            <div className="hero-video-wrapper slide-up delay-2">
-              <video src="/hero-video.mp4" autoPlay loop muted playsInline className="hero-video"></video>
-            </div>
+            <HeroVideo />
 
-            <div className="hero-cta fade-in-up delay-3" style={{ justifyContent: 'center' }}>
+            <div className="hero-cta" style={{ justifyContent: 'center' }}>
             </div>
           </div>
         </section>
 
         {/* Trusted Partners Section */}
-        <section className="section partner-section slide-up" style={{ paddingTop: '1rem', paddingBottom: '4rem', borderBottom: '1px solid var(--border-color)', overflow: 'hidden' }}>
+        <section className="section partner-section" style={{ paddingTop: '1rem', paddingBottom: '4rem', borderBottom: '1px solid var(--border-color)', overflow: 'hidden' }}>
           <div className="container" style={{ textAlign: 'center' }}>
             <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem', letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: '2rem' }}>Our Trusted Partners</p>
             <div className="logo-scroller">
@@ -225,7 +224,7 @@ export default function Home() {
           
           <div className="engage-careers slide-up delay-1" id="careers" style={{ backgroundColor: 'var(--bg-color)', padding: '140px 4%', textAlign: 'center' }}>
             <div className="container" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-              <h2 className="engage-title" style={{ fontSize: 'clamp(2.5rem, 5vw, 4rem)', marginBottom: '1rem' }}>Join the Nexus</h2>
+              <h2 className="engage-title" style={{ fontSize: 'clamp(2.5rem, 5vw, 4rem)', marginBottom: '1rem' }}>Join Blvck Sapphire</h2>
               <p className="engage-desc" style={{ fontSize: '1.2rem', marginBottom: '3rem', maxWidth: '600px', marginLeft: 'auto', marginRight: 'auto' }}>We are actively looking for complex problems and top-tier engineers. View our current openings.</p>
               <Link href="/careers" className="btn btn-outline btn-oval" style={{ padding: '16px 36px' }}>Explore Careers</Link>
             </div>

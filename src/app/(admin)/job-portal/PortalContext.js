@@ -1,210 +1,444 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import {
+  clearAuthSession,
+  getAccessToken,
+  getStoredUser,
+} from '@/lib/job-api/auth-storage';
+import {
+  createEmployerJob,
+  fetchCategories,
+  fetchDashboard,
+  fetchEmployerApplications,
+  fetchEmployerJobs,
+  fetchMe,
+  logoutApi,
+  renewSession,
+  updateApplicationStatus,
+  updateEmployerJob,
+  verify2FA,
+  loginStep1,
+  updateProfile,
+} from '@/lib/job-api/client';
+import { toUserMessage } from '@/lib/job-api/errors';
+import { isWithinDays } from '@/lib/job-api/format';
+import {
+  getEmployerStatusUpdates,
+  getPaginatedItems,
+  getPaginatedTotal,
+  getPipelineStatuses,
+  mapApplicationFromApi,
+  mapJobFromApi,
+  mapJobToApi,
+  PortalStages,
+} from '@/lib/job-api/mappers';
+import { isPortalPreview, loadPreviewData } from '@/lib/job-api/preview';
 
 const PortalContext = createContext();
 
-const PIPELINE_STATUSES = ['new', 'screening', 'interview', 'offer', 'hired', 'declined'];
-
-export const PortalStages = {
-  labels: {
-    new: 'New',
-    screening: 'Screening',
-    interview: 'Interview',
-    offer: 'Offer',
-    hired: 'Hired',
-    declined: 'Not a fit'
-  },
-  tagClassByStatus: {
-    new: 'tag-stage-new',
-    screening: 'tag-stage-screening',
-    interview: 'tag-stage-interview',
-    offer: 'tag-stage-offer',
-    hired: 'tag-stage-hired',
-    declined: 'tag-stage-declined'
-  }
-};
-
-const seedJobs = [
-  {
-    id: 'job_vp_eng',
-    title: 'VP of Software Engineering',
-    department: 'Development',
-    location: 'Remote, Ghana',
-    status: 'published',
-    publishedAt: '2026-05-01',
-    description: 'Lead platform engineering across product, security, and architecture. Published role with structured screening.',
-    screeningQuestions: [
-      { id: 'sq_years', label: 'Years leading engineering teams', type: 'single', filterable: true, options: ['0–2', '3–5', '6–10', '10+'] },
-      { id: 'sq_tz', label: 'Overlapping timezone (UTC)', type: 'single', filterable: true, options: ['UTC±0–2', 'UTC±3–5', 'Americas-friendly', 'APAC-friendly'] },
-      { id: 'sq_stack', label: 'Strongest backend environment', type: 'multi', filterable: true, options: ['Kubernetes', 'Serverless', 'Bare-metal / VM', 'Hybrid'] }
-    ]
-  },
-  {
-    id: 'job_ai_eng',
-    title: 'AI Engineer',
-    department: 'AI & Data',
-    location: 'Remote, SA / Europe',
-    status: 'published',
-    publishedAt: '2026-04-18',
-    description: 'Ship production ML features with clear evaluation and monitoring.',
-    screeningQuestions: [
-      { id: 'sq_ml', label: 'Primary ML focus', type: 'single', filterable: true, options: ['NLP', 'Vision', 'Tabular', 'RL / agents'] },
-      { id: 'sq_prod', label: 'Production ML experience', type: 'single', filterable: true, options: ['0–1 years', '1–3 years', '3+ years'] }
-    ]
-  },
-  {
-    id: 'job_draft',
-    title: 'Product Marketing Manager (draft)',
-    department: 'Marketing',
-    location: 'Remote',
-    status: 'draft',
-    publishedAt: null,
-    description: 'Draft posting — not visible on public careers until published.',
-    screeningQuestions: []
-  }
-];
-
-const seedApplications = [
-  {
-    id: 'app_1', jobId: 'job_vp_eng', submittedAt: '2026-05-14T09:22:00', candidateName: 'Ama Osei',
-    email: 'ama@example.com', phone: '+233 54 357 9090', source: 'Careers website', status: 'interview',
-    notes: 'Strong infra background; scheduled panel for next week.',
-    answers: { sq_years: '6–10', sq_tz: 'UTC±3–5', sq_stack: ['Kubernetes', 'Hybrid'] }
-  },
-  {
-    id: 'app_2', jobId: 'job_vp_eng', submittedAt: '2026-05-15T11:05:00', candidateName: 'Kwesi Mensah',
-    email: 'kwesi@example.com', phone: '+233 20 551 4821', source: 'Careers website', status: 'screening',
-    notes: '', answers: { sq_years: '3–5', sq_tz: 'Americas-friendly', sq_stack: ['Serverless'] }
-  },
-  {
-    id: 'app_3', jobId: 'job_ai_eng', submittedAt: '2026-05-12T14:40:00', candidateName: 'Rosa Kim',
-    email: 'rosa@example.com', phone: '+44 7911 558822', source: 'LinkedIn', status: 'offer',
-    notes: '', answers: { sq_ml: 'NLP', sq_prod: '3+ years' }
-  },
-  {
-    id: 'app_4', jobId: 'job_ai_eng', submittedAt: '2026-05-13T09:15:00', candidateName: 'James Ndlovu',
-    email: 'james@example.com', phone: '+27 82 774 9910', source: 'Referral', status: 'new',
-    notes: '', answers: { sq_ml: 'Vision', sq_prod: '1–3 years' }
-  }
-];
+export { PortalStages };
 
 export function PortalProvider({ children }) {
   const [isReady, setIsReady] = useState(false);
   const [isAuthed, setIsAuthed] = useState(false);
+  const [user, setUser] = useState(null);
   const [jobs, setJobs] = useState([]);
   const [applications, setApplications] = useState([]);
+  const [applicationsTotal, setApplicationsTotal] = useState(0);
+  const [categories, setCategories] = useState([]);
+  const [dashboardStats, setDashboardStats] = useState(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
+  const previewMode = isPortalPreview();
 
-  useEffect(() => {
-    // Check auth
-    setIsAuthed(sessionStorage.getItem('portal_session_v1') === '1');
-
-    // Load or seed jobs
-    let loadedJobs = seedJobs;
-    try {
-      const rawJobs = localStorage.getItem('portal_jobs_v1');
-      if (rawJobs) {
-        loadedJobs = JSON.parse(rawJobs);
-      } else {
-        localStorage.setItem('portal_jobs_v1', JSON.stringify(seedJobs));
-      }
-    } catch (e) {
-      console.warn('LocalStorage error', e);
-    }
-    setJobs(loadedJobs);
-
-    // Load or seed applications
-    let loadedApps = seedApplications;
-    try {
-      const rawApps = localStorage.getItem('portal_applications_v2') || localStorage.getItem('portal_applications_v1');
-      if (rawApps) {
-        loadedApps = JSON.parse(rawApps);
-      } else {
-        localStorage.setItem('portal_applications_v2', JSON.stringify(seedApplications));
-      }
-    } catch (e) {
-      console.warn('LocalStorage error', e);
-    }
-    setApplications(loadedApps);
-
-    setIsReady(true);
+  const applyPreviewData = useCallback(() => {
+    const data = loadPreviewData();
+    setUser(data.user);
+    setCategories(data.categories);
+    setJobs(data.jobs);
+    setApplications(data.applications);
+    setApplicationsTotal(data.applications.length);
+    setDashboardStats(data.dashboardStats);
+    setIsAuthed(true);
   }, []);
 
-  const login = (password) => {
-    if (password === 'portal-demo') {
-      sessionStorage.setItem('portal_session_v1', '1');
-      setIsAuthed(true);
-      return true;
+  const categoriesById = useMemo(
+    () => Object.fromEntries(categories.map((c) => [c.id, c])),
+    [categories]
+  );
+
+  const applicationsByJobId = useMemo(() => {
+    const map = {};
+    applications.forEach((app) => {
+      if (!map[app.jobId]) map[app.jobId] = [];
+      map[app.jobId].push(app);
+    });
+    return map;
+  }, [applications]);
+
+  const applicationsByStatus = useMemo(() => {
+    const map = {};
+    applications.forEach((app) => {
+      if (!map[app.status]) map[app.status] = [];
+      map[app.status].push(app);
+    });
+    return map;
+  }, [applications]);
+
+  const getApplicantCount = useCallback(
+    (jobId) => (applicationsByJobId[jobId] || []).length,
+    [applicationsByJobId]
+  );
+
+  const refreshData = useCallback(async () => {
+    if (previewMode) {
+      applyPreviewData();
+      return;
     }
-    return false;
+
+    setLoading(true);
+    setError(null);
+    try {
+      const [cats, dashRes, jobsRes, appsRes] = await Promise.all([
+        fetchCategories().catch(() => ({ data: [] })),
+        fetchDashboard().catch(() => null),
+        fetchEmployerJobs({ limit: 200, offset: 0 }),
+        fetchEmployerApplications({ limit: 500, offset: 0 }),
+      ]);
+
+      const catList = getPaginatedItems(cats);
+      const byId = Object.fromEntries(catList.map((c) => [c.id, c]));
+      const jobRows = getPaginatedItems(jobsRes);
+      const appRows = getPaginatedItems(appsRes);
+
+      // Hydrate missing candidate names by fetching user records when possible.
+      try {
+        const idsToFetch = Array.from(
+          new Set(
+            appRows
+              .map((a) => a.candidate_id || a.candidateId || a.candidate?.id)
+              .filter(Boolean)
+          )
+        );
+        if (idsToFetch.length > 0) {
+          const userMap = {};
+          await Promise.all(
+            idsToFetch.map(async (id) => {
+              try {
+                const res = await fetchEmployerUsers({ id });
+                const rows = Array.isArray(res) ? res : res?.data || [];
+                const u = rows[0] || null;
+                if (u) userMap[id] = u;
+              } catch (err) {
+                // ignore; we'll simply not hydrate that id
+              }
+            })
+          );
+          // apply hydrated names back to appRows
+          appRows.forEach((a) => {
+            const cid = a.candidate_id || a.candidateId || a.candidate?.id;
+            const u = cid ? userMap[cid] : null;
+            if (u) {
+              if (!a.candidate) a.candidate = {};
+              if (u.first_name && !a.candidate.first_name) a.candidate.first_name = u.first_name;
+              if (u.last_name && !a.candidate.last_name) a.candidate.last_name = u.last_name;
+              if (!a.candidate_name && (u.first_name || u.last_name)) {
+                a.candidate_name = [u.first_name, u.last_name].filter(Boolean).join(' ');
+              }
+            }
+          });
+          // small debug log
+          // console.log('Hydrated candidate names for ids:', Object.keys(userMap));
+        }
+      } catch (err) {
+        // don't block data refresh on hydration failure
+      }
+
+      // Debug logging: show raw + mapped application samples to verify API payload shape
+      try {
+        // limit output to first 3 records to avoid noisy logs
+        console.log('PORTAL: RAW appRows sample:', (appRows || []).slice(0, 3));
+      } catch (e) {
+        /* ignore logging errors */
+      }
+
+      const mappedApps = (appRows || []).map(mapApplicationFromApi);
+      try {
+        console.log('PORTAL: MAPPED applications sample:', mappedApps.slice(0, 3));
+      } catch (e) {
+        /* ignore logging errors */
+      }
+
+      setCategories(catList);
+      setDashboardStats(dashRes);
+      setJobs(jobRows.map((job) => mapJobFromApi(job, byId)));
+      setApplications(mappedApps);
+      setApplicationsTotal(getPaginatedTotal(appsRes, appRows));
+    } catch (err) {
+      setError(toUserMessage(err));
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, [previewMode, applyPreviewData]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function bootstrap() {
+      const token = getAccessToken();
+      const storedUser = getStoredUser();
+
+      if (!token) {
+        if (previewMode) {
+          if (!cancelled) {
+            applyPreviewData();
+            setIsReady(true);
+          }
+          return;
+        }
+        if (!cancelled) {
+          setIsAuthed(false);
+          setIsReady(true);
+        }
+        return;
+      }
+
+      try {
+        let currentUser = storedUser;
+        try {
+          currentUser = await fetchMe();
+        } catch {
+          await renewSession();
+          currentUser = await fetchMe();
+        }
+
+        if (cancelled) return;
+
+        if (currentUser?.role !== 'employer') {
+          clearAuthSession();
+          setIsAuthed(false);
+          setUser(null);
+          setIsReady(true);
+          return;
+        }
+
+        setUser(currentUser);
+        setIsAuthed(true);
+        await refreshData();
+      } catch {
+        if (!cancelled) {
+          clearAuthSession();
+          setIsAuthed(false);
+          setUser(null);
+        }
+      } finally {
+        if (!cancelled) setIsReady(true);
+      }
+    }
+
+    bootstrap();
+    return () => {
+      cancelled = true;
+    };
+  }, [refreshData, previewMode, applyPreviewData]);
+
+  const beginLogin = async (email, password) => {
+    setError(null);
+    return loginStep1(email, password);
   };
 
-  const logout = () => {
-    sessionStorage.removeItem('portal_session_v1');
+  const completeLogin = async (pendingToken, code) => {
+    setError(null);
+    const data = await verify2FA(pendingToken, code);
+    if (data.user?.role !== 'employer') {
+      await logoutApi();
+      const err = new Error('This portal is for employer accounts only.');
+      setError(err.message);
+      throw err;
+    }
+    setUser(data.user);
+    setIsAuthed(true);
+    await refreshData();
+    return data;
+  };
+
+  const logout = async () => {
+    if (previewMode) {
+      applyPreviewData();
+      return;
+    }
+    await logoutApi();
     setIsAuthed(false);
+    setUser(null);
+    setJobs([]);
+    setApplications([]);
+    setDashboardStats(null);
   };
 
-  const saveJobs = (newJobs) => {
-    setJobs(newJobs);
-    localStorage.setItem('portal_jobs_v1', JSON.stringify(newJobs));
-  };
-
-  const upsertJob = (job) => {
-    const updated = [...jobs];
-    const idx = updated.findIndex(j => j.id === job.id);
-    if (idx >= 0) updated[idx] = job;
-    else updated.push(job);
-    saveJobs(updated);
-  };
-
-  const deleteJob = (id) => {
-    saveJobs(jobs.filter(j => j.id !== id));
-  };
-
-  const saveApplications = (newApps) => {
-    setApplications(newApps);
-    localStorage.setItem('portal_applications_v2', JSON.stringify(newApps));
-  };
-
-  const upsertApplication = (app) => {
-    const updated = [...applications];
-    const idx = updated.findIndex(a => a.id === app.id);
-    if (idx >= 0) updated[idx] = app;
-    else updated.push(app);
-    saveApplications(updated);
-  };
-
-  const resetSeed = () => {
-    saveJobs(seedJobs);
-    saveApplications(seedApplications);
-  };
-
-  const slugifyId = (title) => {
-    let base = 'job_' + String(title || 'posting').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_|_$/g, '').slice(0, 40);
-    let id = base;
-    let n = 0;
-    while (jobs.some(j => j.id === id)) {
-      n++;
-      id = `${base}_${n}`;
+  const upsertJob = async (job) => {
+    if (previewMode) {
+      const mapped = {
+        ...job,
+        id: job.id || `preview-job-${Date.now()}`,
+        updatedAt: new Date().toISOString(),
+        createdAt: job.createdAt || new Date().toISOString(),
+      };
+      setJobs((prev) => {
+        const idx = prev.findIndex((j) => j.id === mapped.id);
+        if (idx >= 0) {
+          const next = [...prev];
+          next[idx] = mapped;
+          return next;
+        }
+        return [...prev, mapped];
+      });
+      return mapped;
     }
-    return id;
+
+    const payload = mapJobToApi(job, { isCreate: !job.id });
+    let saved;
+    if (job.id) {
+      saved = await updateEmployerJob(job.id, payload);
+    } else {
+      saved = await createEmployerJob(payload);
+    }
+    const mapped = mapJobFromApi(saved?.data || saved, categoriesById);
+    setJobs((prev) => {
+      const idx = prev.findIndex((j) => j.id === mapped.id);
+      if (idx >= 0) {
+        const next = [...prev];
+        next[idx] = mapped;
+        return next;
+      }
+      return [...prev, mapped];
+    });
+    return mapped;
   };
+
+  const loadJobById = async (id) => {
+    if (previewMode) {
+      const found = jobs.find((j) => j.id === id);
+      if (!found) throw new Error('Job not found');
+      return { ...found };
+    }
+
+    const cached = jobs.find((j) => j.id === id);
+    if (cached) return { ...cached };
+
+    const res = await fetchEmployerJobs({ limit: 200, offset: 0 });
+    const found = getPaginatedItems(res).find((j) => j.id === id);
+    if (!found) throw new Error('Job not found');
+    return mapJobFromApi(found, categoriesById);
+  };
+
+  const upsertApplication = async (app) => {
+    if (previewMode) {
+      const mapped = { ...app };
+      setApplications((prev) => {
+        const idx = prev.findIndex((a) => a.id === mapped.id);
+        if (idx >= 0) {
+          const next = [...prev];
+          next[idx] = { ...next[idx], ...mapped };
+          return next;
+        }
+        return [...prev, mapped];
+      });
+      return mapped;
+    }
+
+    const updated = await updateApplicationStatus(app.id, app.status);
+    const mapped = mapApplicationFromApi(updated?.data || updated);
+    setApplications((prev) => {
+      const idx = prev.findIndex((a) => a.id === mapped.id);
+      if (idx >= 0) {
+        const next = [...prev];
+        next[idx] = { ...next[idx], ...mapped };
+        return next;
+      }
+      return [...prev, mapped];
+    });
+    return mapped;
+  };
+
+  const moveApplication = async (id, status) => {
+    const existing = applications.find((a) => a.id === id);
+    if (!existing) return;
+
+    const prevStatus = existing.status;
+    setApplications((prev) =>
+      prev.map((a) => (a.id === id ? { ...a, status } : a))
+    );
+
+    try {
+      return await upsertApplication({ ...existing, status });
+    } catch (err) {
+      setApplications((prev) =>
+        prev.map((a) => (a.id === id ? { ...a, status: prevStatus } : a))
+      );
+      throw err;
+    }
+  };
+
+  const saveProfile = async (body) => {
+    if (previewMode) {
+      const next = { ...user, ...body };
+      setUser(next);
+      return { user: next };
+    }
+    const data = await updateProfile(body);
+    const nextUser = data?.user || data;
+    if (nextUser) setUser(nextUser);
+    return data;
+  };
+
+  const newThisWeek = useMemo(
+    () => applications.filter((a) => isWithinDays(a.submittedAt, 7)).length,
+    [applications]
+  );
+
+  const inInterview = useMemo(
+    () => applications.filter((a) => a.status === 'interview').length,
+    [applications]
+  );
+
+  const PIPELINE_STATUSES = getPipelineStatuses();
+  const STATUS_UPDATE_OPTIONS = getEmployerStatusUpdates();
 
   return (
-    <PortalContext.Provider value={{
-      isReady,
-      isAuthed,
-      login,
-      logout,
-      jobs,
-      applications,
-      upsertJob,
-      deleteJob,
-      upsertApplication,
-      resetSeed,
-      slugifyId,
-      PIPELINE_STATUSES
-    }}>
+    <PortalContext.Provider
+      value={{
+        isReady,
+        isAuthed,
+        isPreview: previewMode,
+        user,
+        loading,
+        error,
+        login: beginLogin,
+        completeLogin,
+        logout,
+        saveProfile,
+        jobs,
+        applications,
+        applicationsTotal,
+        applicationsByJobId,
+        applicationsByStatus,
+        getApplicantCount,
+        categories,
+        dashboardStats,
+        newThisWeek,
+        inInterview,
+        upsertJob,
+        loadJobById,
+        upsertApplication,
+        moveApplication,
+        refreshData,
+        PIPELINE_STATUSES,
+        STATUS_UPDATE_OPTIONS,
+        PortalStages,
+      }}
+    >
       {children}
     </PortalContext.Provider>
   );

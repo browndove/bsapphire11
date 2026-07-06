@@ -81,8 +81,16 @@
 
       var job = PortalStore.getJob(appInitial.jobId);
 
-      document.getElementById('cand-name').textContent =
-        appInitial.candidateName || 'Applicant';
+      var displayName =
+        appInitial.candidateName ||
+        [
+          appInitial.first_name || appInitial.candidate_first_name || '',
+          appInitial.last_name || appInitial.candidate_last_name || '',
+        ]
+          .filter(Boolean)
+          .join(' ') ||
+        (appInitial.email ? String(appInitial.email).split('@')[0] : 'Applicant');
+      document.getElementById('cand-name').textContent = displayName;
       document.getElementById('cand-role').textContent = job
         ? job.title + (job.location ? ' · ' + job.location : '')
         : appInitial.jobId;

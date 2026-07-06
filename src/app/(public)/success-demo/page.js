@@ -3,7 +3,7 @@ import Link from 'next/link';
 export default function SuccessDemo() {
   return (
     <main className="demo-page" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '80vh', textAlign: 'center' }}>
-      <div className="container slide-up">
+      <div className="container">
         <div style={{ maxWidth: '600px', margin: '0 auto', padding: '3rem', backgroundColor: 'var(--bg-color)', border: '1px solid var(--border-color)', borderRadius: '10px' }}>
           <div style={{ width: '80px', height: '80px', borderRadius: '50%', backgroundColor: 'rgba(0,255,0,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 2rem' }}>
             <svg viewBox="0 0 24 24" fill="none" stroke="#00ff00" strokeWidth="2" style={{ width: '40px', height: '40px' }}>

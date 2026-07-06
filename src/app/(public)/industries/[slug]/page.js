@@ -55,14 +55,20 @@ const industryData = {
   }
 };
 
+export function generateStaticParams() {
+  return Object.keys(industryData).map((slug) => ({ slug }));
+}
+
 export async function generateMetadata({ params }) {
-  const data = industryData[params.slug];
+  const { slug } = await params;
+  const data = industryData[slug];
   if (!data) return { title: 'Not Found' };
   return { title: data.title };
 }
 
-export default function IndustryPage({ params }) {
-  const data = industryData[params.slug];
+export default async function IndustryPage({ params }) {
+  const { slug } = await params;
+  const data = industryData[slug];
 
   if (!data) {
     notFound();
@@ -70,44 +76,170 @@ export default function IndustryPage({ params }) {
 
   return (
     <>
-      <div className={`bg-orb ${data.orbClass}`}></div>
+      <style dangerouslySetInnerHTML={{ __html: `
+        .industry-hero {
+          padding-top: 180px;
+          padding-bottom: 80px;
+        }
+        .industry-hero-grid {
+          display: grid;
+          grid-template-columns: 1.05fr 0.95fr;
+          gap: 4rem;
+          align-items: center;
+        }
+        .industry-eyebrow {
+          font-family: var(--font-heading);
+          font-size: 0.8rem;
+          font-weight: 500;
+          text-transform: uppercase;
+          letter-spacing: 0.18em;
+          color: var(--text-muted);
+          margin-bottom: 1.5rem;
+        }
+        .industry-hero-title {
+          font-size: clamp(2.4rem, 4.5vw, 3.6rem);
+          line-height: 1.05;
+          margin-bottom: 1.5rem;
+        }
+        .industry-lead {
+          font-size: 1.2rem;
+          line-height: 1.7;
+          color: var(--text-muted);
+          max-width: 34rem;
+          margin-bottom: 2.25rem;
+        }
+        .industry-tags {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 0.75rem;
+          list-style: none;
+          padding: 0;
+          margin: 0;
+        }
+        .industry-tags li {
+          font-size: 0.82rem;
+          letter-spacing: 0.03em;
+          color: #ccc;
+          border: 1px solid var(--border-color);
+          border-radius: 999px;
+          padding: 0.5rem 1rem;
+          background: #0a0a0a;
+        }
+        .industry-hero-media {
+          width: 100%;
+          height: 420px;
+          border: 1px solid var(--border-color);
+          border-radius: 10px;
+          background-size: cover;
+          background-position: center;
+          box-shadow: 0 30px 80px rgba(0, 0, 0, 0.55);
+        }
+        .industry-detail-grid {
+          display: grid;
+          grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+          gap: 1.5rem;
+        }
+        .industry-detail-card {
+          border: 1px solid var(--border-color);
+          border-radius: 10px;
+          padding: 2rem;
+          background: linear-gradient(180deg, #0a0a0a 0%, #050505 100%);
+          transition: border-color var(--transition-snappy), transform var(--transition-snappy);
+        }
+        .industry-detail-card:hover {
+          border-color: var(--border-hover);
+          transform: translateY(-6px);
+        }
+        .industry-detail-card h3 {
+          font-size: 1.25rem;
+          margin-bottom: 0.85rem;
+        }
+        .industry-detail-card p {
+          color: var(--text-muted);
+          line-height: 1.65;
+          margin: 0;
+        }
+        .industry-cta-panel {
+          display: flex;
+          flex-wrap: wrap;
+          align-items: center;
+          justify-content: space-between;
+          gap: 2rem;
+          border: 1px solid var(--border-color);
+          border-radius: 12px;
+          padding: 3rem;
+          background: linear-gradient(135deg, #0b0b0b 0%, #000 100%);
+        }
+        .industry-cta-label {
+          font-family: var(--font-heading);
+          font-size: 0.8rem;
+          text-transform: uppercase;
+          letter-spacing: 0.16em;
+          color: var(--text-muted);
+          margin-bottom: 0.75rem;
+        }
+        .industry-cta-panel h2 {
+          font-size: clamp(1.8rem, 3vw, 2.4rem);
+          margin-bottom: 0.75rem;
+          max-width: 32rem;
+        }
+        .industry-cta-panel p {
+          color: var(--text-muted);
+          max-width: 34rem;
+          margin: 0;
+        }
+        @media (max-width: 900px) {
+          .industry-hero { padding-top: 140px; }
+          .industry-hero-grid { grid-template-columns: 1fr; gap: 2.5rem; }
+          .industry-hero-media { height: 300px; }
+          .industry-cta-panel { padding: 2rem; }
+        }
+      `}} />
       <main>
-        <section className="section page-hero reveal">
-          <div className="container hero-grid">
+        <section className="section industry-hero">
+          <div className="container industry-hero-grid">
             <div>
-              <p className="eyebrow">{data.eyebrow}</p>
-              <h1>{data.headline}</h1>
-              <p className="lead">{data.lead}</p>
-              <ul className="detail-tags">
-                {data.tags.map(tag => <li key={tag}>{tag}</li>)}
+              <p className="industry-eyebrow">{data.eyebrow}</p>
+              <h1 className="industry-hero-title">{data.headline}</h1>
+              <p className="industry-lead">{data.lead}</p>
+              <ul className="industry-tags">
+                {data.tags.map((tag) => <li key={tag}>{tag}</li>)}
               </ul>
             </div>
-            <div className="industry-card">
-              <div className="card-image" style={{ height: '320px', backgroundImage: `url('${data.imgUrl}')` }}></div>
+            <div
+              className="industry-hero-media"
+              style={{ backgroundImage: `url('${data.imgUrl}')` }}
+              role="img"
+              aria-label={data.eyebrow}
+            />
+          </div>
+        </section>
+
+        <section className="section">
+          <div className="container">
+            <div className="section-header slide-up">
+              <h2 className="section-title">Capabilities</h2>
+            </div>
+            <div className="industry-detail-grid">
+              {data.details.map((item) => (
+                <article className="industry-detail-card slide-up" key={item.title}>
+                  <h3>{item.title}</h3>
+                  <p>{item.desc}</p>
+                </article>
+              ))}
             </div>
           </div>
         </section>
 
-        <section className="section reveal">
-          <div className="container detail-layout">
-            {data.details.map(item => (
-              <article className="glass-card" key={item.title}>
-                <h3>{item.title}</h3>
-                <p>{item.desc}</p>
-              </article>
-            ))}
-          </div>
-        </section>
-
-        <section className="section cta reveal" id="contact">
-          <div className="container impact-wrap glass-panel">
-            <div>
-              <p className="section-label">Next Step</p>
-              <h2>{data.ctaTitle}</h2>
-              <p>{data.ctaDesc}</p>
-            </div>
-            <div>
-              <Link className="btn" href="/#contact">Request Consultation</Link>
+        <section className="section">
+          <div className="container">
+            <div className="industry-cta-panel slide-up">
+              <div>
+                <p className="industry-cta-label">Next Step</p>
+                <h2>{data.ctaTitle}</h2>
+                <p>{data.ctaDesc}</p>
+              </div>
+              <Link className="btn btn-primary" href="/#contact">Request Consultation</Link>
             </div>
           </div>
         </section>

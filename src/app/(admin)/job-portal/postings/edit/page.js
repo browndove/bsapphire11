@@ -1,246 +1,290 @@
 'use client';
 
 import React, { useState, useEffect, Suspense } from 'react';
-import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { usePortal } from '../../PortalContext';
+import { EMPLOYMENT_TYPES, JOB_STATUSES, REMOTE_TYPES } from '@/lib/job-api/config';
+import { formatEmploymentType, formatRemoteType } from '@/lib/job-api/mappers';
+import { toUserMessage } from '@/lib/job-api/errors';
+import PortalHeader, { BreadcrumbLink } from '../../components/PortalHeader';
+import PageTabs from '../../components/PageTabs';
+import StickyFormBar from '../../components/StickyFormBar';
+import ScreeningQuestionsEditor from '../../components/ScreeningQuestionsEditor';
+import CustomSelect from '@/components/CustomSelect';
+
+const SECTIONS = [
+  { id: 'details', label: 'Details' },
+  { id: 'compensation', label: 'Compensation' },
+  { id: 'description', label: 'Description' },
+  { id: 'application', label: 'Application form' },
+  { id: 'publish', label: 'Publish' },
+];
+
+const emptyJob = {
+  id: '',
+  title: '',
+  department: '',
+  location: '',
+  status: 'draft',
+  description: '',
+  requirements: '',
+  remoteType: 'remote',
+  employmentType: 'full_time',
+  salaryMin: '',
+  salaryMax: '',
+  currency: 'USD',
+  categoryId: '',
+  screeningQuestions: [],
+};
 
 function PostingEditForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const id = searchParams.get('id');
-  const { isReady, isAuthed, jobs, slugifyId, upsertJob } = usePortal();
+  const { isReady, isAuthed, categories, loadJobById, upsertJob } = usePortal();
 
-  const [job, setJob] = useState({
-    id: '',
-    title: '',
-    department: '',
-    location: '',
-    status: 'draft',
-    publishedAt: '',
-    description: '',
-    screeningQuestions: []
-  });
+  const [job, setJob] = useState(emptyJob);
+  const [section, setSection] = useState('details');
   const [toast, setToast] = useState('');
+  const [error, setError] = useState('');
+  const [loadingJob, setLoadingJob] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     if (isReady && !isAuthed) {
       router.replace('/job-portal/login');
       return;
     }
-    if (isReady && id) {
-      const existingJob = jobs.find(j => j.id === id);
-      if (existingJob) setJob(existingJob);
+    if (isReady && isAuthed && id && job.id !== id) {
+      setLoadingJob(true);
+      loadJobById(id)
+        .then((existing) => setJob({ ...emptyJob, ...existing, screeningQuestions: existing.screeningQuestions || [] }))
+        .catch((err) => setError(toUserMessage(err)))
+        .finally(() => setLoadingJob(false));
     }
-  }, [isReady, isAuthed, id, jobs, router]);
+  }, [isReady, isAuthed, id, job.id, router, loadJobById]);
 
   if (!isReady || !isAuthed) return null;
 
-  const handleSave = (e) => {
-    e.preventDefault();
-    const isNew = !job.id;
-    const saveId = isNew ? slugifyId(job.title) : job.id;
-    const finalJob = { ...job, id: saveId };
-
-    if (finalJob.status === 'published' && !finalJob.publishedAt) {
-      finalJob.publishedAt = new Date().toISOString().split('T')[0];
-    }
-
-    upsertJob(finalJob);
-    setToast('Saved successfully!');
-    setTimeout(() => setToast(''), 3000);
-
-    if (isNew) {
-      router.replace(`/job-portal/postings/edit?id=${encodeURIComponent(saveId)}`);
-    }
-  };
-
   const updateField = (field, value) => {
-    setJob(prev => ({ ...prev, [field]: value }));
+    setJob((prev) => ({ ...prev, [field]: value }));
   };
 
-  const addQuestion = () => {
-    const newQ = {
-      id: 'sq_' + Math.random().toString(36).slice(2, 10),
-      label: '',
-      type: 'single',
-      filterable: true,
-      options: []
-    };
-    setJob(prev => ({ ...prev, screeningQuestions: [...prev.screeningQuestions, newQ] }));
-  };
+  const handleSave = async () => {
+    setError('');
+    if (!job.title?.trim()) {
+      setError('Job title is required.');
+      setSection('details');
+      return;
+    }
+    if (!job.description?.trim()) {
+      setError('Description is required before you can save or publish.');
+      setSection('description');
+      return;
+    }
+    if (!id && job.status === 'closed') {
+      setError('Save the job as draft or published first. You can close it after it exists.');
+      setSection('publish');
+      return;
+    }
 
-  const updateQuestion = (qId, field, value) => {
-    setJob(prev => ({
-      ...prev,
-      screeningQuestions: prev.screeningQuestions.map(q => {
-        if (q.id === qId) {
-          if (field === 'optionsRaw') {
-            return { ...q, options: value.split('\n').map(s => s.trim()).filter(Boolean) };
-          }
-          return { ...q, [field]: value };
-        }
-        return q;
-      })
-    }));
-  };
-
-  const removeQuestion = (qId) => {
-    setJob(prev => ({
-      ...prev,
-      screeningQuestions: prev.screeningQuestions.filter(q => q.id !== qId)
-    }));
+    setSaving(true);
+    try {
+      const saved = await upsertJob(job);
+      setJob({ ...emptyJob, ...saved, screeningQuestions: saved.screeningQuestions || [] });
+      setToast('Saved successfully!');
+      setTimeout(() => setToast(''), 3000);
+      if (!id) {
+        router.replace(`/job-portal/postings/edit?id=${encodeURIComponent(saved.id)}`);
+      }
+    } catch (err) {
+      setError(toUserMessage(err));
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
     <>
-      <div className="portal-head-block">
-        <div>
-          <p className="hint" style={{ marginBottom: '0.35rem' }}>
-            <Link href="/job-portal/postings" style={{ color: 'var(--muted)' }}>&larr; Postings</Link>
-          </p>
-          <h1 className="portal-title" id="page-heading">{id ? 'Edit posting' : 'New posting'}</h1>
-          <p className="hint">Define what appears externally only after status is published. Screening blocks drive applicant form + filter chips.</p>
-        </div>
-      </div>
+      <PortalHeader
+        breadcrumb={
+          <>
+            <BreadcrumbLink href="/job-portal/postings">Jobs</BreadcrumbLink>
+            <span aria-hidden="true"> / </span>
+            <span>{id ? 'Edit job' : 'New job'}</span>
+          </>
+        }
+        title={id ? 'Edit job' : 'New job'}
+      />
 
-      <div className="card">
-        <form id="job-form" onSubmit={handleSave}>
-          <div className="form-grid cols-2" style={{ marginBottom: '1rem' }}>
-            <div>
-              <label className="field" htmlFor="field-title">Job title</label>
-              <input 
-                type="text" 
-                id="field-title" 
-                required 
-                maxLength="140" 
-                placeholder="e.g. Staff Platform Engineer"
+      {loadingJob ? <div className="ats-skeleton" /> : null}
+
+      <PageTabs tabs={SECTIONS} active={section} onChange={setSection} />
+
+      <form
+        id="job-form"
+        className="ats-panel ats-form"
+        style={{ marginTop: '1.25rem', paddingBottom: '5rem' }}
+        onSubmit={(e) => e.preventDefault()}
+      >
+        {section === 'details' ? (
+          <div className="ats-form-grid cols-2">
+            <div className="ats-field">
+              <label className="ats-field-label" htmlFor="field-title">Job title</label>
+              <input
+                type="text"
+                id="field-title"
+                required
+                maxLength="140"
+                placeholder="e.g. Backend Engineer"
                 value={job.title}
-                onChange={e => updateField('title', e.target.value)}
+                onChange={(e) => updateField('title', e.target.value)}
               />
             </div>
-            <div>
-              <label className="field" htmlFor="field-dept">Department</label>
-              <input 
-                type="text" 
-                id="field-dept" 
-                placeholder="Development, Marketing, …"
-                value={job.department}
-                onChange={e => updateField('department', e.target.value)}
+            <div className="ats-field">
+              <label className="ats-field-label" htmlFor="field-category">Category</label>
+              <CustomSelect
+                id="field-category"
+                value={job.categoryId || ''}
+                onChange={(v) => updateField('categoryId', v)}
+                placeholder="Uncategorized"
+                options={[
+                  { value: '', label: 'Uncategorized' },
+                  ...categories.map((c) => ({ value: c.id, label: c.name })),
+                ]}
               />
             </div>
-            <div>
-              <label className="field" htmlFor="field-location">Location</label>
-              <input 
-                type="text" 
-                id="field-location" 
+            <div className="ats-field">
+              <label className="ats-field-label" htmlFor="field-location">Location</label>
+              <input
+                type="text"
+                id="field-location"
                 placeholder="Remote, Accra hybrid, …"
                 value={job.location}
-                onChange={e => updateField('location', e.target.value)}
+                onChange={(e) => updateField('location', e.target.value)}
               />
             </div>
-            <div>
-              <label className="field" htmlFor="field-status">Status</label>
-              <select 
+            <div className="ats-field">
+              <label className="ats-field-label" htmlFor="field-remote">Remote type</label>
+              <CustomSelect
+                id="field-remote"
+                value={job.remoteType}
+                onChange={(v) => updateField('remoteType', v)}
+                options={REMOTE_TYPES.map((s) => ({ value: s, label: formatRemoteType(s) }))}
+              />
+            </div>
+            <div className="ats-field">
+              <label className="ats-field-label" htmlFor="field-employment">Employment type</label>
+              <CustomSelect
+                id="field-employment"
+                value={job.employmentType}
+                onChange={(v) => updateField('employmentType', v)}
+                options={EMPLOYMENT_TYPES.map((s) => ({ value: s, label: formatEmploymentType(s) }))}
+              />
+            </div>
+          </div>
+        ) : null}
+
+        {section === 'compensation' ? (
+          <div className="ats-form-grid cols-3">
+            <div className="ats-field">
+              <label className="ats-field-label" htmlFor="field-salary-min">Salary min</label>
+              <input
+                type="number"
+                id="field-salary-min"
+                placeholder="80000"
+                value={job.salaryMin ?? ''}
+                onChange={(e) => updateField('salaryMin', e.target.value)}
+              />
+            </div>
+            <div className="ats-field">
+              <label className="ats-field-label" htmlFor="field-salary-max">Salary max</label>
+              <input
+                type="number"
+                id="field-salary-max"
+                placeholder="120000"
+                value={job.salaryMax ?? ''}
+                onChange={(e) => updateField('salaryMax', e.target.value)}
+              />
+            </div>
+            <div className="ats-field">
+              <label className="ats-field-label" htmlFor="field-currency">Currency</label>
+              <input
+                type="text"
+                id="field-currency"
+                maxLength="3"
+                placeholder="USD"
+                value={job.currency}
+                onChange={(e) => updateField('currency', e.target.value.toUpperCase())}
+              />
+            </div>
+          </div>
+        ) : null}
+
+        {section === 'description' ? (
+          <>
+            <div className="ats-field">
+              <label className="ats-field-label" htmlFor="field-desc">Description</label>
+              <textarea
+                id="field-desc"
+                placeholder="Role overview shown on the public job page"
+                value={job.description}
+                onChange={(e) => updateField('description', e.target.value)}
+              />
+            </div>
+            <div className="ats-field">
+              <label className="ats-field-label" htmlFor="field-req">Requirements</label>
+              <textarea
+                id="field-req"
+                placeholder="Skills, experience, and qualifications"
+                value={job.requirements}
+                onChange={(e) => updateField('requirements', e.target.value)}
+              />
+            </div>
+          </>
+        ) : null}
+
+        {section === 'application' ? (
+          <ScreeningQuestionsEditor
+            questions={job.screeningQuestions || []}
+            onChange={(screeningQuestions) => updateField('screeningQuestions', screeningQuestions)}
+          />
+        ) : null}
+
+        {section === 'publish' ? (
+          <div className="ats-form-grid cols-2">
+            <div className="ats-field">
+              <label className="ats-field-label" htmlFor="field-status">Status</label>
+              <CustomSelect
                 id="field-status"
                 value={job.status}
-                onChange={e => updateField('status', e.target.value)}
-              >
-                <option value="draft">Draft (internal)</option>
-                <option value="published">Published (visible on careers)</option>
-                <option value="closed">Closed (hidden, keep history)</option>
-              </select>
-            </div>
-            <div>
-              <label className="field" htmlFor="field-published">Publication date</label>
-              <input 
-                type="text" 
-                id="field-published" 
-                placeholder="YYYY-MM-DD or leave blank for drafts"
-                value={job.publishedAt || ''}
-                onChange={e => updateField('publishedAt', e.target.value)}
+                onChange={(v) => updateField('status', v)}
+                options={JOB_STATUSES.filter((s) => s !== 'archived').map((s) => ({
+                  value: s,
+                  label: s.charAt(0).toUpperCase() + s.slice(1),
+                }))}
               />
-              <p className="field-hint">Backend can automate this timestamp on publish.</p>
+              <p className="ats-field-hint">Published roles appear on the public careers site.</p>
             </div>
           </div>
+        ) : null}
+      </form>
 
-          <label className="field" htmlFor="field-desc">Public description HTML</label>
-          <textarea 
-            id="field-desc" 
-            placeholder="Rendered on public job page Rich text/HTML after sanitization …"
-            value={job.description}
-            onChange={e => updateField('description', e.target.value)}
-          ></textarea>
-
-          <h3 style={{ margin: '1.5rem 0 0.65rem' }}>Screening questions</h3>
-          <p className="hint">Each block can populate the public apply form and, when marked filterable + options, feeds the recruiter filter toolbar.</p>
-          <button type="button" className="btn btn-ghost btn-sm" onClick={addQuestion} style={{ margin: '0.5rem 0 1rem' }}>Add question block</button>
-          
-          <div id="questions-mount">
-            {job.screeningQuestions.map(q => (
-              <div key={q.id} className="question-block">
-                <div style={{ display: 'flex', gap: '1rem', alignItems: 'flex-start' }}>
-                  <div style={{ flex: 1 }}>
-                    <label className="field">Label / Question text</label>
-                    <input 
-                      type="text" 
-                      required 
-                      value={q.label}
-                      onChange={e => updateQuestion(q.id, 'label', e.target.value)}
-                    />
-                  </div>
-                  <div style={{ width: '140px' }}>
-                    <label className="field">Type</label>
-                    <select 
-                      value={q.type}
-                      onChange={e => updateQuestion(q.id, 'type', e.target.value)}
-                    >
-                      <option value="single">Single select</option>
-                      <option value="multi">Multi select</option>
-                      <option value="text">Text (short)</option>
-                      <option value="longtext">Text (paragraph)</option>
-                    </select>
-                  </div>
-                </div>
-                <div style={{ display: 'flex', gap: '1rem', marginTop: '0.75rem', alignItems: 'flex-start' }}>
-                  <div style={{ flex: 1 }}>
-                    <label className="field">Options (one per line, for selects)</label>
-                    <textarea 
-                      style={{ minHeight: '4.5rem' }}
-                      value={q.options ? q.options.join('\n') : ''}
-                      onChange={e => updateQuestion(q.id, 'optionsRaw', e.target.value)}
-                    ></textarea>
-                  </div>
-                  <div style={{ width: '140px', display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                    <label className="field">Recruiter filter?</label>
-                    <select 
-                      value={q.filterable ? 'true' : 'false'}
-                      onChange={e => updateQuestion(q.id, 'filterable', e.target.value === 'true')}
-                    >
-                      <option value="true">Yes (filterable)</option>
-                      <option value="false">No (hidden in filters)</option>
-                    </select>
-                    <button type="button" className="btn btn-ghost btn-sm" style={{ color: 'var(--danger)' }} onClick={() => removeQuestion(q.id)}>Remove</button>
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <div className="toolbar" style={{ marginTop: '1.5rem' }}>
-            <button type="submit" className="btn btn-primary">Save posting</button>
-            <Link href="/job-portal/postings" className="btn btn-ghost">Cancel</Link>
-          </div>
-          <p className="hint" style={{ marginTop: '1rem', color: 'var(--success)', fontWeight: 600 }}>{toast}</p>
-        </form>
-      </div>
+      <StickyFormBar
+        status={job.status}
+        saving={saving}
+        onSave={handleSave}
+        cancelHref="/job-portal/postings"
+        toast={toast}
+        error={error}
+      />
     </>
   );
 }
 
 export default function PostingEdit() {
   return (
-    <Suspense fallback={<div>Loading...</div>}>
+    <Suspense fallback={<div className="ats-skeleton" />}>
       <PostingEditForm />
     </Suspense>
   );

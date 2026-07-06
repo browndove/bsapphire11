@@ -1,12 +1,51 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import Script from 'next/script';
 import Head from 'next/head';
 import BgCanvas from '@/components/BgCanvas';
+import CustomSelect from '@/components/CustomSelect';
+
+const BUSINESS_OPTIONS = [
+  { value: 'accounting', label: 'Accounting & Finance' },
+  { value: 'agriculture', label: 'Agriculture & Forestry' },
+  { value: 'automotive', label: 'Automotive' },
+  { value: 'aviation', label: 'Aviation & Aerospace' },
+  { value: 'communication', label: 'Communication & Media' },
+  { value: 'construction', label: 'Construction & Engineering' },
+  { value: 'consulting', label: 'Consulting Services' },
+  { value: 'ecommerce', label: 'E-Commerce' },
+  { value: 'education', label: 'Education & Training' },
+  { value: 'energy', label: 'Energy & Utilities' },
+  { value: 'environmental', label: 'Environmental Services' },
+  { value: 'government', label: 'Government & Public Sector' },
+  { value: 'healthcare', label: 'Healthcare & Medical' },
+  { value: 'hospitality', label: 'Hospitality & Tourism' },
+  { value: 'logistics', label: 'Logistics & Supply Chain' },
+  { value: 'manufacturing', label: 'Manufacturing' },
+  { value: 'marketing', label: 'Marketing & Advertising' },
+  { value: 'mining', label: 'Mining & Metals' },
+  { value: 'nonprofit', label: 'Non-Profit & NGO' },
+  { value: 'real_estate', label: 'Real Estate' },
+  { value: 'retail', label: 'Retail' },
+  { value: 'security', label: 'Security & Defense' },
+  { value: 'technology', label: 'Technology & IT' },
+  { value: 'telecom', label: 'Telecommunications' },
+  { value: 'other', label: 'Other' },
+];
+
+const REFERRAL_OPTIONS = [
+  { value: 'search', label: 'Search Engine' },
+  { value: 'linkedin', label: 'LinkedIn' },
+  { value: 'social', label: 'Social Media' },
+  { value: 'referral', label: 'Internal Referral' },
+  { value: 'other', label: 'Other Protocol' },
+];
 
 export default function Demo() {
   const tsliderRef = useRef(null);
+  const [businessField, setBusinessField] = useState('');
+  const [hearAbout, setHearAbout] = useState('');
 
   const scrollLeft = () => {
     if (tsliderRef.current) {
@@ -217,7 +256,7 @@ export default function Demo() {
       <main className="demo-page">
         <div className="container demo-grid">
           {/* Left Info Panel */}
-          <div className="demo-info slide-up">
+          <div className="demo-info">
             <h1>Get a custom architecture demo from an engineer.</h1>
             <p className="demo-subtitle" style={{ fontSize: '1.2rem', color: 'var(--text-color)', marginBottom: '1rem' }}>Here's how the protocol works:</p>
             <ul className="demo-steps">
@@ -269,7 +308,7 @@ export default function Demo() {
           </div>
 
           {/* Right Form Box */}
-          <div className="demo-form-container slide-up delay-1">
+          <div className="demo-form-container">
             <div className="demo-form-box">
               <h3>Discuss AI & Custom Tech Solutions</h3>
               <p className="form-desc text-muted">Submit your details below, and our enterprise architects will be in touch to schedule a tailored consultation.</p>
@@ -290,44 +329,28 @@ export default function Demo() {
                   <input type="tel" id="phoneNumber" name="phoneNumber" placeholder="Phone Number*" required />
                 </div>
                 <div className="form-group" style={{ marginBottom: '2rem' }}>
-                  <select required defaultValue="">
-                    <option value="" disabled hidden>Field of Business*</option>
-                    <option value="accounting">Accounting & Finance</option>
-                    <option value="agriculture">Agriculture & Forestry</option>
-                    <option value="automotive">Automotive</option>
-                    <option value="aviation">Aviation & Aerospace</option>
-                    <option value="communication">Communication & Media</option>
-                    <option value="construction">Construction & Engineering</option>
-                    <option value="consulting">Consulting Services</option>
-                    <option value="ecommerce">E-Commerce</option>
-                    <option value="education">Education & Training</option>
-                    <option value="energy">Energy & Utilities</option>
-                    <option value="environmental">Environmental Services</option>
-                    <option value="government">Government & Public Sector</option>
-                    <option value="healthcare">Healthcare & Medical</option>
-                    <option value="hospitality">Hospitality & Tourism</option>
-                    <option value="logistics">Logistics & Supply Chain</option>
-                    <option value="manufacturing">Manufacturing</option>
-                    <option value="marketing">Marketing & Advertising</option>
-                    <option value="mining">Mining & Metals</option>
-                    <option value="nonprofit">Non-Profit & NGO</option>
-                    <option value="real_estate">Real Estate</option>
-                    <option value="retail">Retail</option>
-                    <option value="security">Security & Defense</option>
-                    <option value="technology">Technology & IT</option>
-                    <option value="telecom">Telecommunications</option>
-                    <option value="other">Other</option>
-                  </select>
+                  <label className="field" htmlFor="business-field">Field of Business*</label>
+                  <CustomSelect
+                    id="business-field"
+                    name="business"
+                    value={businessField}
+                    onChange={setBusinessField}
+                    placeholder="Field of Business*"
+                    options={BUSINESS_OPTIONS}
+                    required
+                  />
                 </div>
                 <div className="form-group" style={{ marginBottom: '2rem' }}>
-                  <select required defaultValue="">
-                    <option value="" disabled hidden>How did you hear about us?</option>
-                    <option value="search">Search Engine</option>
-                    <option value="linkedin">LinkedIn</option>
-                    <option value="social">Social Media</option>
-                    <option value="referral">Internal Referral</option>
-                    <option value="other">Other Protocol</option>
-                  </select>
+                  <label className="field" htmlFor="hear-about">How did you hear about us?</label>
+                  <CustomSelect
+                    id="hear-about"
+                    name="referral"
+                    value={hearAbout}
+                    onChange={setHearAbout}
+                    placeholder="How did you hear about us?"
+                    options={REFERRAL_OPTIONS}
+                    required
+                  />
                 </div>
                 <div className="form-group" style={{ marginBottom: '2rem' }}>
                   <textarea placeholder="Anything specific you'd like to discuss during the demo?" rows="4"></textarea>

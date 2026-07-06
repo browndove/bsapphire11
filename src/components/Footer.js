@@ -1,23 +1,9 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
 import GlobeViz from './GlobeViz';
 
 export default function Footer() {
-  const pathname = usePathname();
-  const isIndustryPage = pathname.startsWith('/industries/');
-
-  if (isIndustryPage) {
-    return (
-      <footer className="site-footer">
-        <div className="container">
-          <p>&copy; <span id="year">{new Date().getFullYear()}</span> BLVCK SAPPHIRE. All rights reserved. <Link href="/">Back to home</Link></p>
-        </div>
-      </footer>
-    );
-  }
-
   return (
     <footer className="footer" id="contact">
       <div className="container">

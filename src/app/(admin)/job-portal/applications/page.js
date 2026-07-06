@@ -1,41 +1,51 @@
 'use client';
 
-import React, { useState, useEffect, Suspense, useMemo } from 'react';
-import Link from 'next/link';
+import React, { useState, useEffect, Suspense, useMemo, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { usePortal, PortalStages } from '../PortalContext';
+import { usePortal } from '../PortalContext';
+import { toUserMessage } from '@/lib/job-api/errors';
+import PortalHeader from '../components/PortalHeader';
+import ViewToggle from '../components/ViewToggle';
+import FilterRail from '../components/FilterRail';
+import PipelineBoard from '../components/PipelineBoard';
+import CandidateTable from '../components/CandidateTable';
+import EmptyState from '../components/EmptyState';
 
-function formatAnswersFlat(app) {
-  return Object.keys(app.answers || {}).map(qid => {
-    const val = app.answers[qid];
-    if (Array.isArray(val)) return val.join(' + ');
-    return String(val);
-  }).join(' · ');
-}
-
-function formatAnswersBrief(app, maxLen = 72) {
-  const s = formatAnswersFlat(app);
-  if (s.length <= maxLen) return s;
-  return s.slice(0, maxLen - 1) + '…';
-}
+const PAGE_SIZE = 50;
+const VIEW_KEY = 'ats-candidates-view';
 
 function ApplicationsInbox() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const jobParam = searchParams.get('job');
-  
-  const { isReady, isAuthed, applications, jobs, PIPELINE_STATUSES } = usePortal();
+
+  const {
+    isReady,
+    isAuthed,
+    applications,
+    applicationsTotal,
+    jobs,
+    PIPELINE_STATUSES,
+    moveApplication,
+  } = usePortal();
 
   const [selectedJob, setSelectedJob] = useState(jobParam || '__all');
   const [selectedStage, setSelectedStage] = useState('__all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [view, setView] = useState('board');
+  const [page, setPage] = useState(0);
+  const [toast, setToast] = useState('');
 
-  // When jobParam changes in URL, sync it if we are ready
   useEffect(() => {
-    if (jobParam) {
-      setSelectedJob(jobParam);
-    }
+    if (jobParam) setSelectedJob(jobParam);
   }, [jobParam]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const saved = sessionStorage.getItem(VIEW_KEY);
+      if (saved === 'list' || saved === 'board') setView(saved);
+    }
+  }, []);
 
   useEffect(() => {
     if (isReady && !isAuthed) {
@@ -43,14 +53,37 @@ function ApplicationsInbox() {
     }
   }, [isReady, isAuthed, router]);
 
+  const handleViewChange = (next) => {
+    setView(next);
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem(VIEW_KEY, next);
+    }
+  };
+
+  const visibleStages = useMemo(() => {
+    if (selectedStage !== '__all') return [selectedStage];
+    return PIPELINE_STATUSES;
+  }, [selectedStage, PIPELINE_STATUSES]);
+
   const filteredApps = useMemo(() => {
     if (!isReady) return [];
-    return applications.filter(a => {
+    return applications.filter((a) => {
       if (selectedJob !== '__all' && a.jobId !== selectedJob) return false;
       if (selectedStage !== '__all' && a.status !== selectedStage) return false;
       if (searchQuery) {
         const q = searchQuery.toLowerCase();
-        const cand = (a.candidateName || '').toLowerCase();
+        const email = a.email || a.candidate_email || '';
+        const emailName = email ? String(email).split('@')[0] : '';
+        const candName =
+          a.candidateName ||
+          [a.first_name, a.last_name].filter(Boolean).join(' ') ||
+          [a.candidate_first_name, a.candidate_last_name].filter(Boolean).join(' ') ||
+          (a.candidate && (a.candidate.first_name || a.candidate.last_name)
+            ? [a.candidate.first_name, a.candidate.last_name].filter(Boolean).join(' ')
+            : '') ||
+          emailName ||
+          '';
+        const cand = candName.toLowerCase();
         const em = (a.email || '').toLowerCase();
         const ph = (a.phone || '').toLowerCase();
         if (!cand.includes(q) && !em.includes(q) && !ph.includes(q)) return false;
@@ -59,126 +92,120 @@ function ApplicationsInbox() {
     });
   }, [isReady, applications, selectedJob, selectedStage, searchQuery]);
 
+  useEffect(() => {
+    setPage(0);
+  }, [selectedJob, selectedStage, searchQuery, view]);
+
+  const paginatedApps = useMemo(() => {
+    if (view === 'board') return filteredApps;
+    const start = page * PAGE_SIZE;
+    return filteredApps.slice(start, start + PAGE_SIZE);
+  }, [filteredApps, page, view]);
+
+  const totalPages = Math.ceil(filteredApps.length / PAGE_SIZE);
+  const showPagination = view === 'list' && filteredApps.length > PAGE_SIZE;
+
+  const handleMove = useCallback(
+    async (id, status) => {
+      try {
+        await moveApplication(id, status);
+      } catch (err) {
+        setToast(toUserMessage(err));
+        setTimeout(() => setToast(''), 4000);
+      }
+    },
+    [moveApplication]
+  );
+
+  const clearFilters = () => {
+    setSelectedJob('__all');
+    setSelectedStage('__all');
+    setSearchQuery('');
+  };
+
   if (!isReady || !isAuthed) return null;
 
   return (
     <>
-      <div className="portal-topbar">
-        <div className="portal-head-block" style={{ flex: 1, minWidth: '220px', marginBottom: 0 }}>
-          <h1 className="portal-title">Applications inbox</h1>
-          <p className="hint">Pick a posting, search by candidate, tighten with stage, then drill into screening answers.</p>
+      <PortalHeader
+        title="Candidates"
+        badge={applicationsTotal || applications.length}
+        action={<ViewToggle value={view} onChange={handleViewChange} />}
+      />
+
+      {toast ? <div className="ats-toast is-error">{toast}</div> : null}
+
+      <div className="ats-board-layout">
+        <FilterRail
+          jobs={jobs}
+          selectedJob={selectedJob}
+          onJobChange={setSelectedJob}
+          selectedStage={selectedStage}
+          onStageChange={setSelectedStage}
+          stages={PIPELINE_STATUSES}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          onClear={clearFilters}
+        />
+
+        <div className="ats-board-main">
+          {filteredApps.length === 0 ? (
+            <EmptyState
+              icon="search"
+              title="No candidates match"
+              description="Try adjusting your filters or post a job to attract applicants."
+            />
+          ) : view === 'board' ? (
+            <PipelineBoard
+              stages={visibleStages}
+              applications={filteredApps}
+              jobs={jobs}
+              onMoveApplication={handleMove}
+              onError={(err) => {
+                setToast(toUserMessage(err));
+                setTimeout(() => setToast(''), 4000);
+              }}
+            />
+          ) : (
+            <>
+              <CandidateTable applications={paginatedApps} jobs={jobs} />
+              {showPagination ? (
+                <div className="ats-pagination">
+                  <span>
+                    Showing {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, filteredApps.length)} of{' '}
+                    {filteredApps.length}
+                  </span>
+                  <div className="ats-pagination-btns">
+                    <button
+                      type="button"
+                      className="btn btn-outline btn-sm"
+                      disabled={page === 0}
+                      onClick={() => setPage((p) => p - 1)}
+                    >
+                      Previous
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-outline btn-sm"
+                      disabled={page >= totalPages - 1}
+                      onClick={() => setPage((p) => p + 1)}
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              ) : null}
+            </>
+          )}
         </div>
       </div>
-
-      <div className="help-callout" style={{ marginTop: '1.25rem' }}>
-        <strong style={{ color: 'var(--text)' }}>Tip:</strong> Row filters come from each job&apos;s posting. Change the posting to change what you can slice on here.
-      </div>
-
-      <div className="toolbar">
-        <div>
-          <label className="field" htmlFor="pick-job">Posting</label>
-          <select 
-            id="pick-job" 
-            value={selectedJob} 
-            onChange={e => setSelectedJob(e.target.value)}
-          >
-            <option value="__all">All postings</option>
-            {jobs.map(j => (
-              <option key={j.id} value={j.id}>{j.title}</option>
-            ))}
-          </select>
-        </div>
-        <div>
-          <label className="field" htmlFor="stage-filter">Stage</label>
-          <select 
-            id="stage-filter"
-            value={selectedStage}
-            onChange={e => setSelectedStage(e.target.value)}
-          >
-            <option value="__all">All stages</option>
-            {PIPELINE_STATUSES.map(k => (
-              <option key={k} value={k}>{PortalStages.labels[k] || k}</option>
-            ))}
-          </select>
-        </div>
-        <div className="search-field">
-          <label className="field" htmlFor="q-search">Search</label>
-          <input 
-            type="search" 
-            id="q-search" 
-            placeholder="Name, email, phone…"
-            value={searchQuery}
-            onChange={e => setSearchQuery(e.target.value)}
-          />
-        </div>
-        <div className="toolbar-spacer"></div>
-        <button 
-          type="button" 
-          className="btn btn-ghost btn-sm" 
-          onClick={() => {
-            setSelectedJob('__all');
-            setSelectedStage('__all');
-            setSearchQuery('');
-          }}
-        >
-          Clear all filters
-        </button>
-      </div>
-
-      <div className="card-table-shell">
-        <div className="table-wrap">
-          <table className="data">
-            <thead>
-              <tr>
-                <th>Candidate</th>
-                <th>Posting</th>
-                <th>Stage</th>
-                <th>Applied</th>
-                <th>Source</th>
-                <th>Screening highlights</th>
-                <th style={{ width: '7rem' }}></th>
-              </tr>
-            </thead>
-            <tbody>
-              {filteredApps.map(app => {
-                const job = jobs.find(j => j.id === app.jobId);
-                const tagClass = PortalStages.tagClassByStatus[app.status] || 'tag-stage-new';
-                const tagLabel = PortalStages.labels[app.status] || app.status;
-
-                return (
-                  <tr key={app.id}>
-                    <td>
-                      <strong>{app.candidateName}</strong><br/>
-                      <span className="hint" style={{ fontSize: '0.85rem' }}>{app.email}</span>
-                    </td>
-                    <td>{job ? job.title : app.jobId}</td>
-                    <td><span className={`tag ${tagClass}`}>{tagLabel}</span></td>
-                    <td>{new Date(app.submittedAt).toLocaleDateString()}</td>
-                    <td>{app.source}</td>
-                    <td className="hint" style={{ fontSize: '0.8rem', maxWidth: '16rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {formatAnswersBrief(app)}
-                    </td>
-                    <td>
-                      <Link href={`/job-portal/applications/detail?id=${encodeURIComponent(app.id)}`} className="btn btn-ghost btn-sm">Review</Link>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
-      
-      <p className="hint" style={{ marginTop: '0.85rem' }}>
-        Showing {filteredApps.length} application(s).
-      </p>
     </>
   );
 }
 
 export default function Applications() {
   return (
-    <Suspense fallback={<div>Loading inbox...</div>}>
+    <Suspense fallback={<div className="ats-skeleton" />}>
       <ApplicationsInbox />
     </Suspense>
   );

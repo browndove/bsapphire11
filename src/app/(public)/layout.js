@@ -4,7 +4,6 @@ import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import CookieBanner from '@/components/CookieBanner';
 import ScrollToTop from '@/components/ScrollToTop';
-import ScrollAnimations from '@/components/ScrollAnimations';
 
 const inter = Inter({ subsets: ['latin'], variable: '--font-body', weight: ['300', '400', '500', '600'] });
 const spaceGrotesk = Space_Grotesk({ subsets: ['latin'], variable: '--font-heading', weight: ['400', '500', '600', '700'] });
@@ -39,12 +38,13 @@ export default function RootLayout({ children }) {
   return (
     <html lang="en">
       <body className={`${inter.variable} ${spaceGrotesk.variable}`}>
-        <ScrollAnimations />
-        <Header />
-        {children}
-        <Footer />
-        <CookieBanner />
-        <ScrollToTop />
+        <div className="site-content">
+          <Header />
+          {children}
+          <Footer />
+          <CookieBanner />
+          <ScrollToTop />
+        </div>
       </body>
     </html>
   );

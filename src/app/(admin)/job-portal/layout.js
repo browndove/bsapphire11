@@ -2,8 +2,19 @@
 
 import React from 'react';
 import { usePathname } from 'next/navigation';
-import { PortalProvider } from './PortalContext';
+import { PortalProvider, usePortal } from './PortalContext';
 import PortalSidebar from './PortalSidebar';
+import { ConfirmProvider } from '@/components/ConfirmProvider';
+
+function PreviewBanner() {
+  const { isPreview } = usePortal();
+  if (!isPreview) return null;
+  return (
+    <div className="ats-preview-banner" role="status">
+      Preview mode — sample data only. Set <code>NEXT_PUBLIC_JOB_PORTAL_PREVIEW=false</code> to require login.
+    </div>
+  );
+}
 
 function PortalContent({ children }) {
   const pathname = usePathname();
@@ -16,8 +27,9 @@ function PortalContent({ children }) {
   return (
     <div className="portal-shell">
       <PortalSidebar />
-      <div className="portal-main">
-        {children}
+      <div className="portal-content">
+        <PreviewBanner />
+        <main className="portal-main">{children}</main>
       </div>
     </div>
   );
@@ -26,9 +38,9 @@ function PortalContent({ children }) {
 export default function JobPortalLayout({ children }) {
   return (
     <PortalProvider>
-      <PortalContent>
-        {children}
-      </PortalContent>
+      <ConfirmProvider>
+        <PortalContent>{children}</PortalContent>
+      </ConfirmProvider>
     </PortalProvider>
   );
 }

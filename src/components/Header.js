@@ -2,13 +2,10 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
 
 export default function Header() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const pathname = usePathname();
-  const isIndustryPage = pathname.startsWith('/industries/');
 
   useEffect(() => {
     const handleScroll = () => {
@@ -30,32 +27,6 @@ export default function Header() {
   const closeMobileMenu = () => {
     setMobileMenuOpen(false);
   };
-
-  if (isIndustryPage) {
-    return (
-      <header className="site-header" id="top">
-        <div className="container header-inner">
-          <Link href="/" className="brand">
-            <span className="brand-mark"></span>BLVCK SAPPHIRE
-          </Link>
-          <button className="menu-toggle" aria-label="Toggle Menu">
-            <span className="bar"></span>
-            <span className="bar"></span>
-          </button>
-          <nav className="site-nav">
-            <ul className="nav-links">
-              <li><Link href="/#industries">Industries</Link></li>
-              <li><Link href="/#services">Services</Link></li>
-              <li><Link href="/#contact">Contact</Link></li>
-            </ul>
-            <div className="nav-actions">
-              <Link href="/#contact" className="btn btn-sm">Book Demo</Link>
-            </div>
-          </nav>
-        </div>
-      </header>
-    );
-  }
 
   return (
     <header className={`header ${scrolled ? 'scrolled' : ''}`}>

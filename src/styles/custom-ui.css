@@ -1,0 +1,166 @@
+/* Custom select + confirmation dialog */
+
+.custom-select {
+  position: relative;
+  width: 100%;
+}
+
+.custom-select-trigger {
+  width: 100%;
+  min-height: 2.25rem;
+  padding: 0 2rem 0 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  background: #0a0a0a;
+  border: 1px solid #333333;
+  border-radius: 6px;
+  color: #ededed;
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  text-align: left;
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
+}
+
+.custom-select-trigger.is-placeholder {
+  color: #666666;
+}
+
+.custom-select-trigger:hover:not(:disabled) {
+  border-color: #444444;
+  background: #0c0c0c;
+}
+
+.custom-select.is-open .custom-select-trigger,
+.custom-select-trigger:focus-visible {
+  outline: none;
+  border-color: #555555;
+  background: #0c0c0c;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.06);
+}
+
+.custom-select.is-disabled .custom-select-trigger {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.custom-select-value {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.custom-select-chevron {
+  width: 0.9rem;
+  height: 0.9rem;
+  color: #888888;
+  flex-shrink: 0;
+  transition: transform 0.15s ease;
+}
+
+.custom-select.is-open .custom-select-chevron {
+  transform: rotate(180deg);
+}
+
+.custom-select-menu {
+  position: absolute;
+  z-index: 50;
+  top: calc(100% + 0.35rem);
+  left: 0;
+  right: 0;
+  margin: 0;
+  padding: 0.35rem;
+  list-style: none;
+  background: #111111;
+  border: 1px solid #333333;
+  border-radius: 8px;
+  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.55);
+  max-height: 16rem;
+  overflow: auto;
+}
+
+.custom-select-option {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.55rem 0.6rem;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: #ededed;
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  text-align: left;
+  cursor: pointer;
+  transition: background 0.12s ease;
+}
+
+.custom-select-option:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.custom-select-option.is-selected {
+  background: rgba(255, 255, 255, 0.04);
+}
+
+.custom-select-option-check {
+  width: 0.95rem;
+  height: 0.95rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  color: #ededed;
+}
+
+.custom-select-option-check svg {
+  width: 0.85rem;
+  height: 0.85rem;
+}
+
+/* —— Confirm dialog —— */
+.confirm-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
+  background: rgba(0, 0, 0, 0.72);
+  backdrop-filter: blur(4px);
+}
+
+.confirm-dialog {
+  width: min(100%, 24rem);
+  background: #0a0a0a;
+  border: 1px solid #333333;
+  border-radius: 10px;
+  padding: 1.25rem;
+  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6);
+}
+
+.confirm-dialog-title {
+  font-size: 1rem;
+  font-weight: 500;
+  color: #ededed;
+  margin-bottom: 0.5rem;
+  letter-spacing: -0.02em;
+}
+
+.confirm-dialog-message {
+  font-size: 0.875rem;
+  color: #888888;
+  line-height: 1.5;
+  margin-bottom: 1.25rem;
+}
+
+.confirm-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+}

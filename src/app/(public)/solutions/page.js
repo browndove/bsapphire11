@@ -47,34 +47,60 @@ export default function Solutions() {
         .solutions-card:hover {
             border-color: #555;
         }
-        
-        #healthcare-card { background: url('/healthcare_bg.png') center/cover; }
-        #environmental-card { background: url('/environment_bg.png') center/cover; }
-        #security-card { background: url('/cyber_security.png') center/cover; }
-        #public-sector-card { background: url('https://images.pexels.com/photos/37347/office-sitting-room-executive-sitting.jpg?auto=compress&cs=tinysrgb&w=800') center/cover; }
-        #technology-card { background: url('https://images.pexels.com/photos/5203849/pexels-photo-5203849.jpeg?auto=compress&cs=tinysrgb&w=800') center/cover; }
+        .solutions-card.is-coming-soon {
+            cursor: default;
+            opacity: 0.72;
+        }
+        .solutions-card.is-coming-soon:hover {
+            border-color: var(--border-color);
+        }
+        .solutions-card.is-coming-soon:hover h3 {
+            transform: none;
+        }
+        .solutions-card-badge {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            z-index: 2;
+            font-size: 0.72rem;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: #aaa;
+            border: 1px solid #444;
+            border-radius: 999px;
+            padding: 0.3rem 0.65rem;
+            background: rgba(0, 0, 0, 0.55);
+        }
+
+        #healthcare { background: url('/solution_healthcare.jpg') center/cover; }
+        #environmental { background: url('/solution_environmental.jpg') center/cover; }
+        #security { background: url('/solution_security.jpg') center/cover; }
+        #public-sector { background: url('/solution_public_sector.jpg') center/cover; }
+        #technology { background: url('/solution_technology.jpg') center/cover; }
       `}} />
       <main style={{ padding: '150px 0', minHeight: '100vh', background: '#050505' }}>
-        <div className="container slide-up">
+        <div className="container">
           <h1 style={{ fontSize: '3.5rem', marginBottom: '2rem', textAlign: 'center' }}>Enterprise Solutions</h1>
           <p style={{ textAlign: 'center', color: 'var(--text-muted)', marginBottom: '4rem', fontSize: '1.2rem', maxWidth: '600px', margin: '0 auto 4rem auto' }}>Select an industry to explore tailored technical integrations and deployments.</p>
           
           <div className="solutions-grid">
-            <Link href="/industries/healthcare" id="healthcare-card" className="solutions-card slide-up">
+            <Link href="/industries/healthcare" id="healthcare" className="solutions-card">
               <h3>Healthcare</h3>
             </Link>
-            <Link href="/industries/environment" id="environmental-card" className="solutions-card slide-up delay-1">
+            <Link href="/industries/environment" id="environmental" className="solutions-card">
               <h3>Environmental</h3>
             </Link>
-            <Link href="/industries/security" id="security-card" className="solutions-card slide-up delay-2">
+            <Link href="/industries/security" id="security" className="solutions-card">
               <h3>Security</h3>
             </Link>
-            <Link href="#" id="public-sector-card" className="solutions-card slide-up">
+            <div id="public-sector" className="solutions-card is-coming-soon" aria-disabled="true">
+              <span className="solutions-card-badge">Coming soon</span>
               <h3>Public Sector</h3>
-            </Link>
-            <Link href="#" id="technology-card" className="solutions-card slide-up delay-1">
+            </div>
+            <div id="technology" className="solutions-card is-coming-soon" aria-disabled="true">
+              <span className="solutions-card-badge">Coming soon</span>
               <h3>Technology</h3>
-            </Link>
+            </div>
           </div>
         </div>
       </main>

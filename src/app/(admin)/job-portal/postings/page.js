@@ -1,19 +1,26 @@
 'use client';
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { usePortal } from '../PortalContext';
+import PortalHeader from '../components/PortalHeader';
+import PageTabs from '../components/PageTabs';
+import JobTable from '../components/JobTable';
+import EmptyState from '../components/EmptyState';
 
-function tagClass(status) {
-  if (status === 'published') return 'tag-published';
-  if (status === 'draft') return 'tag-draft';
-  return 'tag-closed';
-}
+const TABS = [
+  { id: 'all', label: 'All' },
+  { id: 'published', label: 'Published' },
+  { id: 'draft', label: 'Draft' },
+  { id: 'closed', label: 'Closed' },
+];
 
 export default function Postings() {
   const router = useRouter();
-  const { isReady, isAuthed, jobs, resetSeed } = usePortal();
+  const { isReady, isAuthed, jobs, getApplicantCount, loading } = usePortal();
+  const [activeTab, setActiveTab] = useState('all');
+  const [search, setSearch] = useState('');
 
   useEffect(() => {
     if (isReady && !isAuthed) {
@@ -21,63 +28,75 @@ export default function Postings() {
     }
   }, [isReady, isAuthed, router]);
 
+  const tabCounts = useMemo(() => {
+    const counts = { all: jobs.length, published: 0, draft: 0, closed: 0 };
+    jobs.forEach((j) => {
+      if (j.status === 'published') counts.published += 1;
+      else if (j.status === 'draft') counts.draft += 1;
+      else counts.closed += 1;
+    });
+    return counts;
+  }, [jobs]);
+
+  const filteredJobs = useMemo(() => {
+    let list = jobs;
+    if (activeTab !== 'all') {
+      list = list.filter((j) => j.status === activeTab);
+    }
+    if (search.trim()) {
+      const q = search.trim().toLowerCase();
+      list = list.filter(
+        (j) =>
+          (j.title || '').toLowerCase().includes(q) ||
+          (j.location || '').toLowerCase().includes(q) ||
+          (j.department || '').toLowerCase().includes(q)
+      );
+    }
+    return list;
+  }, [jobs, activeTab, search]);
+
   if (!isReady || !isAuthed) return null;
+
+  const tabs = TABS.map((t) => ({ ...t, count: tabCounts[t.id] }));
+
+  const emptyCopy = {
+    all: { title: 'No jobs yet', description: 'Create your first job posting to start hiring.' },
+    published: { title: 'No published jobs', description: 'Publish a draft job to make it live on your careers page.' },
+    draft: { title: 'No drafts', description: 'Start a new job and save it as a draft.' },
+    closed: { title: 'No closed jobs', description: 'Closed jobs will appear here.' },
+  };
 
   return (
     <>
-      <div className="portal-topbar">
-        <div className="portal-head-block" style={{ flex: 1, minWidth: '220px', marginBottom: 0 }}>
-          <h1 className="portal-title">Job postings</h1>
-          <p className="hint">Draft vs published separates what recruiters prep internally from jobs that mirror the careers site.</p>
-        </div>
-        <div className="toolbar" style={{ margin: 0 }}>
-          <Link href="/job-portal/postings/edit" className="btn btn-primary">New posting</Link>
-          <button type="button" className="btn btn-ghost btn-sm" onClick={resetSeed}>Reload demo seed</button>
-        </div>
-      </div>
+      <PortalHeader
+        title="Jobs"
+        search={search}
+        onSearchChange={setSearch}
+        searchPlaceholder="Search by title or location…"
+        action={
+          <Link href="/job-portal/postings/edit" className="btn btn-primary">
+            Post a job
+          </Link>
+        }
+      />
 
-      <div className="card-table-shell">
-        <div className="table-wrap">
-          <table className="data" id="jobs-table">
-            <thead>
-              <tr>
-                <th>Title</th>
-                <th>Team</th>
-                <th>Status</th>
-                <th>Screeners</th>
-                <th>Updated</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-              {jobs.map(j => {
-                const n = j.screeningQuestions && j.screeningQuestions.length ? j.screeningQuestions.length : 0;
-                return (
-                  <tr key={j.id}>
-                    <td>{j.title}</td>
-                    <td>{j.department || '—'}</td>
-                    <td>
-                      <span className={`tag ${tagClass(j.status)}`}>{j.status}</span>
-                    </td>
-                    <td>{n}</td>
-                    <td>{j.publishedAt || '—'}</td>
-                    <td style={{ whiteSpace: 'nowrap' }}>
-                      <Link href={`/job-portal/postings/edit?id=${encodeURIComponent(j.id)}`} className="btn btn-ghost btn-sm">Edit</Link>{' '}
-                      <Link href={`/job-portal/applications?job=${encodeURIComponent(j.id)}`} className="btn btn-ghost btn-sm">Apps</Link>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
+      <PageTabs tabs={tabs} active={activeTab} onChange={setActiveTab} />
 
-      {jobs.length === 0 && (
-        <div id="empty-jobs" className="empty">
-          <strong>No postings yet</strong>
-          <br/>Use &ldquo;New posting&rdquo; or reload the demo dataset.
-        </div>
+      {loading ? (
+        <div className="ats-skeleton" style={{ marginTop: '1.25rem' }} />
+      ) : filteredJobs.length === 0 ? (
+        <EmptyState
+          icon="briefcase"
+          title={emptyCopy[activeTab].title}
+          description={emptyCopy[activeTab].description}
+          action={
+            <Link href="/job-portal/postings/edit" className="btn btn-primary btn-sm">
+              Post a job
+            </Link>
+          }
+        />
+      ) : (
+        <JobTable jobs={filteredJobs} getApplicantCount={getApplicantCount} />
       )}
     </>
   );
