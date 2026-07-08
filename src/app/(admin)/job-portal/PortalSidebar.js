@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { usePortal } from './PortalContext';
 import { IconCandidates, IconDashboard, IconJobs, IconSettings } from './components/PortalIcons';
 import { useConfirm } from '@/components/ConfirmProvider';
+import BrandMark from '@/components/BrandMark';
 
 const NAV = [
   { href: '/job-portal/dashboard', label: 'Dashboard', Icon: IconDashboard },
@@ -41,7 +42,9 @@ export default function PortalSidebar() {
     <aside className="portal-sidebar">
       <div className="portal-sidebar-top">
         <Link href="/job-portal/dashboard" className="portal-brand">
-          <span className="portal-brand-mark" aria-hidden="true" />
+          <span className="portal-brand-mark" aria-hidden="true">
+            <BrandMark size={18} />
+          </span>
           <div className="portal-brand-text">
             <strong>Blvck Sapphire</strong>
             <span>Employer</span>

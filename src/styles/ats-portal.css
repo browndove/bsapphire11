@@ -89,6 +89,14 @@
   border: 1px solid #333333;
   background: #0a0a0a;
   flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: #ededed;
+}
+
+.portal-brand-mark svg {
+  display: block;
 }
 
 .portal-brand-text strong {

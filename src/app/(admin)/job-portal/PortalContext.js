@@ -12,6 +12,7 @@ import {
   fetchCategories,
   fetchDashboard,
   fetchEmployerApplications,
+  fetchEmployerJob,
   fetchEmployerJobs,
   fetchMe,
   logoutApi,
@@ -301,11 +302,13 @@ export function PortalProvider({ children }) {
   const removeJob = async (id) => {
     if (previewMode) {
       setJobs((prev) => prev.filter((j) => j.id !== id));
+      setApplications((prev) => prev.filter((a) => a.jobId !== id));
       return;
     }
 
     await deleteEmployerJob(id);
     setJobs((prev) => prev.filter((j) => j.id !== id));
+    setApplications((prev) => prev.filter((a) => a.jobId !== id));
   };
 
   const loadJobById = async (id) => {
@@ -315,13 +318,21 @@ export function PortalProvider({ children }) {
       return { ...found };
     }
 
-    const cached = jobs.find((j) => j.id === id);
-    if (cached) return { ...cached };
+    const res = await fetchEmployerJob(id);
+    const mapped = mapJobFromApi(res?.data || res, categoriesById);
+    if (!mapped) throw new Error('Job not found');
 
-    const res = await fetchEmployerJobs({ limit: 200, offset: 0 });
-    const found = getPaginatedItems(res).find((j) => j.id === id);
-    if (!found) throw new Error('Job not found');
-    return mapJobFromApi(found, categoriesById);
+    setJobs((prev) => {
+      const idx = prev.findIndex((j) => j.id === id);
+      if (idx >= 0) {
+        const next = [...prev];
+        next[idx] = { ...next[idx], ...mapped };
+        return next;
+      }
+      return [...prev, mapped];
+    });
+
+    return mapped;
   };
 
   const upsertApplication = async (app) => {

@@ -385,8 +385,18 @@ textarea:-webkit-autofill:focus {
 
 .footer-bottom { display: flex; flex-direction: column; gap: 1.5rem; border-top: 1px solid var(--border-color); padding-top: 2rem; color: var(--text-muted); font-size: 0.85rem; }
 .footer-legal { display: flex; flex-wrap: wrap; gap: 2rem; }
-.footer-legal a { color: var(--text-muted); }
-.footer-legal a:hover { color: var(--text-color); }
+.footer-legal a,
+.footer-legal .footer-manage-cookies {
+  color: var(--text-muted);
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  cursor: pointer;
+  text-decoration: none;
+}
+.footer-legal a:hover,
+.footer-legal .footer-manage-cookies:hover { color: var(--text-color); }
 
 @media (min-width: 768px) {
     .footer-bottom { flex-direction: row; justify-content: space-between; align-items: center; }

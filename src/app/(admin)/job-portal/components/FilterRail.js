@@ -17,6 +17,7 @@ export default function FilterRail({
   screeningQuestions,
   screeningFilters,
   onScreeningFiltersChange,
+  screeningFiltersLoading = false,
   onClear,
 }) {
   const jobOptions = [
@@ -78,12 +79,26 @@ export default function FilterRail({
           </div>
         </div>
 
-        {screeningQuestions?.length ? (
-          <ScreeningFilterChips
-            questions={screeningQuestions}
-            selectedFilters={screeningFilters}
-            onChange={onScreeningFiltersChange}
-          />
+        {selectedJob !== '__all' ? (
+          screeningQuestions?.length ? (
+            <ScreeningFilterChips
+              questions={screeningQuestions}
+              selectedFilters={screeningFilters}
+              onChange={onScreeningFiltersChange}
+            />
+          ) : (
+            <div className="ats-filter-section">
+              <span className="ats-field-label">Screening answers</span>
+              {screeningFiltersLoading ? (
+                <p className="ats-filter-hint">Loading screening filters…</p>
+              ) : (
+                <p className="ats-filter-hint">
+                  No screening filters yet. Add choice questions on the job posting and enable
+                  recruiter filters, or wait for candidates to submit answers.
+                </p>
+              )}
+            </div>
+          )
         ) : null}
 
         <button type="button" className="btn btn-outline btn-sm ats-filter-clear" onClick={onClear}>

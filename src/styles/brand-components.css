@@ -337,6 +337,29 @@ select option {
   border: none;
 }
 
+.login-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.65rem;
+  margin-bottom: 1.25rem;
+  color: var(--text-color);
+}
+
+.login-brand svg {
+  display: block;
+  flex-shrink: 0;
+  color: #ededed;
+}
+
+.login-brand span {
+  font-family: var(--font-heading);
+  font-size: 0.95rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-color);
+}
+
 .demo-form-box h3,
 .login-card h1 {
   font-size: 1.75rem;

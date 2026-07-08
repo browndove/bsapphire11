@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { usePortal } from '../PortalContext';
 import { toUserMessage } from '@/lib/job-api/errors';
+import BrandMark from '@/components/BrandMark';
 
 function QrCode({ value }) {
   if (!value) return null;
@@ -85,6 +86,10 @@ export default function Login() {
     <div className="login-shell">
       <div className="login-accent-bar"></div>
       <div className="login-card">
+        <div className="login-brand">
+          <BrandMark size={28} />
+          <span>Blvck Sapphire</span>
+        </div>
         <h1>Recruiting portal</h1>
         {step === 'credentials' ? (
           <>

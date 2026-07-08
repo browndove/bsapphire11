@@ -165,6 +165,56 @@ export function mapApplicationSubmitToApi({ jobId, coverLetter, resumeUrl, answe
   return body;
 }
 
+export function deriveScreeningFiltersFromApplications(applications, jobQuestions = []) {
+  const byId = Object.fromEntries((jobQuestions || []).map((q) => [q.id, q]));
+  const buckets = new Map();
+
+  for (const app of applications || []) {
+    for (const [qid, value] of Object.entries(app.answers || {})) {
+      const meta = byId[qid];
+      if (meta?.type === 'text') continue;
+
+      if (!buckets.has(qid)) {
+        buckets.set(qid, {
+          id: qid,
+          label: meta?.label || qid.replace(/^sq_/, '').replace(/_/g, ' '),
+          type: meta?.type || (Array.isArray(value) ? 'multi' : 'single'),
+          filterable: true,
+          options: new Set(),
+        });
+      }
+
+      const bucket = buckets.get(qid);
+      if (Array.isArray(value)) {
+        value.forEach((v) => {
+          if (v != null && String(v).trim()) bucket.options.add(String(v).trim());
+        });
+      } else if (value != null && String(value).trim()) {
+        bucket.options.add(String(value).trim());
+      }
+    }
+  }
+
+  return [...buckets.values()]
+    .filter((q) => q.options.size > 0)
+    .map((q) => ({ ...q, options: [...q.options].sort() }));
+}
+
+export function getFilterableScreeningQuestions(jobQuestions = [], applications = []) {
+  const questions = jobQuestions || [];
+  const filterable = questions.filter(
+    (q) => q.filterable && q.type !== 'text' && (q.options || []).length
+  );
+  if (filterable.length) return filterable;
+
+  const choiceQuestions = questions.filter(
+    (q) => q.type !== 'text' && (q.options || []).length
+  );
+  if (choiceQuestions.length) return choiceQuestions;
+
+  return deriveScreeningFiltersFromApplications(applications, questions);
+}
+
 export function formatAnswerValue(value) {
   if (Array.isArray(value)) return value.join(', ');
   return value != null ? String(value) : '';

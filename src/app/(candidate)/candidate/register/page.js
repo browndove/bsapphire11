@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCandidate } from '../CandidateContext';
 import CandidateAuthForm from '@/components/candidate/CandidateAuthForm';
+import BrandMark from '@/components/BrandMark';
 
 function CandidateRegisterInner() {
   const router = useRouter();
@@ -27,6 +28,10 @@ function CandidateRegisterInner() {
   return (
     <div className="login-shell">
       <div className="login-card ats-form">
+        <div className="login-brand">
+          <BrandMark size={28} />
+          <span>Blvck Sapphire</span>
+        </div>
         <h1>Create candidate account</h1>
         <CandidateAuthForm
           showFlowSteps

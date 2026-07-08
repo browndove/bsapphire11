@@ -6,6 +6,9 @@ const spaceGrotesk = Space_Grotesk({ subsets: ['latin'], variable: '--font-headi
 
 export const metadata = {
   title: 'Recruiting portal | Blvck Sapphire',
+  icons: {
+    icon: '/favicon.svg',
+  },
   robots: {
     index: false,
     follow: false

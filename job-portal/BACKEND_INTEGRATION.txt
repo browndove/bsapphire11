@@ -17,7 +17,7 @@ EMPLOYER PORTAL (/job-portal)
 -----------------------------
 - Login: email + password → 2FA challenge → `/auth/2fa/verify` → JWT in sessionStorage
 - Employer role required (`role = employer`)
-- Jobs: GET/POST `/employer/jobs`, PATCH `/employer/jobs/:id`
+- Jobs: GET/POST `/employer/jobs`, GET/PATCH/DELETE `/employer/jobs/:id`
 - Applications: GET `/employer/applications`, PATCH `/employer/applications/:id/status`
 - Tokens sent as `Authorization: Bearer <access_token>` via BFF proxy
 

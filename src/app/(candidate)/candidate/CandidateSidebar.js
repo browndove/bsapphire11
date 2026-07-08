@@ -5,6 +5,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useCandidate } from './CandidateContext';
 import { IconApplications, IconProfile } from '@/app/(admin)/job-portal/components/PortalIcons';
 import { useConfirm } from '@/components/ConfirmProvider';
+import BrandMark from '@/components/BrandMark';
 
 const NAV = [
   { href: '/candidate/applications', label: 'My applications', Icon: IconApplications },
@@ -24,7 +25,9 @@ export default function CandidateSidebar() {
     <aside className="portal-sidebar">
       <div className="portal-sidebar-top">
         <Link href="/candidate/applications" className="portal-brand">
-          <span className="portal-brand-mark" aria-hidden="true" />
+          <span className="portal-brand-mark" aria-hidden="true">
+            <BrandMark size={18} />
+          </span>
           <div className="portal-brand-text">
             <strong>Blvck Sapphire</strong>
             <span>Candidate</span>

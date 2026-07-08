@@ -19,6 +19,10 @@ async function parseResponse(res, context) {
   if (!res.ok) {
     throw createHttpError(res, data, context);
   }
+  // DELETE and some success responses return 204 / empty body
+  if (!text || res.status === 204) {
+    return data || { ok: true };
+  }
   return data;
 }
 

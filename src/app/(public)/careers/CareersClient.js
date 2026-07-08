@@ -88,17 +88,9 @@ export default function CareersClient({ initialJobs, initialCategories, initialC
             <h1 className="hero-title" style={{ fontSize: '3.5rem', marginBottom: '1rem' }}>
               Open roles at {company?.name || 'Blvck Sapphire'}
             </h1>
-            <p className="hero-desc" style={{ maxWidth: '600px', margin: '0 auto 1.25rem' }}>
-              {company?.description || 'Live postings from our job portal. Create a candidate account to apply and track applications with two-factor authentication.'}
+            <p className="hero-desc" style={{ maxWidth: '600px', margin: '0 auto' }}>
+              {company?.description || "Join the architects of infinite scale. We're looking for visionary thinkers to build the resilient automation layers of tomorrow."}
             </p>
-            <div style={{ display: 'flex', gap: '0.75rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-              <Link href="/candidate/register" className="btn btn-primary btn-sm">
-                Create account
-              </Link>
-              <Link href="/candidate/applications" className="btn btn-outline btn-sm">
-                My applications
-              </Link>
-            </div>
           </div>
         </header>
 

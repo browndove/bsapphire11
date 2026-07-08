@@ -97,7 +97,17 @@ export default function Footer() {
             <Link href="#">Privacy Policy</Link>
             <Link href="#">Terms of Sale</Link>
             <Link href="#">Website Terms of Use</Link>
-            <a href="#" id="manage-cookies-link">Manage Cookies</a>
+            <button
+              type="button"
+              id="manage-cookies-link"
+              className="footer-manage-cookies"
+              onClick={(e) => {
+                e.preventDefault();
+                window.dispatchEvent(new Event('blvcksapphire:manage-cookies'));
+              }}
+            >
+              Manage Cookies
+            </button>
           </div>
           <p>&copy; {new Date().getFullYear()} Blvck Sapphire. All rights reserved.</p>
         </div>

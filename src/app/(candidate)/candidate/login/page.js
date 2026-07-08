@@ -8,6 +8,7 @@ import CandidateAuthForm from '@/components/candidate/CandidateAuthForm';
 import { fetchPublicJob } from '@/lib/job-api/client';
 import { jobIdFromReturnTo } from '@/lib/job-api/candidate-routes';
 import { mapPublicJobFromApi } from '@/lib/job-api/mappers';
+import BrandMark from '@/components/BrandMark';
 
 function CandidateLoginInner() {
   const router = useRouter();
@@ -45,6 +46,10 @@ function CandidateLoginInner() {
   return (
     <div className="login-shell">
       <div className="login-card ats-form">
+        <div className="login-brand">
+          <BrandMark size={28} />
+          <span>Blvck Sapphire</span>
+        </div>
         <h1>{applyJobTitle ? 'Apply for this role' : 'Candidate portal'}</h1>
         <p className="hint" style={{ marginBottom: '1.25rem' }}>
           {applyJobTitle

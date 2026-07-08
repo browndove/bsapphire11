@@ -4,6 +4,7 @@ import React, { useState, useEffect, Suspense, useMemo, useCallback } from 'reac
 import { useRouter, useSearchParams } from 'next/navigation';
 import { usePortal } from '../PortalContext';
 import { toUserMessage } from '@/lib/job-api/errors';
+import { getFilterableScreeningQuestions } from '@/lib/job-api/mappers';
 import PortalHeader from '../components/PortalHeader';
 import ViewToggle from '../components/ViewToggle';
 import FilterRail from '../components/FilterRail';
@@ -28,6 +29,7 @@ function ApplicationsInbox() {
     PIPELINE_STATUSES,
     moveApplication,
     loadApplications,
+    loadJobById,
   } = usePortal();
 
   const [selectedJob, setSelectedJob] = useState(jobParam || '__all');
@@ -40,18 +42,23 @@ function ApplicationsInbox() {
   const [serverApps, setServerApps] = useState(null);
   const [serverTotal, setServerTotal] = useState(0);
   const [loadingApps, setLoadingApps] = useState(false);
+  const [selectedJobDetail, setSelectedJobDetail] = useState(null);
+  const [loadingJobDetail, setLoadingJobDetail] = useState(false);
 
   const selectedJobRecord = useMemo(
-    () => (selectedJob !== '__all' ? jobs.find((j) => j.id === selectedJob) : null),
-    [jobs, selectedJob]
+    () => selectedJobDetail || (selectedJob !== '__all' ? jobs.find((j) => j.id === selectedJob) : null),
+    [selectedJobDetail, selectedJob, jobs]
   );
 
+  const jobApplications = useMemo(() => {
+    if (selectedJob === '__all') return [];
+    if (serverApps) return serverApps;
+    return allApplications.filter((a) => a.jobId === selectedJob);
+  }, [selectedJob, serverApps, allApplications]);
+
   const filterableQuestions = useMemo(
-    () =>
-      (selectedJobRecord?.screeningQuestions || []).filter(
-        (q) => q.filterable && q.type !== 'text' && (q.options || []).length
-      ),
-    [selectedJobRecord]
+    () => getFilterableScreeningQuestions(selectedJobRecord?.screeningQuestions, jobApplications),
+    [selectedJobRecord, jobApplications]
   );
 
   useEffect(() => {
@@ -74,6 +81,32 @@ function ApplicationsInbox() {
   useEffect(() => {
     setScreeningFilters({});
   }, [selectedJob]);
+
+  useEffect(() => {
+    if (!isReady || !isAuthed || selectedJob === '__all') {
+      setSelectedJobDetail(null);
+      setLoadingJobDetail(false);
+      return undefined;
+    }
+
+    let cancelled = false;
+    setLoadingJobDetail(true);
+    loadJobById(selectedJob)
+      .then((job) => {
+        if (!cancelled) setSelectedJobDetail(job);
+      })
+      .catch(() => {
+        const fallback = jobs.find((j) => j.id === selectedJob) || null;
+        if (!cancelled) setSelectedJobDetail(fallback);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingJobDetail(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [isReady, isAuthed, selectedJob, loadJobById, jobs]);
 
   useEffect(() => {
     if (!isReady || !isAuthed) return undefined;
@@ -208,6 +241,7 @@ function ApplicationsInbox() {
           screeningQuestions={filterableQuestions}
           screeningFilters={screeningFilters}
           onScreeningFiltersChange={setScreeningFilters}
+          screeningFiltersLoading={loadingJobDetail}
           onClear={clearFilters}
         />
 

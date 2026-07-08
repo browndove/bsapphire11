@@ -28,6 +28,10 @@ export async function apiRequest(path, options = {}, context) {
     throw createHttpError(res, data, context);
   }
 
+  if (!text || res.status === 204) {
+    return data || { ok: true };
+  }
+
   return data;
 }
 
