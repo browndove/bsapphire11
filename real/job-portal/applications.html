@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Applications inbox | Recruiting portal</title>
+  <link rel="stylesheet" href="assets/portal.css">
+</head>
+<body>
+  <div class="portal-shell">
+    <div id="portal-sidebar-mount"></div>
+    <div class="portal-main">
+      <div class="portal-topbar">
+        <div class="portal-head-block" style="flex:1;min-width:220px;margin-bottom:0;">
+          <h1 class="portal-title">Applications inbox</h1>
+          <p class="hint">Pick a posting, search by candidate, tighten with stage, then drill into screening answers.</p>
+        </div>
+        <button type="button" class="btn btn-ghost btn-sm" id="export-csv" title="Download current table as CSV">
+          Export CSV
+        </button>
+      </div>
+
+      <div class="help-callout" style="margin-top:1.25rem;">
+        <strong style="color:var(--text);">Tip:</strong> Row filters come from each job&apos;s posting. Change the posting to change what you can slice on here.
+      </div>
+
+      <div class="toolbar">
+        <div>
+          <label class="field" for="pick-job">Posting</label>
+          <select id="pick-job"></select>
+        </div>
+        <div>
+          <label class="field" for="stage-filter">Stage</label>
+          <select id="stage-filter"></select>
+        </div>
+        <div class="search-field">
+          <label class="field" for="q-search">Search</label>
+          <input type="search" id="q-search" placeholder="Name, email, phone…">
+        </div>
+        <div class="toolbar-spacer"></div>
+        <button type="button" class="btn btn-ghost btn-sm" id="clear-filters">Clear all filters</button>
+      </div>
+
+      <div class="filter-panel" id="filter-panel" style="display:none;"></div>
+
+      <div class="card-table-shell">
+        <div class="table-wrap">
+          <table class="data">
+            <thead>
+              <tr>
+                <th>Candidate</th>
+                <th>Posting</th>
+                <th>Stage</th>
+                <th>Applied</th>
+                <th>Source</th>
+                <th>Screening highlights</th>
+                <th style="width:7rem;"></th>
+              </tr>
+            </thead>
+            <tbody id="apps-body"></tbody>
+          </table>
+        </div>
+      </div>
+      <p class="hint" id="apps-summary" style="margin-top:0.85rem;"></p>
+    </div>
+  </div>
+
+  <script src="assets/mock-store.js"></script>
+  <script src="assets/portal.js"></script>
+  <script>
+    if (!PortalAuth.isAuthed()) window.location.href = 'login.html';
+    else {
+    portalBootstrap();
+
+    var selectedFilters = {};
+    var SEARCH = '';
+    var STAGE_FILTER = '__all';
+
+    function escapeHtml(s) {
+      return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    function formatAnswersBrief(app, maxLen) {
+      maxLen = maxLen || 72;
+      var s = formatAnswersFlat(app);
+      if (s.length <= maxLen) return s;
+      return s.slice(0, maxLen - 1) + '\u2026';
+    }
+
+    function formatAnswersFlat(app) {
+      return Object.keys(app.answers || {})
+        .map(function (qid) {
+          var val = app.answers[qid];
+          if (Array.isArray(val)) return val.join(' + ');
+          return String(val);
+        })
+        .join(' · ');
+    }
+
+    function jobMatchesPosting(appJobId, pickValue) {
+      if (!pickValue || pickValue === '__all') return true;
+      return appJobId === pickValue;
+    }
+
+    function matchesQuestions(app, job) {
+      if (!job) return true;
+      var qs = job.screeningQuestions || [];
+      for (var i = 0; i < qs.length; i++) {
+        var q = qs[i];
+        if (!q.filterable || !selectedFilters[q.id] || !selectedFilters[q.id].length) continue;
+
+        var want = selectedFilters[q.id];
+        var got = app.answers && app.answers[q.id];
+
+        if (q.type === 'multi') {
+          var cand = Array.isArray(got) ? got : got ? [got] : [];
+          var overlap = want.some(function (w) {
+            return cand.indexOf(w) !== -1;
+          });
+          if (!overlap) return false;
+        } else {
+          if (want.indexOf(got) === -1) return false;
+        }
+      }
+      return true;
+    }
+
+    function matchesSearch(app) {
+      if (!SEARCH) return true;
+      var blob = (
+        app.candidateName +
+        ' ' +
+        app.email +
+        ' ' +
+        (app.phone || '') +
+        ' ' +
+        formatAnswersFlat(app)
+      ).toLowerCase();
+      return blob.indexOf(SEARCH) !== -1;
+    }
+
+    function matchesStage(app) {
+      if (STAGE_FILTER === '__all') return true;
+      return app.status === STAGE_FILTER;
+    }
+
+    function stageBadge(status) {
+      var lbl = PortalStages.labels[status] || status;
+      var cls = PortalStages.tagClassByStatus[status] || 'tag-closed';
+      return '<span class="tag ' + cls + '">' + escapeHtml(lbl) + '</span>';
+    }
+
+    function chipsAppend(chipRow, options) {
+      chipRow.innerHTML = '';
+      var qid = chipRow.getAttribute('data-q');
+      var mode = chipRow.getAttribute('data-mode');
+      options.forEach(function (opt) {
+        var b = document.createElement('button');
+        b.type = 'button';
+        b.className = 'filter-chip';
+        b.textContent = opt;
+        b.addEventListener('click', function () {
+          if (!selectedFilters[qid]) selectedFilters[qid] = [];
+          if (mode === 'single') {
+            chipRow.querySelectorAll('.filter-chip').forEach(function (x) {
+              x.classList.remove('is-on');
+            });
+            if (selectedFilters[qid][0] === opt) selectedFilters[qid] = [];
+            else {
+              selectedFilters[qid] = [opt];
+              b.classList.add('is-on');
+            }
+          } else {
+            var idx = selectedFilters[qid].indexOf(opt);
+            if (idx === -1) {
+              selectedFilters[qid].push(opt);
+              b.classList.add('is-on');
+            } else {
+              selectedFilters[qid].splice(idx, 1);
+              b.classList.remove('is-on');
+            }
+          }
+          refreshTable();
+        });
+        chipRow.appendChild(b);
+      });
+    }
+
+    function renderFilters(job) {
+      var panel = document.getElementById('filter-panel');
+      panel.innerHTML = '';
+      selectedFilters = {};
+      if (!job || !(job.screeningQuestions || []).length) {
+        panel.style.display = 'none';
+        refreshTable();
+        return;
+      }
+
+      var any = job.screeningQuestions.some(function (q) {
+        return q.filterable && q.options && q.options.length && q.type !== 'text';
+      });
+      if (!any) {
+        panel.style.display = 'none';
+        refreshTable();
+        return;
+      }
+
+      panel.style.display = 'block';
+      panel.innerHTML = '<h3>Screening filters (this posting)</h3><div class="filter-rows"></div>';
+      var rows = panel.querySelector('.filter-rows');
+
+      job.screeningQuestions.forEach(function (q) {
+        if (!q.filterable || !q.options || !q.options.length || q.type === 'text')
+          return;
+        selectedFilters[q.id] = [];
+
+        var row = document.createElement('div');
+        row.className = 'filter-row';
+        row.innerHTML =
+          '<label>' +
+          escapeHtml(q.label) +
+          '</label><div class="chip-row" data-q="' +
+          escapeHtml(q.id) +
+          '" data-mode="' +
+          escapeHtml(q.type) +
+          '"></div>';
+        chipsAppend(row.querySelector('.chip-row'), q.options);
+        rows.appendChild(row);
+      });
+
+      refreshTable();
+    }
+
+    function csvEscape(v) {
+      var s = String(v == null ? '' : v);
+      if (/[",\n]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+      return s;
+    }
+
+    function buildFilteredApps() {
+      var pick = document.getElementById('pick-job').value;
+      var apps = PortalStore.getApplications().slice().reverse();
+      var job = PortalStore.getJob(pick);
+      return apps.filter(function (a) {
+        return (
+          jobMatchesPosting(a.jobId, pick) &&
+          matchesQuestions(a, pick ? job : null) &&
+          matchesSearch(a) &&
+          matchesStage(a)
+        );
+      });
+    }
+
+    function exportCsv() {
+      var rows = buildFilteredApps();
+      var jobsMap = PortalStore.getJobs().reduce(function (m, j) {
+        m[j.id] = j.title;
+        return m;
+      }, {});
+      var header = ['Application id', 'Candidate', 'Email', 'Phone', 'Posting', 'Stage', 'Source', 'Submitted', 'Screening'];
+      var lines = [header.map(csvEscape).join(',')];
+      rows.forEach(function (a) {
+        lines.push(
+          [
+            a.id,
+            a.candidateName,
+            a.email,
+            a.phone,
+            jobsMap[a.jobId] || a.jobId,
+            PortalStages.labels[a.status] || a.status,
+            a.source || '',
+            a.submittedAt || '',
+            formatAnswersFlat(a)
+          ]
+            .map(csvEscape)
+            .join(',')
+        );
+      });
+      var csv = '\uFEFF' + lines.join('\n');
+      var blob = new Blob([csv], {
+        type: 'text/csv;charset=utf-8'
+      });
+      var a = document.createElement('a');
+      var stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');
+      a.download = 'applications-' + stamp + '.csv';
+      a.href = URL.createObjectURL(blob);
+      a.click();
+      URL.revokeObjectURL(a.href);
+    }
+
+    function refreshTable() {
+      var pick = document.getElementById('pick-job').value;
+      var appsPool = PortalStore.getApplications().slice().reverse();
+      var filtered = buildFilteredApps();
+      var bucket = appsPool.filter(function (a) {
+        return jobMatchesPosting(a.jobId, pick);
+      }).length;
+
+      var jobsMap = PortalStore.getJobs().reduce(function (m, j) {
+        m[j.id] = j.title;
+        return m;
+      }, {});
+
+      document.getElementById('apps-body').innerHTML = filtered.length
+        ? filtered
+            .map(function (a) {
+              var detailHref =
+                'application-detail.html?id=' +
+                encodeURIComponent(a.id) +
+                '&job=' +
+                encodeURIComponent(a.jobId);
+              return (
+                '<tr class="click-row" data-app-id="' +
+                escapeHtml(a.id) +
+                '" data-detail-href="' +
+                escapeHtml(detailHref) +
+                '" role="button">' +
+                '<td><strong>' +
+                escapeHtml(a.candidateName) +
+                '</strong><br><span style="font-size:0.82rem;color:var(--muted);">' +
+                escapeHtml(a.email) +
+                '</span></td>' +
+                '<td>' +
+                escapeHtml(jobsMap[a.jobId] || a.jobId) +
+                '</td>' +
+                '<td>' +
+                stageBadge(a.status) +
+                '</td>' +
+                '<td style="white-space:nowrap;font-size:0.86rem;">' +
+                escapeHtml(
+                  String(a.submittedAt || '').replace('T', ' · ').slice(0, 16)
+                ) +
+                '</td>' +
+                '<td>' +
+                escapeHtml(a.source || '—') +
+                '</td>' +
+                '<td style="font-size:0.86rem;color:var(--muted);max-width:16rem;">' +
+                escapeHtml(formatAnswersBrief(a)) +
+                '</td>' +
+                '<td class="table-actions"><a class="btn btn-primary btn-sm" href="' +
+                detailHref +
+                '">Review</a></td>' +
+                '</tr>'
+              );
+            })
+            .join('')
+        :
+            '<tr><td colspan="7" style="padding:2.75rem;"><div class="hint" style="text-align:center;">No applications match. Widen posting, reset stage/search, or clear screening chips.</div></td></tr>';
+
+      document.getElementById('apps-summary').textContent =
+        'Showing ' +
+        filtered.length +
+        ' match' +
+        (filtered.length !== 1 ? 'es' : '') +
+        ' from ' +
+        bucket +
+        (pick === '__all'
+          ? ' applicant(s) company-wide.'
+          : ' applicant(s) for this posting.') +
+        ' Filters may hide some rows.';
+    }
+
+    function populateStageFilter() {
+      var sel = document.getElementById('stage-filter');
+      var opts = [['__all', 'Every stage']].concat(
+        PortalStore.PIPELINE_STATUSES.map(function (k) {
+          return [k, PortalStages.labels[k] || k];
+        })
+      );
+      sel.innerHTML = opts
+        .map(function (o) {
+          return (
+            '<option value="' +
+            escapeHtml(o[0]) +
+            '">' +
+            escapeHtml(o[1]) +
+            '</option>'
+          );
+        })
+        .join('');
+      sel.value = STAGE_FILTER;
+    }
+
+    (function bootstrap() {
+      var jobs = PortalStore.getJobs();
+      var sel = document.getElementById('pick-job');
+      sel.innerHTML =
+        '<option value="__all">All postings</option>' +
+        jobs
+          .map(function (j) {
+            return (
+              '<option value="' +
+              escapeHtml(j.id) +
+              '">' +
+              escapeHtml(j.title) +
+              '</option>'
+            );
+          })
+          .join('');
+
+      populateStageFilter();
+
+      var want = new URLSearchParams(location.search).get('job');
+      if (want && PortalStore.getJob(want)) sel.value = want;
+
+      sel.addEventListener('change', function () {
+        SEARCH = document.getElementById('q-search').value.trim().toLowerCase();
+        renderFilters(sel.value !== '__all' ? PortalStore.getJob(sel.value) : null);
+        history.replaceState(
+          null,
+          '',
+          sel.value && sel.value !== '__all'
+            ? 'applications.html?job=' + encodeURIComponent(sel.value)
+            : 'applications.html'
+        );
+      });
+
+      document.getElementById('stage-filter').addEventListener('change', function () {
+        STAGE_FILTER = this.value;
+        refreshTable();
+      });
+
+      document.getElementById('q-search').addEventListener('input', function () {
+        SEARCH = this.value.trim().toLowerCase();
+        refreshTable();
+      });
+
+      document.getElementById('clear-filters').addEventListener('click', function () {
+        document.getElementById('q-search').value = '';
+        SEARCH = '';
+        STAGE_FILTER = '__all';
+        document.getElementById('stage-filter').value = '__all';
+        sel.dispatchEvent(new Event('change'));
+      });
+
+      document.getElementById('export-csv').addEventListener('click', exportCsv);
+
+      document.getElementById('apps-body').addEventListener('click', function (e) {
+        if (e.target.closest('a')) return;
+        var tr = e.target.closest('tr[data-detail-href]');
+        if (tr) window.location.href = tr.getAttribute('data-detail-href');
+      });
+
+      document.getElementById('apps-body').addEventListener('keydown', function (e) {
+        if (e.key !== 'Enter') return;
+        var tr = e.target.closest('tr[data-detail-href]');
+        if (tr) window.location.href = tr.getAttribute('data-detail-href');
+      });
+
+      sel.dispatchEvent(new Event('change'));
+    })();
+    }
+  </script>
+</body>
+</html>

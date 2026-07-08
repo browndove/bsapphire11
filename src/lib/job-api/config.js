@@ -1,8 +1,13 @@
+const DEFAULT_LOCAL_API_BASE_URL = 'http://localhost:8080/api/v1';
+const DEFAULT_PRODUCTION_API_BASE_URL = 'https://jobportal.blvcksapphire.com/api/v1';
+
 export function getApiBaseUrl() {
   return (
     process.env.JOB_API_BASE_URL ||
     process.env.NEXT_PUBLIC_JOB_API_BASE_URL ||
-    'http://localhost:8080/api/v1'
+    (process.env.NODE_ENV === 'production'
+      ? DEFAULT_PRODUCTION_API_BASE_URL
+      : DEFAULT_LOCAL_API_BASE_URL)
   );
 }
 

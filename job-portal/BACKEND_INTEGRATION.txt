@@ -4,11 +4,11 @@ JOB PORTAL — API INTEGRATION
 The Next.js app proxies the job portal API through same-origin BFF routes under
 `/api/job-portal/*` and `/api/public/*`.
 
-Configure the upstream API in `.env.local`:
+Configure the upstream API in `.env.local` (local) and in your hosting provider's environment variables (production):
 
-  JOB_API_BASE_URL=http://54.167.127.2:8090/api/v1
+  JOB_API_BASE_URL=https://jobportal.blvcksapphire.com/api/v1
 
-Local backend:
+If unset in production, the app defaults to the URL above. Local dev defaults to:
 
   JOB_API_BASE_URL=http://localhost:8080/api/v1
 

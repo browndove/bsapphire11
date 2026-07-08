@@ -1,5 +1,5 @@
 import { getApiBaseUrl } from './config';
-import { createHttpError } from './errors';
+import { createHttpError, toUserMessage } from './errors';
 
 export async function apiRequest(path, options = {}, context) {
   const url = `${getApiBaseUrl().replace(/\/$/, '')}${path}`;
@@ -8,11 +8,20 @@ export async function apiRequest(path, options = {}, context) {
     ...options.headers,
   };
 
-  const res = await fetch(url, {
-    ...options,
-    headers,
-    cache: 'no-store',
-  });
+  let res;
+  try {
+    res = await fetch(url, {
+      ...options,
+      headers,
+      cache: 'no-store',
+    });
+  } catch (err) {
+    const networkErr = new Error('Could not reach the job portal API.');
+    networkErr.status = 502;
+    networkErr.cause = err;
+    networkErr.message = toUserMessage(networkErr, context);
+    throw networkErr;
+  }
 
   let data = null;
   const text = await res.text();

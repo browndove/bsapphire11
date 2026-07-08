@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Job postings | Recruiting portal</title>
+  <link rel="stylesheet" href="assets/portal.css">
+</head>
+<body>
+  <div class="portal-shell">
+    <div id="portal-sidebar-mount"></div>
+    <div class="portal-main">
+      <div class="portal-topbar">
+        <div class="portal-head-block" style="flex:1;min-width:220px;margin-bottom:0;">
+          <h1 class="portal-title">Job postings</h1>
+          <p class="hint">Draft vs published separates what recruiters prep internally from jobs that mirror the careers site.</p>
+        </div>
+        <div class="toolbar" style="margin:0;">
+          <a href="posting-edit.html" class="btn btn-primary">New posting</a>
+          <button type="button" class="btn btn-ghost btn-sm" id="btn-reset-demo">Reload demo seed</button>
+        </div>
+      </div>
+
+      <div class="card-table-shell">
+        <div class="table-wrap">
+        <table class="data" id="jobs-table">
+          <thead>
+            <tr>
+              <th>Title</th>
+              <th>Team</th>
+              <th>Status</th>
+              <th>Screeners</th>
+              <th>Updated</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody id="jobs-tbody"></tbody>
+        </table>
+        </div>
+      </div>
+      <div id="empty-jobs" class="empty" style="display:none;">
+        <strong>No postings yet</strong>
+        Use &ldquo;New posting&rdquo; or reload the demo dataset.
+      </div>
+    </div>
+  </div>
+
+  <script src="assets/mock-store.js"></script>
+  <script src="assets/portal.js"></script>
+  <script>
+    if (!PortalAuth.isAuthed()) window.location.href = 'login.html';
+    else {
+    portalBootstrap();
+
+    function tagClass(status) {
+      if (status === 'published') return 'tag-published';
+      if (status === 'draft') return 'tag-draft';
+      return 'tag-closed';
+    }
+
+    function render() {
+      var jobs = PortalStore.getJobs();
+      var tbody = document.getElementById('jobs-tbody');
+      var empty = document.getElementById('empty-jobs');
+      if (!jobs.length) {
+        tbody.innerHTML = '';
+        empty.style.display = 'block';
+        return;
+      }
+      empty.style.display = 'none';
+      tbody.innerHTML = jobs
+        .map(function (j) {
+          var n =
+            j.screeningQuestions && j.screeningQuestions.length ? j.screeningQuestions.length : 0;
+          return (
+            '<tr>' +
+            '<td>' +
+            escapeHtml(j.title) +
+            '</td>' +
+            '<td>' +
+            escapeHtml(j.department || '—') +
+            '</td>' +
+            '<td><span class="tag ' +
+            tagClass(j.status) +
+            '">' +
+            escapeHtml(j.status) +
+            '</span></td>' +
+            '<td>' +
+            n +
+            '</td>' +
+            '<td>' +
+            escapeHtml(j.publishedAt || '—') +
+            '</td>' +
+            '<td style="white-space:nowrap;">' +
+            '<a href="posting-edit.html?id=' +
+            encodeURIComponent(j.id) +
+            '" class="btn btn-ghost btn-sm">Edit</a> ' +
+            '<a href="applications.html?job=' +
+            encodeURIComponent(j.id) +
+            '" class="btn btn-ghost btn-sm">Apps</a>' +
+            '</td>' +
+            '</tr>'
+          );
+        })
+        .join('');
+    }
+
+    function escapeHtml(s) {
+      return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
+
+    document.getElementById('btn-reset-demo').addEventListener('click', function () {
+      if (
+        confirm(
+          'Reset local demo data for jobs and applications? Your browser edits will be lost.'
+        )
+      ) {
+        PortalStore.resetSeed();
+        render();
+      }
+    });
+
+    render();
+    }
+  </script>
+</body>
+</html>

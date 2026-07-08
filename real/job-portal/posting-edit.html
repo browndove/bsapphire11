@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Edit posting | Recruiting portal</title>
+  <link rel="stylesheet" href="assets/portal.css">
+</head>
+<body>
+  <div class="portal-shell">
+    <div id="portal-sidebar-mount"></div>
+    <div class="portal-main">
+      <div class="portal-head-block">
+        <div>
+          <p class="hint" style="margin-bottom:0.35rem;">
+            <a href="postings.html" style="color:var(--muted);">&larr; Postings</a>
+          </p>
+          <h1 class="portal-title" id="page-heading">New posting</h1>
+          <p class="hint">Define what appears externally only after status is published. Screening blocks drive applicant form + filter chips.</p>
+        </div>
+      </div>
+
+      <div class="card">
+        <form id="job-form">
+          <input type="hidden" id="field-id">
+
+          <div class="form-grid cols-2" style="margin-bottom: 1rem;">
+            <div>
+              <label class="field" for="field-title">Job title</label>
+              <input type="text" id="field-title" required maxlength="140" placeholder="e.g. Staff Platform Engineer">
+            </div>
+            <div>
+              <label class="field" for="field-dept">Department</label>
+              <input type="text" id="field-dept" placeholder="Development, Marketing, …">
+            </div>
+            <div>
+              <label class="field" for="field-location">Location</label>
+              <input type="text" id="field-location" placeholder="Remote, Accra hybrid, …">
+            </div>
+            <div>
+              <label class="field" for="field-status">Status</label>
+              <select id="field-status">
+                <option value="draft">Draft (internal)</option>
+                <option value="published">Published (visible on careers)</option>
+                <option value="closed">Closed (hidden, keep history)</option>
+              </select>
+            </div>
+            <div>
+              <label class="field" for="field-published">Publication date</label>
+              <input type="text" id="field-published" placeholder="YYYY-MM-DD or leave blank for drafts">
+              <p class="field-hint">Backend can automate this timestamp on publish.</p>
+            </div>
+          </div>
+
+          <label class="field" for="field-desc">Public description HTML</label>
+          <textarea id="field-desc" placeholder="Rendered on public job page Rich text/HTML after sanitization …"></textarea>
+
+          <h3 style="margin: 1.5rem 0 0.65rem;">Screening questions</h3>
+          <p class="hint">Each block can populate the public apply form and, when marked filterable + options, feeds the recruiter filter toolbar.</p>
+          <button type="button" class="btn btn-ghost btn-sm" id="btn-add-q" style="margin:0.5rem 0 1rem;">Add question block</button>
+          <div id="questions-mount"></div>
+
+          <div class="toolbar" style="margin-top:1.5rem;">
+            <button type="submit" class="btn btn-primary">Save posting</button>
+            <a href="postings.html" class="btn btn-ghost">Cancel</a>
+          </div>
+          <p class="hint" style="margin-top:1rem;" id="save-toast"></p>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <script src="assets/mock-store.js"></script>
+  <script src="assets/portal.js"></script>
+  <script>
+    if (!PortalAuth.isAuthed()) window.location.href = 'login.html';
+    else {
+    portalBootstrap();
+
+    function paramId() {
+      var q = new URLSearchParams(location.search).get('id');
+      return q || null;
+    }
+
+    function newQuestionId() {
+      return 'sq_' + Math.random().toString(36).slice(2, 10);
+    }
+
+    function serializeQuestions() {
+      var blocks = document.querySelectorAll('[data-q-block]');
+      var out = [];
+      blocks.forEach(function (el, idx) {
+        var optsRaw = el.querySelector('[data-q-options]').value;
+        var options = optsRaw
+          .split('\n')
+          .map(function (s) {
+            return s.trim();
+          })
+          .filter(Boolean);
+        out.push({
+          id: el.getAttribute('data-q-id'),
+          label: el.querySelector('[data-q-label]').value.trim(),
+          type: el.querySelector('[data-q-type]').value,
+          filterable: el.querySelector('[data-q-filter]').checked && options.length > 0,
+          options: options
+        });
+      });
+      return out.filter(function (q) {
+        return q.label;
+      });
+    }
+
+    function addQuestionBlock(prefill) {
+      var wrap = document.getElementById('questions-mount');
+      var id =
+        (prefill && prefill.id) || newQuestionId();
+      var el = document.createElement('div');
+      el.className = 'q-block';
+      el.setAttribute('data-q-block', '');
+      el.setAttribute('data-q-id', id);
+      el.innerHTML =
+        '<div class="q-block-head">' +
+        '<strong>Question #' +
+        ([].slice.call(wrap.children).length + 1) +
+        '</strong>' +
+        '<button type="button" class="btn btn-danger btn-sm" data-remove-q>Remove</button>' +
+        '</div>' +
+        '<label class="field">Question label</label>' +
+        '<input type="text" data-q-label placeholder="e.g. Years of Kotlin experience">' +
+        '<div style="margin-top:0.75rem;" class="form-grid cols-2">' +
+        '<div><label class="field">Answer shape</label>' +
+        '<select data-q-type>' +
+        '<option value="single">Single choice</option>' +
+        '<option value="multi">Multiple choice</option>' +
+        '<option value="text">Short text</option>' +
+        '</select>' +
+        '<p class="field-hint">Text answers are not chip-filterable here.</p></div>' +
+        '<div class="checkbox-row" style="align-self:end;padding-bottom:0.5rem;">' +
+        '<input type="checkbox" data-q-filter id="f_' +
+        id +
+        '">' +
+        '<label for="f_' +
+        id +
+        '">Use answers as filters</label>' +
+        '</div></div>' +
+        '<label class="field">Options (one per line)</label>' +
+        '<textarea data-q-options rows="3" placeholder="0–2 years&#10;3–5 years&#10;6+ years"></textarea>' +
+        '<p class="field-hint">Applicants pick from this list when not using free text.</p>';
+      wrap.appendChild(el);
+      el.querySelector('[data-q-label]').value = (prefill && prefill.label) || '';
+      el.querySelector('[data-q-type]').value = (prefill && prefill.type) || 'single';
+      el.querySelector('[data-q-options]').value = (prefill && prefill.options) ? prefill.options.join('\n') : '';
+      el.querySelector('[data-q-filter]').checked = !!(prefill && prefill.filterable);
+
+      el.querySelector('[data-remove-q]').addEventListener('click', function () {
+        el.remove();
+        renumberQs();
+      });
+      el.querySelector('[data-q-type]').addEventListener('change', function () {
+        var t = el.querySelector('[data-q-type]').value;
+        if (t === 'text') el.querySelector('[data-q-filter]').checked = false;
+      });
+    }
+
+    function renumberQs() {
+      document.querySelectorAll('[data-q-block]').forEach(function (el, i) {
+        el.querySelector('.q-block-head strong').textContent = 'Question #' + (i + 1);
+      });
+    }
+
+    (function init() {
+      var id = paramId();
+      var job =
+        id && PortalStore.getJob(id)
+          ? PortalStore.getJob(id)
+          : null;
+
+      if (job) {
+        document.getElementById('page-heading').textContent = 'Edit posting';
+        document.getElementById('field-id').value = job.id;
+        document.getElementById('field-title').value = job.title;
+        document.getElementById('field-dept').value = job.department || '';
+        document.getElementById('field-location').value = job.location || '';
+        document.getElementById('field-status').value = job.status || 'draft';
+        document.getElementById('field-published').value = job.publishedAt || '';
+        document.getElementById('field-desc').value = job.description || '';
+        (job.screeningQuestions || []).forEach(addQuestionBlock);
+      } else {
+        document.getElementById('page-heading').textContent = 'New posting';
+      }
+
+      if (!document.querySelector('[data-q-block]')) addQuestionBlock();
+
+      document.getElementById('btn-add-q').addEventListener('click', function () {
+        addQuestionBlock();
+        renumberQs();
+      });
+
+      document.getElementById('job-form').addEventListener('submit', function (e) {
+        e.preventDefault();
+        var title = document.getElementById('field-title').value.trim();
+        var hid = document.getElementById('field-id').value;
+        var newId =
+          hid || PortalStore.slugifyId(title);
+
+        var rec = {
+          id: newId,
+          title: title,
+          department: document.getElementById('field-dept').value.trim(),
+          location: document.getElementById('field-location').value.trim(),
+          status: document.getElementById('field-status').value,
+          publishedAt: document.getElementById('field-published').value.trim() || null,
+          description: document.getElementById('field-desc').value,
+          screeningQuestions: serializeQuestions()
+        };
+
+        if (rec.status === 'published' && !rec.publishedAt)
+          rec.publishedAt = new Date().toISOString().slice(0, 10);
+
+        PortalStore.upsertJob(rec);
+
+        document.getElementById('save-toast').textContent =
+          'Saved locally. Backend will PUT /jobs/' + encodeURIComponent(rec.id);
+
+        history.replaceState(null, '', 'posting-edit.html?id=' + encodeURIComponent(rec.id));
+        document.getElementById('field-id').value = rec.id;
+        document.getElementById('page-heading').textContent = 'Edit posting';
+      });
+    })();
+    }
+  </script>
+</body>
+</html>
