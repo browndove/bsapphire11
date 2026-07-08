@@ -6,6 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { usePortal, PortalStages } from '../../PortalContext';
 import { toUserMessage } from '@/lib/job-api/errors';
 import { formatDateTime } from '@/lib/job-api/format';
+import { formatAnswerValue } from '@/lib/job-api/mappers';
 import PortalHeader, { BreadcrumbLink } from '../../components/PortalHeader';
 import Avatar from '../../components/Avatar';
 import StageStepper from '../../components/StageStepper';
@@ -109,6 +110,19 @@ function ApplicationDetailView() {
     : STATUS_UPDATE_OPTIONS
   ).map((k) => ({ value: k, label: PortalStages.labels[k] || k }));
 
+  const screeningQuestions = job?.screeningQuestions || [];
+  const answerEntries = screeningQuestions.length
+    ? screeningQuestions.map((q) => ({
+        id: q.id,
+        label: q.label,
+        value: formatAnswerValue(app.answers?.[q.id]),
+      }))
+    : Object.entries(app.answers || {}).map(([id, value]) => ({
+        id,
+        label: id.replace(/^sq_/, '').replace(/_/g, ' '),
+        value: formatAnswerValue(value),
+      }));
+
   return (
     <>
       <PortalHeader
@@ -138,81 +152,139 @@ function ApplicationDetailView() {
 
       <QuickActions currentStatus={stage} onAction={handleQuickAction} saving={saving} />
 
-      {toast ? <p className="hint toast-success">{toast}</p> : null}
-      {error ? <p className="login-error is-visible">{error}</p> : null}
+      {toast ? <div className="ats-toast is-success">{toast}</div> : null}
+      {error ? <div className="ats-toast is-error">{error}</div> : null}
 
-      <div className="ats-detail-grid">
-        <div className="ats-panel">
-          <h3 className="ats-panel-title">Contact & job</h3>
-          <p className="contact-field">
-            <strong>Email</strong><br />
-            {app.email ? (
-              <a href={`mailto:${app.email}`}>{app.email}</a>
-            ) : (
-              <span className="hint">No email</span>
-            )}
-          </p>
-          <p className="contact-field">
-            <strong>Phone</strong><br />
-            <span>{app.phone || <span className="hint">No phone</span>}</span>
-          </p>
-          <p className="contact-field">
-            <strong>Job</strong><br />
-            {job ? (
-              <Link href={`/job-portal/postings/edit?id=${encodeURIComponent(job.id)}`}>
-                {job.title}
-                {job.location ? ` · ${job.location}` : ''}
-              </Link>
-            ) : (
-              app.jobTitle || app.jobId
-            )}
-          </p>
-          <p className="contact-field">
-            <strong>Source</strong><br />
-            <span>{app.source || 'Website'}</span>
-          </p>
-
-          <label className="ats-field-label field-spaced" htmlFor="cand-stage">Stage (manual)</label>
-          <CustomSelect
-            id="cand-stage"
-            value={stage}
-            onChange={setStage}
-            options={stageOptions}
-          />
-          <button
-            type="button"
-            className="btn btn-outline btn-sm"
-            style={{ marginTop: '0.75rem' }}
-            onClick={handleSave}
-            disabled={saving || stage === app.status}
-          >
-            {saving ? 'Saving…' : 'Save stage'}
-          </button>
-          <p className="hint" style={{ marginTop: '1rem' }}>
-            <Link href={backUrl}>&larr; Back to candidates</Link>
-          </p>
-        </div>
-
-        <div className="ats-panel">
-          <h3 className="ats-panel-title">Application materials</h3>
-          {app.coverLetter ? (
-            <div className="answer-block">
-              <strong>Cover letter</strong>
-              <span>{app.coverLetter}</span>
+      <div className="ats-candidate-detail">
+        <div className="ats-detail-grid">
+          <section className="ats-panel ats-detail-panel">
+            <div className="ats-panel-head">
+              <h3 className="ats-panel-title">Contact & job</h3>
             </div>
-          ) : (
-            <p className="hint">No cover letter provided.</p>
-          )}
-          {app.resumeUrl ? (
-            <p className="contact-field" style={{ marginTop: '1rem' }}>
-              <a href={app.resumeUrl} target="_blank" rel="noreferrer" className="btn btn-primary btn-sm">
-                View resume
-              </a>
-            </p>
-          ) : (
-            <p className="hint" style={{ marginTop: '1rem' }}>No resume uploaded.</p>
-          )}
+
+            <dl className="ats-meta-grid">
+              <div className="ats-meta-cell">
+                <dt className="ats-meta-label">Email</dt>
+                <dd className={`ats-meta-value${app.email ? '' : ' is-empty'}`}>
+                  {app.email ? (
+                    <a href={`mailto:${app.email}`}>{app.email}</a>
+                  ) : (
+                    'Not provided'
+                  )}
+                </dd>
+              </div>
+              <div className="ats-meta-cell">
+                <dt className="ats-meta-label">Phone</dt>
+                <dd className={`ats-meta-value${app.phone ? '' : ' is-empty'}`}>
+                  {app.phone || 'Not provided'}
+                </dd>
+              </div>
+              <div className="ats-meta-cell ats-meta-cell--wide">
+                <dt className="ats-meta-label">Job</dt>
+                <dd className="ats-meta-value">
+                  {job ? (
+                    <Link href={`/job-portal/postings/edit?id=${encodeURIComponent(job.id)}`}>
+                      {job.title}
+                      {job.location ? ` · ${job.location}` : ''}
+                    </Link>
+                  ) : (
+                    app.jobTitle || app.jobId
+                  )}
+                </dd>
+              </div>
+              <div className="ats-meta-cell">
+                <dt className="ats-meta-label">Source</dt>
+                <dd className="ats-meta-value">{app.source || 'Website'}</dd>
+              </div>
+            </dl>
+
+            <div className="ats-panel-divider" />
+
+            <div className="ats-stage-control">
+              <label className="ats-field-label" htmlFor="cand-stage">Update stage</label>
+              <div className="ats-stage-control-row">
+                <CustomSelect
+                  id="cand-stage"
+                  value={stage}
+                  onChange={setStage}
+                  options={stageOptions}
+                />
+                <button
+                  type="button"
+                  className="btn btn-primary btn-sm"
+                  onClick={handleSave}
+                  disabled={saving || stage === app.status}
+                >
+                  {saving ? 'Saving…' : 'Save'}
+                </button>
+              </div>
+            </div>
+
+            <div className="ats-panel-footer">
+              <Link href={backUrl} className="ats-back-link">&larr; Back to candidates</Link>
+            </div>
+          </section>
+
+          <section className="ats-panel ats-detail-panel">
+            <div className="ats-panel-head">
+              <h3 className="ats-panel-title">Application materials</h3>
+            </div>
+
+            <div className="ats-material-block">
+              <p className="ats-material-label">Cover letter</p>
+              {app.coverLetter ? (
+                <blockquote className="ats-prose-block">{app.coverLetter}</blockquote>
+              ) : (
+                <div className="ats-empty-card">No cover letter provided.</div>
+              )}
+            </div>
+
+            <div className="ats-material-block">
+              <p className="ats-material-label">Resume</p>
+              {app.resumeUrl ? (
+                <div className="ats-file-card">
+                  <div className="ats-file-card-icon" aria-hidden="true">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                      <path d="M14 2H8a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8l-6-6Z" strokeLinejoin="round" />
+                      <path d="M14 2v6h6" strokeLinejoin="round" />
+                    </svg>
+                  </div>
+                  <div className="ats-file-card-body">
+                    <strong>Resume attached</strong>
+                    <span>PDF or document on file</span>
+                  </div>
+                  <a
+                    href={app.resumeUrl}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="btn btn-primary btn-sm"
+                  >
+                    View resume
+                  </a>
+                </div>
+              ) : (
+                <div className="ats-empty-card">No resume uploaded.</div>
+              )}
+            </div>
+          </section>
         </div>
+
+        {answerEntries.length ? (
+          <section className="ats-panel ats-detail-panel ats-detail-panel--full">
+            <div className="ats-panel-head">
+              <h3 className="ats-panel-title">Screening answers</h3>
+              <span className="ats-panel-badge">{answerEntries.length}</span>
+            </div>
+            <div className="ats-answer-grid">
+              {answerEntries.map((entry) => (
+                <article className="ats-answer-card" key={entry.id}>
+                  <h4>{entry.label}</h4>
+                  <p>{entry.value || '—'}</p>
+                </article>
+              ))}
+            </div>
+          </section>
+        ) : null}
       </div>
     </>
   );

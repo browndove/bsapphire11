@@ -1,27 +1,56 @@
 # Screening Questionnaire — Backend API Spec
 
-**Audience:** backend developer implementing job screening questions and candidate answers for the Blvck Sapphire job portal.
+**Audience:** frontend and backend developers integrating screening questions and candidate answers for the Blvck Sapphire job portal.
 
-The Next.js frontend already has an employer UI to create questions and options. It sends `screening_questions` when saving a job, but the live API (Swagger at `/swagger/doc.json`) does not yet persist or return this field. Candidate apply currently sends only `job_id`, `cover_letter`, and `resume_url`.
+**Staging base URL:** `https://jobportal.blvcksapphire.com/api/v1`
 
-This document defines what the backend should store and expose so the frontend can wire the full flow.
+Configure locally in `.env.local`:
 
----
+```env
+JOB_API_BASE_URL=https://jobportal.blvcksapphire.com/api/v1
+```
 
-## Summary
-
-1. Employers attach a questionnaire to a job posting.
-2. Published jobs expose those questions to candidates (no correct answers).
-3. Candidates submit answers with their application.
-4. Employers read answers on the application and filter the inbox by option chips when questions are marked `filterable` (see [Employer candidate filtering](#employer-candidate-filtering-by-screening-answers)).
+The Next.js app proxies through same-origin BFF routes under `/api/job-portal/*` and `/api/public/*`. See `job-portal/BACKEND_INTEGRATION.txt` for auth and general integration notes.
 
 ---
 
-## Question model (stored on job)
+## Implementation status
 
-**Field name in API:** `screening_questions` (array)
+| Area | Status |
+|------|--------|
+| Job CRUD with `screening_questions` | Done |
+| Public job detail exposes questions | Done |
+| Candidate apply with `answers` | Done |
+| Application lists return `answers` | Done |
+| Employer inbox screening filters (`answer_{id}` params) | Done |
+| `POST /employer/applications/search` (JSON body) | **Not implemented** — use query params below |
+| `GET /employer/applications/:id` (single application) | **Not implemented** — use list endpoints |
 
-Each question object:
+---
+
+## Flow overview
+
+```
+Employer                          Candidate                         Employer inbox
+────────                          ─────────                         ──────────────
+POST/PATCH /employer/jobs         GET /jobs/:id                     GET /employer/applications
+  screening_questions[]    →        screening_questions[]      →      ?job_id=&answer_sq_*=
+                                    render apply form                 filter by chip answers
+
+POST /me/applications
+  answers{ question_id: value }
+```
+
+1. Employer attaches questions when creating/updating a job.
+2. Published jobs expose questions to candidates (no correct answers).
+3. Candidate submits answers with their application.
+4. Employer reads answers on application rows and filters the inbox using `answer_{question_id}` query params.
+
+---
+
+## Question model (`screening_questions`)
+
+Returned on job responses and accepted on create/update.
 
 ```json
 {
@@ -29,52 +58,61 @@ Each question object:
   "label": "Years of experience",
   "type": "single",
   "filterable": true,
-  "options": ["0–2", "3–5"]
+  "options": ["0–2 years", "3–5 years", "6+ years"]
 }
 ```
 
 | Field | Type | Notes |
 |-------|------|-------|
-| `id` | string | Stable ID (frontend generates `sq_*` prefixes) |
-| `label` | string | Required. Question text shown to candidate |
-| `type` | string | Required. One of: `single`, `multi`, `text` |
-| `filterable` | boolean | Optional. Default `false` |
-| `options` | string[] | Required for `single` / `multi`; empty `[]` for `text` |
+| `id` | string | Stable ID. Frontend may send `sq_*` prefixes; backend preserves them. |
+| `label` | string | Required question text. |
+| `type` | string | `single`, `multi`, or `text`. |
+| `filterable` | boolean | Default `false`. Only meaningful for `single`/`multi` with ≥ 1 option. |
+| `options` | string[] | Required for `single`/`multi`. Empty `[]` for `text`. |
+
+### Accepted field aliases (request bodies only)
+
+| Canonical | Also accepted |
+|-----------|---------------|
+| `id` | `question_id` |
+| `label` | `text` |
+| `filterable` | `is_filterable` |
+
+### Validation limits
+
+| Rule | Value |
+|------|-------|
+| Max questions per job | 20 |
+| Max options per choice question | 20 |
+| Max text answer length | 2000 characters |
+| All questions required on apply | Yes |
+| `filterable` on text questions | Always forced to `false` |
 
 ### Question types
 
-| `type` | UI label | Options required | Filterable allowed |
-|--------|----------|------------------|--------------------|
-| `single` | Single choice | yes (≥ 1) | yes |
-| `multi` | Multiple choice | yes (≥ 1) | yes |
-| `text` | Short text | no (`[]`) | no (always false) |
-
-### Validation rules
-
-The frontend enforces these before save; the backend should validate too:
-
-- `label` must be non-empty after trim.
-- Questions without a label are dropped and not sent.
-- For `single` and `multi`, `options` are trimmed strings; empty strings are removed.
-- `filterable` is only `true` when `type` is not `text` **and** at least one option exists.
-- Option labels are plain strings; array order is display order.
-- Question `id` should be preserved on update so existing applications can reference answers. If the backend prefers UUIDs, accept client IDs on create and return the canonical ID in responses.
+| `type` | Answer value on submit | Filterable |
+|--------|------------------------|------------|
+| `single` | string (exact option match) | Yes |
+| `multi` | string[] (non-empty subset of options) | Yes |
+| `text` | string (non-empty) | No |
 
 ---
 
-## Example job payload (employer create/update)
+## Endpoints — Jobs
 
-`POST /employer/jobs`  
-`PATCH /employer/jobs/:id`
+### Create / update (employer)
+
+```
+POST   /employer/jobs
+PATCH  /employer/jobs/:id
+```
+
+Include `screening_questions` in the JSON body:
 
 ```json
 {
   "title": "Backend Engineer",
   "description": "...",
-  "requirements": "...",
-  "location": "Remote",
-  "remote_type": "remote",
-  "employment_type": "full_time",
   "status": "published",
   "screening_questions": [
     {
@@ -86,14 +124,14 @@ The frontend enforces these before save; the backend should validate too:
     },
     {
       "id": "sq_stack",
-      "label": "Technologies you have shipped in production",
+      "label": "Production stack",
       "type": "multi",
       "filterable": true,
       "options": ["Go", "Node.js", "Python", "Kubernetes"]
     },
     {
       "id": "sq_portfolio",
-      "label": "Link or summary of your best backend project",
+      "label": "Best backend project",
       "type": "text",
       "filterable": false,
       "options": []
@@ -102,71 +140,41 @@ The frontend enforces these before save; the backend should validate too:
 }
 ```
 
-To clear all questions on update, accept either:
+#### PATCH semantics
 
-```json
-"screening_questions": []
+| Payload | Effect |
+|---------|--------|
+| Field omitted | Questions unchanged |
+| `"screening_questions": []` | Remove all questions |
+| `"screening_questions": [...]` | Replace entire questionnaire |
+
+Question `id` values are preserved across updates so existing application answers remain addressable.
+
+### Read (employer + public)
+
+| Endpoint | Returns `screening_questions` |
+|----------|------------------------------|
+| `GET /employer/jobs` | Yes (per job in `items`) |
+| `GET /employer/jobs/:id` | Yes |
+| `GET /jobs/:id` | Yes (published jobs only) |
+
+Jobs with no questionnaire return `"screening_questions": []`.
+
+---
+
+## Endpoints — Applications
+
+### Submit (candidate)
+
 ```
-
-or omit the field according to your PATCH semantics (document which you support).
-
----
-
-## Job response (employer + public)
-
-Return `screening_questions` on:
-
-- `GET /employer/jobs`
-- `GET /employer/jobs/:id`
-- `GET /jobs/:id` (public job detail — published jobs only)
-
-Same shape as above. Public responses must not include internal metadata beyond what candidates need to render the form.
-
-### Field aliases (optional)
-
-The frontend mapper also accepts:
-
-- `question_id` instead of `id`
-- `text` instead of `label`
-- `is_filterable` instead of `filterable`
-
----
-
-## Candidate answers (stored on application)
-
-**Field name in API:** `answers` (object map)
-
-- **Keys** = question `id`
-- **Values** depend on question type:
-
-| `type` | Answer value type | Example |
-|--------|-------------------|---------|
-| `single` | string (one option) | `"3–5 years"` |
-| `multi` | string[] (subset) | `["Go", "Kubernetes"]` |
-| `text` | string (free text) | `"Built payments API at ..."` |
-
----
-
-## Example application submit
-
-`POST /me/applications`
-
-### Current body (today)
+POST /me/applications
+Authorization: Bearer <candidate_token>
+```
 
 ```json
 {
-  "job_id": "uuid",
-  "cover_letter": "...",
-  "resume_url": "https://..."
-}
-```
-
-### Proposed body (frontend will send once backend supports it)
-
-```json
-{
-  "job_id": "uuid",
-  "cover_letter": "...",
+  "job_id": "550e8400-e29b-41d4-a716-446655440000",
+  "cover_letter": "Interested in this role.",
   "resume_url": "https://...",
   "answers": {
     "sq_years": "3–5 years",
@@ -176,304 +184,104 @@ The frontend mapper also accepts:
 }
 ```
 
-### Validation on submit
+| Rule | Behavior |
+|------|----------|
+| Job has no questions | `answers` may be omitted or `{}` |
+| Job has questions | Every question `id` must have an answer |
+| Unknown keys in `answers` | `400` with `errors["answers.<id>"]` |
+| Wrong option value | `400` |
+| Empty multi selection | `400` |
+| Duplicate apply | `409` |
 
-- `job_id` must reference a published job.
-- Every question on the job must have a corresponding answer key (frontend assumes all are required unless you define optional questions).
-- **`single`:** value must exactly match one of `options` (string equality).
-- **`multi`:** value must be a non-empty array; each item must match an option.
-- **`text`:** non-empty string; suggest max length 2000 chars.
-- Reject unknown question IDs in `answers`.
-- Empty `answers` object is fine for jobs with no screening questions.
-
-### Suggested error format
-
-Matches existing frontend error handling:
+Error shape:
 
 ```json
 {
-  "message": "Human-readable summary",
+  "status": "error",
+  "message": "Invalid screening answers",
+  "code": 400,
   "errors": {
-    "answers.sq_years": "..."
+    "answers.sq_years": "must match one of the question options"
   }
 }
 ```
 
----
+Success response includes `answers` on the application object.
 
-## Application response (employer + candidate)
+### List (candidate)
 
-Return `answers` on:
+```
+GET /me/applications
+```
 
-- `GET /employer/applications`
-- `GET /employer/applications/:id` (if you add a detail endpoint)
-- `GET /me/applications`
+Each item in `items` includes `answers` when present.
 
-### Example employer application row
+### List (employer)
+
+```
+GET /employer/applications
+GET /employer/jobs/:id/applications
+```
+
+Each item includes candidate contact fields and `answers`:
 
 ```json
 {
-  "id": "app_uuid",
-  "job_id": "job_uuid",
+  "id": "app-uuid",
+  "job_id": "job-uuid",
   "job_title": "Backend Engineer",
   "candidate_first_name": "Ama",
   "candidate_last_name": "Osei",
   "candidate_email": "ama@example.com",
+  "candidate_phone": "+233...",
+  "status": "reviewing",
   "cover_letter": "...",
   "resume_url": "https://...",
-  "status": "reviewing",
-  "created_at": "2026-05-14T09:22:00Z",
   "answers": {
     "sq_years": "3–5 years",
     "sq_stack": ["Go", "Kubernetes"],
     "sq_portfolio": "..."
-  }
+  },
+  "created_at": "2026-05-14T09:22:00Z",
+  "updated_at": "2026-05-14T09:22:00Z"
 }
 ```
 
-For list views, returning `answers` inline is fine. A denormalized `answers_summary` string for search is optional for v1.
+> **Note:** There is no `GET /employer/applications/:id` detail endpoint. Load the application from a list response or filter by `job_id` / application `id` client-side.
 
 ---
 
-## Employer candidate filtering by screening answers
+## Employer inbox — screening filters
 
-This section documents how recruiters narrow the applications inbox using answers to **filterable** screening questions.
+Use `GET /employer/applications` with a selected `job_id` and option chips encoded as query params.
 
-### Overview
-
-| Role | Action |
-|------|--------|
-| **Employer** | When editing a job, marks choice questions as **“Use answers as recruiter filters”** (`filterable: true`). |
-| **Candidate** | Answers those questions on the apply form (same options as defined on the job). |
-| **Employer** | On the applications inbox, selects a **specific job**, then clicks **option chips** to show only candidates whose answers match. |
-
-Filtering only applies to questions where:
-
-- `filterable` is `true`
-- `type` is `single` or `multi` (never `text`)
-- `options` has at least one value
-
-Non-filterable questions are still shown on the application detail view; they just do not generate filter chips.
-
-### Enabling filters on a job (employer editor)
-
-In the posting editor, each choice question has a checkbox:
-
-**“Use answers as recruiter filters”**
-
-| Question type | Checkbox | Saved `filterable` |
-|---------------|----------|-------------------|
-| Single choice | enabled | `true` if checked and ≥ 1 option |
-| Multiple choice | enabled | `true` if checked and ≥ 1 option |
-| Short text | disabled | always `false` |
-
-The frontend only sends `filterable: true` when the question has options. Backend should persist and return this flag on `screening_questions`.
-
-### Employer inbox UI (applications list)
-
-When the recruiter opens **Candidates / Applications**:
-
-1. **Pick a job** from the job filter (required for screening chips to appear).
-2. If that job has filterable questions, a **“Screening filters (this posting)”** panel appears.
-3. Each filterable question renders as a **label + row of chips** — one chip per option string from `options`.
-4. Recruiter clicks chips to narrow the list. **Clear filters** resets job/stage/search and screening chips.
-
-The filter panel is **hidden** when:
-
-- No job is selected, or job is “All jobs”
-- The selected job has no `screening_questions`
-- None of the job’s questions are `filterable` with options
-
-### Chip selection behavior (per question)
-
-Chip interaction depends on the question `type`:
-
-| `type` | How recruiter selects | Active state |
-|--------|----------------------|--------------|
-| `single` | **One chip at a time** per question. Clicking the active chip again clears that question’s filter. | At most one selected option per question ID. |
-| `multi` | **Multiple chips** per question. Each click toggles that option on/off. | Zero or more selected options per question ID. |
-
-Selected chips are stored client-side as:
-
-```json
-{
-  "sq_years": ["3–5 years"],
-  "sq_stack": ["Go", "Kubernetes"]
-}
-```
-
-Keys = question `id`. Values = arrays of selected option strings (even for `single`, the UI uses a one-element array internally).
-
-### Match logic (does a candidate pass?)
-
-For each filterable question **that has at least one chip selected**, compare the application’s `answers[question_id]` to the selected chips.
-
-If **no chips** are selected for a question, **skip** that question (do not filter on it).
-
-#### `single` questions
-
-- Candidate answer: **string** (one option).
-- Recruiter selected: **one** option chip (or none).
-- **Pass** if candidate answer **equals** the selected option (exact string match).
-
-```
-selected: ["3–5 years"]
-candidate answers.sq_years: "3–5 years"  → pass
-candidate answers.sq_years: "6+ years"    → fail
-```
-
-#### `multi` questions
-
-- Candidate answer: **string[]** (subset of options).
-- Recruiter selected: **one or more** option chips.
-- **Pass** if candidate’s selections **overlap** recruiter’s selections — at least one selected chip appears in the candidate’s answer array (**OR** within that question).
-
-```
-selected: ["Go", "Kubernetes"]
-candidate answers.sq_stack: ["Go", "Python"]     → pass (Go)
-candidate answers.sq_stack: ["Python", "Node.js"] → fail (no overlap)
-```
-
-If a candidate stored a single string for a `multi` question, treat it as a one-element array before comparing.
-
-#### Combining multiple questions
-
-Filters use **AND** across questions:
-
-- Every question with active chips must pass its match rule.
-- Example: “3–5 years” **and** (“Go” or “Kubernetes”) → only candidates matching **both** questions are shown.
-
-Pseudocode:
-
-```
-function applicationMatchesScreeningFilters(app, job, selectedFilters):
-  for each question q in job.screening_questions:
-    if not q.filterable: continue
-    if q.type == "text": continue
-    want = selectedFilters[q.id]
-    if want is empty: continue
-
-    got = app.answers[q.id]
-
-    if q.type == "multi":
-      cand = array(got)  // normalize string to [string]
-      if no item in want exists in cand: return false
-    else:  // single
-      if got not in want: return false
-
-  return true
-```
-
-### Combined with other inbox filters
-
-Screening filters are applied **together with** existing filters (all must pass):
-
-| Filter | Field | Logic |
-|--------|-------|--------|
-| Job | `job_id` | Application must belong to selected job |
-| Stage | `status` | Exact match on pipeline status |
-| Search | name, email, phone, answers | Case-insensitive substring match; answers flattened to text |
-| Screening | `answers` | Rules above |
-
-**Order does not matter** — result is the intersection of all active filters.
-
-### Worked example
-
-**Job screening questions:**
-
-```json
-[
-  {
-    "id": "sq_years",
-    "label": "Years of backend experience",
-    "type": "single",
-    "filterable": true,
-    "options": ["0–2 years", "3–5 years", "6+ years"]
-  },
-  {
-    "id": "sq_stack",
-    "label": "Production stack",
-    "type": "multi",
-    "filterable": true,
-    "options": ["Go", "Node.js", "Python", "Kubernetes"]
-  }
-]
-```
-
-**Recruiter selects:**
-
-- `sq_years` → `3–5 years`
-- `sq_stack` → `Go`, `Kubernetes`
-
-**Applications:**
-
-| Candidate | `answers.sq_years` | `answers.sq_stack` | Shown? |
-|-----------|-------------------|-------------------|--------|
-| Ama | `"3–5 years"` | `["Go", "Kubernetes"]` | Yes |
-| Kwesi | `"3–5 years"` | `["Node.js"]` | No (stack mismatch) |
-| Rosa | `"6+ years"` | `["Go"]` | No (years mismatch) |
-| James | `"3–5 years"` | `["Go", "Python"]` | Yes (Go overlaps) |
-
-### API: server-side filtering (recommended)
-
-`GET /employer/applications`
-
-#### Base params (already used by frontend)
+### Base params
 
 | Param | Example | Description |
 |-------|---------|-------------|
-| `job_id` | `uuid` | Limit to one posting |
+| `job_id` | uuid | Required for screening filters to apply |
 | `status` | `reviewing` | Pipeline stage |
-| `q` | `ama` | Search name / email / phone / answers |
+| `q` | `ama` | Case-insensitive search: name, email, phone, answer text |
+| `limit` / `offset` | `20` / `0` | Pagination |
 
-#### Screening answer params
-
-**Option A — flat params (simple):**
+### Screening params (implemented)
 
 ```
-GET /employer/applications?job_id=...&answer_sq_years=3–5 years&answer_sq_stack=Go&answer_sq_stack=Kubernetes
+GET /employer/applications?job_id=<uuid>&answer_sq_years=3–5%20years&answer_sq_stack=Go&answer_sq_stack=Kubernetes
 ```
 
-- Param name: `answer_{question_id}`
-- Repeat param for multiple selections on `multi` questions
-- Omit param when that question has no active filter
+| Pattern | Meaning |
+|---------|---------|
+| `answer_{question_id}=<option>` | Filter by that option |
+| Repeat param | Multiple selections on a `multi` question (OR within question) |
+| Omit param | No filter on that question |
 
-**Option B — JSON body on POST search endpoint (flexible):**
-
-`POST /employer/applications/search`
+When screening params are active, the response may include:
 
 ```json
 {
-  "job_id": "job_uuid",
-  "status": "reviewing",
-  "q": "ama",
-  "screening_filters": {
-    "sq_years": ["3–5 years"],
-    "sq_stack": ["Go", "Kubernetes"]
-  }
-}
-```
-
-**Option C — client-side only (v1 fallback):**
-
-- `GET /employer/applications` returns all rows with `answers`
-- Frontend filters in memory using the match logic above
-- Acceptable for small datasets; prefer server-side at scale
-
-#### Validation
-
-- Reject `screening_filters` keys that are not `filterable` questions on the selected job.
-- Reject filter values that are not in that question’s `options` list.
-- If `job_id` is missing, ignore screening filters (no job context).
-
-#### Response
-
-Same application list shape; each row includes `answers` so the UI can show which chips matched. Optional metadata:
-
-```json
-{
-  "items": [ /* applications */ ],
-  "total": 42,
+  "items": [ "..." ],
+  "total": 3,
   "applied_filters": {
     "sq_years": ["3–5 years"],
     "sq_stack": ["Go", "Kubernetes"]
@@ -481,112 +289,150 @@ Same application list shape; each row includes `answers` so the UI can show whic
 }
 ```
 
-### Edge cases
+### Match logic (server-side)
+
+| Question type | Candidate passes when |
+|---------------|----------------------|
+| `single` | `answers[question_id]` equals the selected option |
+| `multi` | Candidate's array overlaps any selected chip (**OR**) |
+| Across questions | **AND** — all active question filters must pass |
+| Missing answer | Excluded |
+
+**Example:** filters `sq_years=3–5 years` AND `sq_stack=Go,Kubernetes` → candidate needs years match **and** at least one stack chip overlap.
+
+### When filters are ignored or rejected
 
 | Case | Behavior |
 |------|----------|
-| Candidate missing an answer for a filtered question | Treat as **fail** (exclude from results) |
-| Job options changed after applications submitted | Match on **stored answer strings**; old answers may not match new chips |
-| Question removed from job | Historical `answers` key may be orphaned; ignore in filters |
-| `filterable` turned off after applications exist | Question no longer shows chips; stored answers remain on application |
-| “All jobs” selected | Screening filter panel hidden; API should not apply per-job screening filters without `job_id` |
-| Export CSV | Include flattened screening answers column (prototype exports all answer values joined) |
+| No `job_id` | Screening query params rejected or ignored for filter validation |
+| Filter key not a filterable question on that job | `400` |
+| Filter value not in question's `options` | `400` |
 
-### Frontend integration (filtering)
+### Enabling filters on a job (employer editor)
 
-| Status | File | Notes |
-|--------|------|-------|
-| Done | `ScreeningQuestionsEditor.js` | `filterable` checkbox on choice questions |
-| Done | `job-portal/applications.html` (prototype) | Full chip UI + match logic reference |
-| TODO | `applications/page.js` | Wire screening chips into `filteredApps` |
-| TODO | `FilterRail.js` or new `ScreeningFilterPanel.js` | Render chips from selected job’s `screeningQuestions` |
-| TODO | `mappers.js` | Map `answers`; pass `screening_filters` query params if server-side |
+In the posting editor, each choice question has **“Use answers as recruiter filters”**:
 
-Reference implementation: `job-portal/applications.html` functions `matchesQuestions`, `chipsAppend`, `renderFilters`.
+| Question type | Checkbox | Saved `filterable` |
+|---------------|----------|-------------------|
+| Single choice | enabled | `true` if checked and ≥ 1 option |
+| Multiple choice | enabled | `true` if checked and ≥ 1 option |
+| Short text | disabled | always `false` |
 
----
+### Chip UI behavior (employer inbox)
 
-## Database suggestion
+| `type` | Recruiter selects | Match rule |
+|--------|-------------------|------------|
+| `single` | One chip per question (toggle off by clicking again) | Exact string match |
+| `multi` | Multiple chips (toggle each) | Overlap with any selected chip |
 
-Minimal relational model:
+Filters combine with job, stage, and search filters (all must pass).
 
-**`job_screening_questions`**
-
-| Column | Type |
-|--------|------|
-| `id` | PK, string/uuid |
-| `job_id` | FK |
-| `sort_order` | int |
-| `label` | text |
-| `type` | enum: `single`, `multi`, `text` |
-| `filterable` | bool |
-| `options` | jsonb (string[]) |
-
-**`application_answers`**
-
-| Column | Type |
-|--------|------|
-| `application_id` | FK |
-| `question_id` | FK → `job_screening_questions.id` |
-| `value_text` | text (for `single` + `text`) |
-| `value_json` | jsonb (for `multi`, or always use jsonb) |
-
-### Job update strategy
-
-- **Recommended:** upsert by question `id`; delete questions removed from payload.
-- Changing options on a live job is OK; old applications keep historical answers.
-- Store answers as submitted option **strings**, not indices, so re-ordering options does not break historical data.
+Reference prototype: `job-portal/applications.html` (`matchesQuestions`, `chipsAppend`, `renderFilters`).
 
 ---
 
-## Endpoint checklist
+## Frontend wiring checklist
 
-- [ ] `POST /employer/jobs` — accept `screening_questions`
-- [ ] `PATCH /employer/jobs/:id` — accept `screening_questions` (including `[]`)
-- [ ] `GET /employer/jobs` — return `screening_questions` per job
-- [ ] `GET /employer/jobs/:id` — return `screening_questions`
-- [ ] `GET /jobs/:id` — return `screening_questions` (public)
-- [ ] `POST /me/applications` — accept `answers` map
-- [ ] `GET /me/applications` — return `answers` on own applications
-- [ ] `GET /employer/applications` — return `answers`; accept screening filter params (see [Employer candidate filtering](#employer-candidate-filtering-by-screening-answers))
-- [ ] `POST /employer/applications/search` (optional) — structured `screening_filters` body
+### Employer posting editor (already built)
+
+| Task | API call |
+|------|----------|
+| Load job for edit | `GET /employer/jobs/:id` → map `screening_questions` |
+| Save job | `POST` or `PATCH /employer/jobs` → send `screening_questions` array |
+| `filterable` checkbox | Set `filterable: true` only on `single`/`multi` with options |
+
+**Files:** `ScreeningQuestionsEditor.js`, `postings/edit/page.js`, `mappers.js`
+
+### Candidate apply page (to wire)
+
+| Task | API call |
+|------|----------|
+| Load job | `GET /jobs/:id` → read `screening_questions` |
+| Render form | One control per question by `type` |
+| Submit | `POST /me/applications` with `answers` map |
+| Handle errors | Read `errors["answers.<id>"]` |
+
+**Files:** `candidate/apply/page.js`, `mappers.js`, `client.js`
+
+### Employer applications inbox (to wire)
+
+| Task | API call |
+|------|----------|
+| Load applications | `GET /employer/applications?job_id=...` |
+| Show answers | Read `item.answers` on each row |
+| Render filter chips | From selected job's `screening_questions` where `filterable` |
+| Apply filters | Append `answer_{id}=<option>` query params |
+| Clear filters | Omit `answer_*` params |
+
+**Files:** `applications/page.js`, `FilterRail.js` or new screening filter panel, `client.js`
 
 ---
 
-## Frontend integration (after backend is ready)
+## Mapper hints (`mappers.js`)
 
-### Files to update
+### Job from API
 
-| File | Change |
-|------|--------|
-| `src/lib/job-api/mappers.js` | Map `answers` in `mapApplicationFromApi`; add submit helper |
-| `src/app/(candidate)/candidate/apply/page.js` | Render questions; collect and submit answers |
-| `src/app/(admin)/job-portal/applications/detail/page.js` | Show screening answers section |
-| `src/app/(admin)/job-portal/applications/page.js` | Screening filter chips + `filteredApps` logic |
-| `src/app/(admin)/job-portal/components/FilterRail.js` | Or new `ScreeningFilterPanel` for answer chips |
-
-### Already implemented (employer editor)
-
-- `src/app/(admin)/job-portal/components/ScreeningQuestionsEditor.js`
-- `src/app/(admin)/job-portal/postings/edit/page.js`
-
----
-
-## Reference — frontend job mapper (current)
-
-**`mapJobToApi` sends:**
-
-```json
-"screening_questions": [
-  { "id", "label", "type", "filterable", "options" }
-]
+```javascript
+screeningQuestions: job.screening_questions ?? job.screeningQuestions ?? []
 ```
 
-**`mapJobFromApi` reads:**
+### Job to API
 
+```javascript
+screening_questions: questions.map((q) => ({
+  id: q.id,
+  label: q.label,
+  type: q.type,
+  filterable: q.filterable ?? false,
+  options: q.options ?? [],
+}))
 ```
-job.screening_questions || job.screeningQuestions
+
+### Application from API
+
+```javascript
+answers: app.answers ?? {}
 ```
+
+### Submit application
+
+```javascript
+{
+  job_id: jobId,
+  cover_letter,
+  resume_url,
+  answers: { [questionId]: value, ... },
+}
+```
+
+### Screening filter query builder
+
+```javascript
+// selectedFilters: { sq_years: ["3–5 years"], sq_stack: ["Go", "Kubernetes"] }
+const params = new URLSearchParams({ job_id: jobId });
+for (const [qid, opts] of Object.entries(selectedFilters)) {
+  for (const opt of opts) params.append(`answer_${qid}`, opt);
+}
+```
+
+---
+
+## Design decisions (resolved)
+
+| Question | Decision |
+|----------|----------|
+| Max questions per job | 20 |
+| Max options per question | 20 |
+| All questions required on apply? | Yes |
+| PATCH omit `screening_questions` | Leave unchanged |
+| PATCH `screening_questions: []` | Clear all |
+| Duplicate applications | `409` |
+| Screening filter implementation | Server-side via `answer_{id}` query params |
+| Multi-question filter within one question | **OR** (overlap) |
+| Filter across questions | **AND** |
+| Answer storage | Option strings, not indices (safe when options reordered) |
+| `POST /employer/applications/search` | Not implemented; use `GET` query params |
+| Application detail endpoint | Not implemented; use list endpoints |
 
 ---
 
@@ -603,15 +449,3 @@ From `job-portal/assets/mock-store.js`:
   }
 }
 ```
-
----
-
-## Open questions for backend
-
-1. Max questions per job? (frontend has no hard limit; suggest **20**)
-2. Max options per question? (frontend has no hard limit; suggest **20**)
-3. Are all screening questions required on apply? (frontend assumes **yes**)
-4. PATCH semantics: omit `screening_questions` = leave unchanged, or replace only when field is present?
-5. Should duplicate applications be rejected if the candidate already applied?
-6. Server-side vs client-side screening filters for v1?
-7. Should `multi` question filters use **OR** (any selected chip matches) or **AND** (candidate must have all selected chips)? **Frontend prototype uses OR** — document if backend differs.

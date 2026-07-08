@@ -1,4 +1,4 @@
-import { EMPLOYER_APPLICATION_STATUSES, EMPLOYER_STATUS_UPDATES } from './config';
+import { DEFAULT_JOB_CURRENCY, EMPLOYER_APPLICATION_STATUSES, EMPLOYER_STATUS_UPDATES } from './config';
 
 export function getPaginatedItems(res) {
   if (!res) return [];
@@ -59,7 +59,7 @@ export function mapJobFromApi(job, categoriesById = {}) {
     employmentType: job.employment_type || 'full_time',
     salaryMin: job.salary_min ?? null,
     salaryMax: job.salary_max ?? null,
-    currency: job.currency || 'USD',
+    currency: job.currency || DEFAULT_JOB_CURRENCY,
     categoryId: job.category_id || null,
     screeningQuestions: rawQuestions.map(mapScreeningQuestionFromApi).filter(Boolean),
     createdAt: job.created_at,
@@ -140,8 +140,57 @@ export function mapApplicationFromApi(app) {
     status: app.status || 'submitted',
     coverLetter: app.cover_letter || '',
     resumeUrl: app.resume_url || '',
+    answers: app.answers ?? {},
     source: app.source || 'Website',
   };
+}
+
+export function mapApplicationSubmitToApi({ jobId, coverLetter, resumeUrl, answers = {} }) {
+  const body = {
+    job_id: jobId,
+    cover_letter: coverLetter,
+    resume_url: resumeUrl,
+  };
+  const cleanAnswers = {};
+  for (const [id, value] of Object.entries(answers)) {
+    if (Array.isArray(value)) {
+      if (value.length) cleanAnswers[id] = value;
+    } else if (value != null && String(value).trim()) {
+      cleanAnswers[id] = String(value).trim();
+    }
+  }
+  if (Object.keys(cleanAnswers).length) {
+    body.answers = cleanAnswers;
+  }
+  return body;
+}
+
+export function formatAnswerValue(value) {
+  if (Array.isArray(value)) return value.join(', ');
+  return value != null ? String(value) : '';
+}
+
+export function matchesScreeningFilters(app, filters = {}) {
+  const active = Object.entries(filters).filter(([, opts]) => opts?.length);
+  if (!active.length) return true;
+  const answers = app.answers || {};
+  return active.every(([qid, selected]) => {
+    const answer = answers[qid];
+    if (answer == null) return false;
+    if (Array.isArray(answer)) {
+      return selected.some((opt) => answer.includes(opt));
+    }
+    return selected.includes(answer);
+  });
+}
+
+export function buildScreeningFilterParams(jobId, screeningFilters = {}) {
+  const params = { job_id: jobId };
+  for (const [qid, opts] of Object.entries(screeningFilters)) {
+    if (!opts?.length) continue;
+    params[`answer_${qid}`] = opts;
+  }
+  return params;
 }
 
 export function mapPublicJobFromApi(job, categoriesById = {}) {

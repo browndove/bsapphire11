@@ -3,6 +3,7 @@
 @import '../../styles/ats-portal.css';
 @import '../../styles/ats-forms.css';
 @import '../../styles/custom-ui.css';
+@import '../../styles/ui-checkbox.css';
 
 :root {
   --bg-color: #000000;

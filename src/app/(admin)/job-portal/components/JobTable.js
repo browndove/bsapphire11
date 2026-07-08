@@ -1,7 +1,11 @@
 'use client';
 
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { formatDate } from '@/lib/job-api/format';
+import { toUserMessage } from '@/lib/job-api/errors';
+import { useConfirm } from '@/components/ConfirmProvider';
+import { usePortal } from '../PortalContext';
 import ActionsMenu from './ActionsMenu';
 
 function tagClass(status) {
@@ -12,11 +16,36 @@ function tagClass(status) {
 
 export default function JobTable({ jobs, getApplicantCount }) {
   const router = useRouter();
+  const confirm = useConfirm();
+  const { removeJob } = usePortal();
+  const [error, setError] = useState('');
+
+  const handleDelete = async (job) => {
+    const count = getApplicantCount(job.id);
+    const ok = await confirm({
+      title: 'Delete job posting?',
+      message: count
+        ? `"${job.title}" has ${count} applicant${count === 1 ? '' : 's'}. Deleting cannot be undone.`
+        : `"${job.title}" will be permanently removed.`,
+      confirmText: 'Delete job',
+      cancelText: 'Cancel',
+      variant: 'danger',
+    });
+    if (!ok) return;
+    try {
+      await removeJob(job.id);
+    } catch (err) {
+      setError(toUserMessage(err, 'job'));
+      setTimeout(() => setError(''), 4000);
+    }
+  };
 
   if (jobs.length === 0) return null;
 
   return (
-    <div className="ats-table-shell">
+    <>
+      {error ? <div className="ats-toast is-error" style={{ marginBottom: '1rem' }}>{error}</div> : null}
+      <div className="ats-table-shell">
       <div className="ats-table-wrap">
         <table className="ats-table">
           <thead>
@@ -58,6 +87,11 @@ export default function JobTable({ jobs, getApplicantCount }) {
                           label: 'View candidates',
                           href: `/job-portal/applications?job=${encodeURIComponent(job.id)}`,
                         },
+                        {
+                          label: 'Delete job',
+                          danger: true,
+                          onClick: () => handleDelete(job),
+                        },
                       ]}
                     />
                   </td>
@@ -67,6 +101,7 @@ export default function JobTable({ jobs, getApplicantCount }) {
           </tbody>
         </table>
       </div>
-    </div>
+      </div>
+    </>
   );
 }

@@ -1,6 +1,7 @@
 'use client';
 
 import CustomSelect from '@/components/CustomSelect';
+import { Checkbox } from '@/components/ui/checkbox';
 import { useConfirm } from '@/components/ConfirmProvider';
 
 const ANSWER_TYPE_OPTIONS = [
@@ -18,7 +19,7 @@ const EMPTY_QUESTION = {
   label: '',
   type: 'single',
   filterable: false,
-  options: [],
+  options: ['', ''],
 };
 
 export default function ScreeningQuestionsEditor({ questions = [], onChange }) {
@@ -48,6 +49,21 @@ export default function ScreeningQuestionsEditor({ questions = [], onChange }) {
     updateQuestions(questions.filter((_, i) => i !== index));
   };
 
+  const handleTypeChange = (index, type) => {
+    const current = questions[index];
+    const options =
+      type === 'text'
+        ? []
+        : (current?.options || []).length >= 2
+          ? current.options
+          : ['', ''];
+    updateQuestion(index, {
+      type,
+      filterable: type === 'text' ? false : current?.filterable,
+      options,
+    });
+  };
+
   const addOption = (index) => {
     const options = questions[index]?.options || [];
     updateQuestion(index, { options: [...options, ''] });
@@ -65,121 +81,141 @@ export default function ScreeningQuestionsEditor({ questions = [], onChange }) {
   };
 
   return (
-    <div className="ats-form-section-head">
-      <h3>Screening questionnaire</h3>
-      <p>
-        Questions appear on the public apply form. Choice questions can be used as recruiter filters.
-      </p>
+    <div className="ats-screening-editor">
+      <div className="ats-screening-editor-head">
+        <div>
+          <h3>Screening questionnaire</h3>
+          <p>Questions appear on the apply form. Choice answers can power recruiter filters.</p>
+        </div>
+        {questions.length ? (
+          <span className="ats-screening-count">{questions.length} question{questions.length === 1 ? '' : 's'}</span>
+        ) : null}
+      </div>
 
-      <div className="ats-question-list" style={{ marginTop: '1rem' }}>
+      <div className="ats-question-list">
         {questions.length === 0 ? (
           <div className="ats-question-empty">
-            No questions yet. Add one to collect structured answers from applicants.
+            <strong>No screening questions yet</strong>
+            <span>Add structured questions to learn more about applicants before review.</span>
           </div>
         ) : (
           questions.map((q, index) => (
-            <div key={q.id || index} className="ats-question-card">
-              <div className="ats-question-card-head">
-                <strong>Question {index + 1}</strong>
+            <article key={q.id || index} className="ats-question-card">
+              <header className="ats-question-card-head">
+                <div className="ats-question-card-title">
+                  <span className="ats-question-number">{index + 1}</span>
+                  <div>
+                    <strong>Question {index + 1}</strong>
+                    <span>{q.type === 'text' ? 'Short text' : q.type === 'multi' ? 'Multiple choice' : 'Single choice'}</span>
+                  </div>
+                </div>
                 <button
                   type="button"
-                  className="btn btn-outline btn-sm"
+                  className="ats-question-remove"
                   onClick={() => removeQuestion(index)}
                 >
                   Remove
                 </button>
-              </div>
+              </header>
 
-              <div className="ats-field">
-                <label className="ats-field-label" htmlFor={`q-label-${index}`}>Question</label>
-                <input
-                  id={`q-label-${index}`}
-                  type="text"
-                  placeholder="e.g. Years of backend experience"
-                  value={q.label}
-                  onChange={(e) => updateQuestion(index, { label: e.target.value })}
-                />
-              </div>
-
-              <div className="ats-form-grid cols-2" style={{ marginTop: '0.75rem' }}>
+              <div className="ats-question-body">
                 <div className="ats-field">
-                  <label className="ats-field-label" htmlFor={`q-type-${index}`}>Answer type</label>
-                  <CustomSelect
-                    id={`q-type-${index}`}
-                    value={q.type}
-                    onChange={(type) =>
-                      updateQuestion(index, {
-                        type,
-                        filterable: type === 'text' ? false : q.filterable,
-                      })
-                    }
-                    options={ANSWER_TYPE_OPTIONS}
+                  <label className="ats-field-label" htmlFor={`q-label-${index}`}>Question text</label>
+                  <input
+                    id={`q-label-${index}`}
+                    type="text"
+                    placeholder="e.g. How many years of backend experience do you have?"
+                    value={q.label}
+                    onChange={(e) => updateQuestion(index, { label: e.target.value })}
                   />
-                  {q.type === 'text' ? (
-                    <p className="ats-field-hint">Text answers cannot be used as stage filters.</p>
-                  ) : null}
                 </div>
 
-                <div className="ats-field" style={{ justifyContent: 'flex-end' }}>
-                  <label className="ats-checkbox-row">
-                    <input
-                      type="checkbox"
-                      checked={!!q.filterable}
-                      disabled={q.type === 'text'}
-                      onChange={(e) => updateQuestion(index, { filterable: e.target.checked })}
+                <div className="ats-question-settings">
+                  <div className="ats-field">
+                    <label className="ats-field-label" htmlFor={`q-type-${index}`}>Answer type</label>
+                    <CustomSelect
+                      id={`q-type-${index}`}
+                      value={q.type}
+                      onChange={(type) => handleTypeChange(index, type)}
+                      options={ANSWER_TYPE_OPTIONS}
                     />
-                    Use answers as recruiter filters
-                  </label>
-                </div>
-              </div>
+                  </div>
 
-              {q.type !== 'text' ? (
-                <div className="ats-field" style={{ marginTop: '0.75rem' }}>
-                  <label className="ats-field-label">Options</label>
-                  {(q.options || []).length === 0 ? (
-                    <p className="ats-field-hint">No options yet. Add at least two choices.</p>
+                  {q.type !== 'text' ? (
+                    <div className={`ats-filter-toggle${q.filterable ? ' is-on' : ''}`}>
+                      <Checkbox
+                        checked={!!q.filterable}
+                        onCheckedChange={(checked) => updateQuestion(index, { filterable: checked === true })}
+                      />
+                      <span className="ats-filter-toggle-copy">
+                        <strong>Recruiter filter</strong>
+                        <span>Let hiring teams filter candidates by this answer</span>
+                      </span>
+                    </div>
                   ) : (
-                    <div className="ats-option-list">
-                      {(q.options || []).map((opt, optionIndex) => (
-                        <div className="ats-option-row" key={optionIndex}>
-                          <span className="ats-option-index">{optionIndex + 1}</span>
-                          <input
-                            type="text"
-                            className="ats-option-input"
-                            placeholder={`Option ${optionIndex + 1}`}
-                            value={opt}
-                            onChange={(e) => updateOption(index, optionIndex, e.target.value)}
-                          />
-                          <button
-                            type="button"
-                            className="ats-option-remove"
-                            aria-label={`Remove option ${optionIndex + 1}`}
-                            onClick={() => removeOption(index, optionIndex)}
-                          >
-                            ×
-                          </button>
-                        </div>
-                      ))}
+                    <div className="ats-filter-toggle is-disabled">
+                      <Checkbox disabled checked={false} />
+                      <span className="ats-filter-toggle-copy">
+                        <strong>Recruiter filter</strong>
+                        <span>Not available for short text answers</span>
+                      </span>
                     </div>
                   )}
-                  <button
-                    type="button"
-                    className="btn btn-outline btn-sm ats-option-add"
-                    onClick={() => addOption(index)}
-                  >
-                    Add option
-                  </button>
                 </div>
-              ) : null}
-            </div>
+
+                {q.type !== 'text' ? (
+                  <div className="ats-options-panel">
+                    <div className="ats-options-panel-head">
+                      <span className="ats-field-label">Answer options</span>
+                      <span className="ats-options-panel-hint">Add at least two choices</span>
+                    </div>
+
+                    {(q.options || []).length === 0 ? (
+                      <p className="ats-field-hint">No options yet.</p>
+                    ) : (
+                      <div className="ats-option-list">
+                        {(q.options || []).map((opt, optionIndex) => (
+                          <div className="ats-option-row" key={optionIndex}>
+                            <span className="ats-option-index">{optionIndex + 1}</span>
+                            <input
+                              type="text"
+                              className="ats-option-input"
+                              placeholder={`Option ${optionIndex + 1}`}
+                              value={opt}
+                              onChange={(e) => updateOption(index, optionIndex, e.target.value)}
+                            />
+                            <button
+                              type="button"
+                              className="ats-option-remove"
+                              aria-label={`Remove option ${optionIndex + 1}`}
+                              onClick={() => removeOption(index, optionIndex)}
+                              disabled={(q.options || []).length <= 2}
+                            >
+                              ×
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    <button
+                      type="button"
+                      className="btn btn-outline btn-sm ats-option-add"
+                      onClick={() => addOption(index)}
+                    >
+                      Add option
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+            </article>
           ))
         )}
       </div>
 
       <button
         type="button"
-        className="btn btn-outline btn-sm"
-        style={{ marginTop: '0.85rem' }}
+        className="btn btn-outline ats-add-question-btn"
         onClick={addQuestion}
       >
         Add question

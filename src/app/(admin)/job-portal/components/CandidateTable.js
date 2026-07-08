@@ -3,9 +3,10 @@
 import { useRouter } from 'next/navigation';
 import Avatar from './Avatar';
 import { formatRelativeTime } from '@/lib/job-api/format';
+import { formatAnswerValue } from '@/lib/job-api/mappers';
 import { PortalStages } from '../PortalContext';
 
-export default function CandidateTable({ applications, jobs, onRowClick }) {
+export default function CandidateTable({ applications, jobs, screeningQuestions, onRowClick }) {
   const router = useRouter();
 
   const handleClick = (app) => {
@@ -28,6 +29,7 @@ export default function CandidateTable({ applications, jobs, onRowClick }) {
             <tr>
               <th>Candidate</th>
               <th>Job</th>
+              {screeningQuestions?.length ? <th>Screening</th> : null}
               <th>Stage</th>
               <th>Applied</th>
             </tr>
@@ -62,6 +64,14 @@ export default function CandidateTable({ applications, jobs, onRowClick }) {
                     </div>
                   </td>
                   <td>{job?.title || app.jobTitle || '—'}</td>
+                  {screeningQuestions?.length ? (
+                    <td className="ats-table-sub">
+                      {screeningQuestions
+                        .map((q) => formatAnswerValue(app.answers?.[q.id]))
+                        .filter(Boolean)
+                        .join(' · ') || '—'}
+                    </td>
+                  ) : null}
                   <td><span className={`tag ${tagClass}`}>{tagLabel}</span></td>
                   <td className="ats-table-sub">{formatRelativeTime(app.submittedAt)}</td>
                 </tr>

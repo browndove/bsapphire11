@@ -192,11 +192,36 @@ export async function updateEmployerJob(id, job) {
   }, true, 'job');
 }
 
+export async function deleteEmployerJob(id) {
+  return portalFetch(`/employer/jobs/${id}`, {
+    method: 'DELETE',
+  }, true, 'job');
+}
+
 export async function fetchEmployerApplications(params = {}) {
   const qs = new URLSearchParams();
   if (params.job_id) qs.set('job_id', params.job_id);
+  if (params.status) qs.set('status', params.status);
+  if (params.q) qs.set('q', params.q);
   if (params.limit != null) qs.set('limit', String(params.limit));
   if (params.offset != null) qs.set('offset', String(params.offset));
+
+  const screeningFilters = params.screeningFilters || {};
+  for (const [qid, opts] of Object.entries(screeningFilters)) {
+    if (!Array.isArray(opts)) continue;
+    for (const opt of opts) {
+      if (opt != null && opt !== '') qs.append(`answer_${qid}`, String(opt));
+    }
+  }
+
+  for (const [key, value] of Object.entries(params)) {
+    if (!key.startsWith('answer_') || value == null || value === '') continue;
+    const values = Array.isArray(value) ? value : [value];
+    for (const opt of values) {
+      if (opt != null && opt !== '') qs.append(key, String(opt));
+    }
+  }
+
   const query = qs.toString();
   return portalFetch(`/employer/applications${query ? `?${query}` : ''}`);
 }
@@ -273,16 +298,49 @@ export async function candidateVerify2FA(pending_token, code) {
   return data;
 }
 
-export async function uploadResume(file) {
+export async function uploadFile(file, purpose = 'document') {
   const token = getAccessToken();
-  const formData = new FormData();
-  formData.append('file', file);
-  const res = await fetch('/api/job-portal/uploads/resume', {
-    method: 'POST',
-    headers: token ? { Authorization: `Bearer ${token}` } : {},
-    body: formData,
+  if (!token) {
+    const err = new Error('Sign in to upload files.');
+    err.status = 401;
+    throw err;
+  }
+
+  const contentType = file.type || 'application/octet-stream';
+  const meta = await parseResponse(
+    await fetch('/api/job-portal/files/upload-url', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        content_type: contentType,
+        filename: file.name,
+        purpose,
+      }),
+    }),
+    'upload'
+  );
+
+  const putRes = await fetch(meta.upload_url, {
+    method: 'PUT',
+    headers: { 'Content-Type': contentType },
+    body: file,
   });
-  return parseResponse(res);
+
+  if (!putRes.ok) {
+    const err = new Error('File upload to storage failed. Please try again.');
+    err.status = putRes.status;
+    throw err;
+  }
+
+  return meta.file_url;
+}
+
+export async function uploadResume(file) {
+  const fileUrl = await uploadFile(file, 'resume');
+  return { url: fileUrl, file_url: fileUrl };
 }
 
 export async function submitApplication(body) {

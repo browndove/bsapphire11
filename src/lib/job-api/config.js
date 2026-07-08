@@ -35,3 +35,10 @@ export const EMPLOYMENT_TYPES = [
   'internship',
   'temporary',
 ];
+
+export const DEFAULT_JOB_CURRENCY = 'GHS';
+export const JOB_CURRENCY_SYMBOL = '₵';
+
+export const JOB_CURRENCIES = [
+  { value: 'GHS', label: '₵ Ghana Cedi (GHS)' },
+];

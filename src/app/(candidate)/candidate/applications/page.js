@@ -31,7 +31,7 @@ export default function CandidateApplications() {
   const handleWithdraw = async (app) => {
     const ok = await confirm({
       title: 'Withdraw application?',
-      message: `Remove your application for ${app.jobTitle || 'this role'}? This cannot be undone.`,
+      message: `Remove your application for ${app.jobTitle || 'this role'}? You can apply again later if the role is still open.`,
       confirmText: 'Withdraw',
       cancelText: 'Keep application',
       variant: 'danger',
@@ -90,6 +90,7 @@ export default function CandidateApplications() {
                   const tagClass = PortalStages.tagClassByStatus[app.status] || 'tag-stage-new';
                   const tagLabel = PortalStages.labels[app.status] || app.status;
                   const canWithdraw = WITHDRAWABLE.has(app.status);
+                  const canReapply = app.status === 'withdrawn' && app.jobId;
                   return (
                     <tr key={app.id}>
                       <td><strong>{app.jobTitle || 'Role'}</strong></td>
@@ -99,7 +100,7 @@ export default function CandidateApplications() {
                         <div style={{ display: 'flex', gap: '0.35rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
                           {app.jobId ? (
                             <Link href={candidateApplyPath(app.jobId)} className="btn btn-outline btn-sm">
-                              View role
+                              {canReapply ? 'Reapply' : 'View role'}
                             </Link>
                           ) : null}
                           {canWithdraw ? (

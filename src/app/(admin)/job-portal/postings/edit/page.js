@@ -3,7 +3,7 @@
 import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { usePortal } from '../../PortalContext';
-import { EMPLOYMENT_TYPES, JOB_STATUSES, REMOTE_TYPES } from '@/lib/job-api/config';
+import { DEFAULT_JOB_CURRENCY, EMPLOYMENT_TYPES, JOB_CURRENCIES, JOB_CURRENCY_SYMBOL, JOB_STATUSES, REMOTE_TYPES } from '@/lib/job-api/config';
 import { formatEmploymentType, formatRemoteType } from '@/lib/job-api/mappers';
 import { toUserMessage } from '@/lib/job-api/errors';
 import PortalHeader, { BreadcrumbLink } from '../../components/PortalHeader';
@@ -11,6 +11,7 @@ import PageTabs from '../../components/PageTabs';
 import StickyFormBar from '../../components/StickyFormBar';
 import ScreeningQuestionsEditor from '../../components/ScreeningQuestionsEditor';
 import CustomSelect from '@/components/CustomSelect';
+import { useConfirm } from '@/components/ConfirmProvider';
 
 const SECTIONS = [
   { id: 'details', label: 'Details' },
@@ -32,7 +33,7 @@ const emptyJob = {
   employmentType: 'full_time',
   salaryMin: '',
   salaryMax: '',
-  currency: 'USD',
+  currency: DEFAULT_JOB_CURRENCY,
   categoryId: '',
   screeningQuestions: [],
 };
@@ -41,7 +42,8 @@ function PostingEditForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const id = searchParams.get('id');
-  const { isReady, isAuthed, categories, loadJobById, upsertJob } = usePortal();
+  const { isReady, isAuthed, categories, loadJobById, upsertJob, removeJob } = usePortal();
+  const confirm = useConfirm();
 
   const [job, setJob] = useState(emptyJob);
   const [section, setSection] = useState('details');
@@ -49,6 +51,7 @@ function PostingEditForm() {
   const [error, setError] = useState('');
   const [loadingJob, setLoadingJob] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     if (isReady && !isAuthed) {
@@ -101,6 +104,29 @@ function PostingEditForm() {
       setError(toUserMessage(err));
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!id) return;
+    const ok = await confirm({
+      title: 'Delete job posting?',
+      message: `"${job.title || 'This job'}" will be permanently removed.`,
+      confirmText: 'Delete job',
+      cancelText: 'Cancel',
+      variant: 'danger',
+    });
+    if (!ok) return;
+
+    setDeleting(true);
+    setError('');
+    try {
+      await removeJob(id);
+      router.push('/job-portal/postings');
+    } catch (err) {
+      setError(toUserMessage(err, 'job'));
+    } finally {
+      setDeleting(false);
     }
   };
 
@@ -189,34 +215,39 @@ function PostingEditForm() {
           <div className="ats-form-grid cols-3">
             <div className="ats-field">
               <label className="ats-field-label" htmlFor="field-salary-min">Salary min</label>
-              <input
-                type="number"
-                id="field-salary-min"
-                placeholder="80000"
-                value={job.salaryMin ?? ''}
-                onChange={(e) => updateField('salaryMin', e.target.value)}
-              />
+              <div className="ats-input-prefix-wrap">
+                <span className="ats-input-prefix" aria-hidden="true">{JOB_CURRENCY_SYMBOL}</span>
+                <input
+                  type="number"
+                  id="field-salary-min"
+                  placeholder="5000"
+                  value={job.salaryMin ?? ''}
+                  onChange={(e) => updateField('salaryMin', e.target.value)}
+                />
+              </div>
             </div>
             <div className="ats-field">
               <label className="ats-field-label" htmlFor="field-salary-max">Salary max</label>
-              <input
-                type="number"
-                id="field-salary-max"
-                placeholder="120000"
-                value={job.salaryMax ?? ''}
-                onChange={(e) => updateField('salaryMax', e.target.value)}
-              />
+              <div className="ats-input-prefix-wrap">
+                <span className="ats-input-prefix" aria-hidden="true">{JOB_CURRENCY_SYMBOL}</span>
+                <input
+                  type="number"
+                  id="field-salary-max"
+                  placeholder="12000"
+                  value={job.salaryMax ?? ''}
+                  onChange={(e) => updateField('salaryMax', e.target.value)}
+                />
+              </div>
             </div>
             <div className="ats-field">
               <label className="ats-field-label" htmlFor="field-currency">Currency</label>
-              <input
-                type="text"
+              <CustomSelect
                 id="field-currency"
-                maxLength="3"
-                placeholder="USD"
-                value={job.currency}
-                onChange={(e) => updateField('currency', e.target.value.toUpperCase())}
+                value={job.currency || DEFAULT_JOB_CURRENCY}
+                onChange={(v) => updateField('currency', v)}
+                options={JOB_CURRENCIES}
               />
+              <p className="ats-field-hint">Salaries are stored in Ghana Cedis ({JOB_CURRENCY_SYMBOL}).</p>
             </div>
           </div>
         ) : null}
@@ -273,7 +304,9 @@ function PostingEditForm() {
       <StickyFormBar
         status={job.status}
         saving={saving}
+        deleting={deleting}
         onSave={handleSave}
+        onDelete={id ? handleDelete : undefined}
         cancelHref="/job-portal/postings"
         toast={toast}
         error={error}

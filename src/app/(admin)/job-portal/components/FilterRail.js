@@ -3,6 +3,7 @@
 import { PortalStages } from '../PortalContext';
 import { IconSearch } from './PortalIcons';
 import CustomSelect from '@/components/CustomSelect';
+import ScreeningFilterChips from './ScreeningFilterChips';
 
 export default function FilterRail({
   jobs,
@@ -13,6 +14,9 @@ export default function FilterRail({
   stages,
   searchQuery,
   onSearchChange,
+  screeningQuestions,
+  screeningFilters,
+  onScreeningFiltersChange,
   onClear,
 }) {
   const jobOptions = [
@@ -73,6 +77,14 @@ export default function FilterRail({
             ))}
           </div>
         </div>
+
+        {screeningQuestions?.length ? (
+          <ScreeningFilterChips
+            questions={screeningQuestions}
+            selectedFilters={screeningFilters}
+            onChange={onScreeningFiltersChange}
+          />
+        ) : null}
 
         <button type="button" className="btn btn-outline btn-sm ats-filter-clear" onClick={onClear}>
           Clear filters

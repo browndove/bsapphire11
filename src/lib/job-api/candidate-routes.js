@@ -2,6 +2,21 @@ export function candidateApplyPath(jobId) {
   return `/candidate/apply?jobId=${encodeURIComponent(jobId)}`;
 }
 
+/** Active application for a job (excludes withdrawn — those can reapply). */
+export function getActiveApplicationForJob(applications, jobId) {
+  if (!jobId || !Array.isArray(applications)) return null;
+  return applications.find(
+    (app) => String(app.jobId) === String(jobId) && app.status !== 'withdrawn'
+  ) || null;
+}
+
+export function getWithdrawnApplicationForJob(applications, jobId) {
+  if (!jobId || !Array.isArray(applications)) return null;
+  return applications.find(
+    (app) => String(app.jobId) === String(jobId) && app.status === 'withdrawn'
+  ) || null;
+}
+
 export function candidateLoginForJob(jobId) {
   return `/candidate/login?returnTo=${encodeURIComponent(candidateApplyPath(jobId))}`;
 }

@@ -816,6 +816,24 @@
   color: var(--text-color);
   background: rgba(255, 255, 255, 0.04);
 }
+
+.ats-menu-item.is-danger {
+  color: #fca5a5;
+}
+
+.ats-menu-item.is-danger:hover {
+  color: #fecaca;
+  background: rgba(248, 113, 113, 0.1);
+}
+
+button.ats-menu-item {
+  width: 100%;
+  border: none;
+  background: transparent;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
 /* —— Stage stepper —— */
 .ats-stepper {
   display: flex;
@@ -873,23 +891,30 @@
   display: flex;
   align-items: flex-start;
   gap: 1.25rem;
-  padding: 1.25rem;
+  padding: 1.5rem;
   margin-bottom: 1.25rem;
   border: 1px solid var(--border-color);
   border-radius: var(--ats-radius);
   background:
-    radial-gradient(circle at top right, rgba(15, 82, 186, 0.12), transparent 45%),
+    radial-gradient(circle at top right, rgba(15, 82, 186, 0.14), transparent 48%),
     linear-gradient(180deg, var(--ats-surface-2), var(--ats-surface));
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
 }
 
 .ats-profile-info h1 {
-  font-size: 1.65rem;
-  margin-bottom: 0.25rem;
+  font-size: 1.75rem;
+  margin-bottom: 0.35rem;
+  letter-spacing: -0.02em;
 }
 
 .ats-profile-meta {
   font-size: 0.88rem;
   color: var(--text-muted);
+  margin-bottom: 0.65rem;
+}
+
+.ats-profile-info .tag {
+  font-size: 0.72rem;
 }
 
 /* —— Filter rail —— */
@@ -1031,6 +1056,259 @@
 
 .ats-panel-link:hover {
   color: var(--text-color);
+}
+
+/* —— Candidate application detail —— */
+.ats-candidate-detail {
+  margin-top: 0.25rem;
+}
+
+.ats-detail-panel {
+  padding: 1.5rem;
+  margin-bottom: 0;
+  background:
+    radial-gradient(circle at top right, rgba(15, 82, 186, 0.06), transparent 50%),
+    var(--ats-surface);
+}
+
+.ats-detail-panel .ats-panel-title {
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.ats-detail-panel--full {
+  grid-column: 1 / -1;
+  margin-top: 1.25rem;
+}
+
+.ats-panel-badge {
+  font-size: 0.72rem;
+  padding: 0.2rem 0.55rem;
+  border-radius: 999px;
+  border: 1px solid var(--border-color);
+  color: var(--text-muted);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.ats-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.85rem;
+  margin: 0;
+}
+
+.ats-meta-cell {
+  margin: 0;
+  padding: 0.85rem 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--ats-radius-sm);
+  background: rgba(0, 0, 0, 0.25);
+}
+
+.ats-meta-cell--wide {
+  grid-column: 1 / -1;
+}
+
+.ats-meta-label {
+  margin: 0 0 0.35rem;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.ats-meta-value {
+  margin: 0;
+  font-size: 0.92rem;
+  color: var(--text-color);
+  line-height: 1.45;
+  word-break: break-word;
+}
+
+.ats-meta-value a {
+  color: #93c5fd;
+  text-decoration: none;
+}
+
+.ats-meta-value a:hover {
+  text-decoration: underline;
+}
+
+.ats-meta-value.is-empty {
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+.ats-panel-divider {
+  height: 1px;
+  margin: 1.25rem 0;
+  background: var(--border-color);
+}
+
+.ats-stage-control .ats-field-label {
+  margin-bottom: 0.5rem;
+}
+
+.ats-stage-control-row {
+  display: flex;
+  gap: 0.65rem;
+  align-items: stretch;
+}
+
+.ats-stage-control-row .custom-select {
+  flex: 1;
+}
+
+.ats-panel-footer {
+  margin-top: 1.25rem;
+  padding-top: 1rem;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.ats-back-link {
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: color var(--transition-snappy);
+}
+
+.ats-back-link:hover {
+  color: var(--text-color);
+}
+
+.ats-material-block + .ats-material-block {
+  margin-top: 1.25rem;
+}
+
+.ats-material-label {
+  margin: 0 0 0.6rem;
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.ats-prose-block {
+  margin: 0;
+  padding: 1rem 1.1rem;
+  border-left: 3px solid rgba(56, 189, 248, 0.45);
+  border-radius: 0 var(--ats-radius-sm) var(--ats-radius-sm) 0;
+  background: rgba(0, 0, 0, 0.3);
+  color: var(--text-muted);
+  font-size: 0.92rem;
+  line-height: 1.7;
+  white-space: pre-wrap;
+}
+
+.ats-empty-card {
+  padding: 1.1rem 1rem;
+  border: 1px dashed rgba(255, 255, 255, 0.1);
+  border-radius: var(--ats-radius-sm);
+  background: rgba(0, 0, 0, 0.2);
+  color: var(--text-muted);
+  font-size: 0.88rem;
+  text-align: center;
+}
+
+.ats-file-card {
+  display: flex;
+  align-items: center;
+  gap: 0.85rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: var(--ats-radius-sm);
+  background: rgba(0, 0, 0, 0.28);
+}
+
+.ats-file-card-icon {
+  width: 2.5rem;
+  height: 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  background: rgba(15, 82, 186, 0.15);
+  color: #93c5fd;
+  flex-shrink: 0;
+}
+
+.ats-file-card-icon svg {
+  width: 1.25rem;
+  height: 1.25rem;
+}
+
+.ats-file-card-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.ats-file-card-body strong {
+  font-size: 0.88rem;
+  font-weight: 500;
+}
+
+.ats-file-card-body span {
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.ats-answer-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 0.85rem;
+}
+
+.ats-answer-card {
+  padding: 1rem;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: var(--ats-radius-sm);
+  background: rgba(0, 0, 0, 0.22);
+}
+
+.ats-answer-card h4 {
+  margin: 0 0 0.45rem;
+  font-size: 0.72rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  font-weight: 500;
+  line-height: 1.35;
+}
+
+.ats-answer-card p {
+  margin: 0;
+  font-size: 0.9rem;
+  color: var(--text-color);
+  line-height: 1.5;
+}
+
+@media (max-width: 640px) {
+  .ats-meta-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ats-meta-cell--wide {
+    grid-column: auto;
+  }
+
+  .ats-stage-control-row {
+    flex-direction: column;
+  }
+
+  .ats-file-card {
+    flex-wrap: wrap;
+  }
+
+  .ats-file-card .btn {
+    width: 100%;
+    justify-content: center;
+  }
 }
 
 /* —— Editor steps —— */

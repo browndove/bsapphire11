@@ -13,9 +13,11 @@ import {
   updateEmployerCategory,
   updateEmployerCompany,
   updateEmployerUserStatus,
+  uploadFile,
 } from '@/lib/job-api/client';
 import { toUserMessage } from '@/lib/job-api/errors';
 import { useConfirm } from '@/components/ConfirmProvider';
+import MediaFilePicker from '@/components/candidate/MediaFilePicker';
 
 const TABS = [
   { id: 'profile', label: 'Profile' },
@@ -54,6 +56,9 @@ export default function SettingsPage() {
   const [companyWebsite, setCompanyWebsite] = useState('');
   const [companyDescription, setCompanyDescription] = useState('');
   const [companyLocation, setCompanyLocation] = useState('');
+  const [companyLogoUrl, setCompanyLogoUrl] = useState('');
+  const [logoFile, setLogoFile] = useState(null);
+  const [logoError, setLogoError] = useState('');
 
   const [newCategory, setNewCategory] = useState('');
   const [editingCategory, setEditingCategory] = useState(null);
@@ -89,6 +94,7 @@ export default function SettingsPage() {
       setCompanyWebsite(data?.website || '');
       setCompanyDescription(data?.description || '');
       setCompanyLocation(data?.location || '');
+      setCompanyLogoUrl(data?.logo_url || '');
     } catch (err) {
       setError(toUserMessage(err));
     }
@@ -146,14 +152,22 @@ export default function SettingsPage() {
     e.preventDefault();
     setSaving(true);
     setError('');
+    setLogoError('');
     try {
       if (!isPreview) {
+        let logo_url = companyLogoUrl || undefined;
+        if (logoFile) {
+          logo_url = await uploadFile(logoFile, 'company_logo');
+        }
         await updateEmployerCompany({
           name: companyName,
           website: companyWebsite || undefined,
           description: companyDescription || undefined,
           location: companyLocation || undefined,
+          logo_url,
         });
+        if (logo_url) setCompanyLogoUrl(logo_url);
+        setLogoFile(null);
       }
       showToast('Company profile updated');
     } catch (err) {
@@ -284,6 +298,21 @@ export default function SettingsPage() {
 
         {tab === 'company' ? (
           <form className="ats-form" onSubmit={handleSaveCompany}>
+            <div className="ats-field">
+              <label className="ats-field-label" htmlFor="co-logo">Company logo</label>
+              <MediaFilePicker
+                id="co-logo"
+                purpose="company_logo"
+                value={logoFile}
+                previewUrl={companyLogoUrl}
+                onChange={(file, validationError) => {
+                  setLogoFile(file);
+                  setLogoError(validationError);
+                }}
+                error={logoError}
+                disabled={saving}
+              />
+            </div>
             <div className="ats-field">
               <label className="ats-field-label" htmlFor="co-name">Company name</label>
               <input id="co-name" required value={companyName} onChange={(e) => setCompanyName(e.target.value)} />

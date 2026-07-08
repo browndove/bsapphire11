@@ -5,10 +5,11 @@ import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCandidate } from '../CandidateContext';
 import { fetchPublicJob, submitApplication, uploadResume } from '@/lib/job-api/client';
-import { candidateLoginForJob } from '@/lib/job-api/candidate-routes';
+import { candidateLoginForJob, getActiveApplicationForJob, getWithdrawnApplicationForJob } from '@/lib/job-api/candidate-routes';
 import ResumeFilePicker from '@/components/candidate/ResumeFilePicker';
-import { formatEmploymentType, formatRemoteType, mapPublicJobFromApi } from '@/lib/job-api/mappers';
-import { toUserMessage } from '@/lib/job-api/errors';
+import ScreeningAnswersForm from '@/components/candidate/ScreeningAnswersForm';
+import { formatEmploymentType, formatRemoteType, mapApplicationSubmitToApi, mapPublicJobFromApi } from '@/lib/job-api/mappers';
+import { getFieldErrors, toUserMessage } from '@/lib/job-api/errors';
 import PortalHeader, { BreadcrumbLink } from '@/app/(admin)/job-portal/components/PortalHeader';
 
 function CandidateApplyInner() {
@@ -24,6 +25,8 @@ function CandidateApplyInner() {
   const [resumeFile, setResumeFile] = useState(null);
   const [resumeError, setResumeError] = useState('');
   const [applyError, setApplyError] = useState('');
+  const [fieldErrors, setFieldErrors] = useState({});
+  const [screeningAnswers, setScreeningAnswers] = useState({});
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
@@ -61,7 +64,8 @@ function CandidateApplyInner() {
 
   if (!isReady || !isAuthed) return null;
 
-  const existingApplication = applications.find((app) => app.jobId === jobId);
+  const activeApplication = getActiveApplicationForJob(applications, jobId);
+  const withdrawnApplication = getWithdrawnApplicationForJob(applications, jobId);
 
   const handleResumeChange = (file, validationError = '') => {
     setResumeFile(file);
@@ -75,20 +79,40 @@ function CandidateApplyInner() {
       setResumeError('Please attach your resume.');
       return;
     }
+
+    const questions = job.screeningQuestions || [];
+    for (const q of questions) {
+      const value = screeningAnswers[q.id];
+      if (q.type === 'multi') {
+        if (!Array.isArray(value) || !value.length) {
+          setApplyError(`Please answer: ${q.label}`);
+          return;
+        }
+      } else if (!value || !String(value).trim()) {
+        setApplyError(`Please answer: ${q.label}`);
+        return;
+      }
+    }
+
     setSubmitting(true);
     setApplyError('');
+    setFieldErrors({});
     setResumeError('');
     try {
       const uploaded = await uploadResume(resumeFile);
-      await submitApplication({
-        job_id: job.id,
-        cover_letter: coverLetter,
-        resume_url: uploaded.url,
-      });
+      await submitApplication(
+        mapApplicationSubmitToApi({
+          jobId: job.id,
+          coverLetter,
+          resumeUrl: uploaded.file_url || uploaded.url,
+          answers: screeningAnswers,
+        })
+      );
       await refreshApplications();
       router.push('/candidate/applications');
     } catch (err) {
-      setApplyError(toUserMessage(err));
+      setFieldErrors(getFieldErrors(err));
+      setApplyError(toUserMessage(err, 'apply'));
     } finally {
       setSubmitting(false);
     }
@@ -146,10 +170,10 @@ function CandidateApplyInner() {
               <h2 className="ats-panel-title">Your application</h2>
             </div>
 
-            {existingApplication ? (
+            {activeApplication ? (
               <div>
                 <p className="hint" style={{ marginBottom: '1rem' }}>
-                  You already applied for this role. Track its status in your applications inbox.
+                  You already have an active application for this role. Track its status in your applications inbox.
                 </p>
                 <Link href="/candidate/applications" className="btn btn-primary btn-sm">
                   View my applications
@@ -157,6 +181,11 @@ function CandidateApplyInner() {
               </div>
             ) : (
               <form className="ats-form" onSubmit={handleApply}>
+                {withdrawnApplication ? (
+                  <div className="ats-toast" style={{ marginBottom: '1rem' }}>
+                    You previously withdrew from this role. Submit a new application below.
+                  </div>
+                ) : null}
                 <div className="ats-field">
                   <label className="ats-field-label" htmlFor="cover-letter">Cover letter</label>
                   <textarea
@@ -178,6 +207,13 @@ function CandidateApplyInner() {
                     disabled={submitting}
                   />
                 </div>
+                <ScreeningAnswersForm
+                  questions={job.screeningQuestions || []}
+                  values={screeningAnswers}
+                  onChange={setScreeningAnswers}
+                  errors={fieldErrors}
+                  disabled={submitting}
+                />
                 {applyError ? <div className="ats-toast is-error">{applyError}</div> : null}
                 <button type="submit" className="btn btn-primary" disabled={submitting}>
                   {submitting ? 'Submitting…' : 'Submit application'}

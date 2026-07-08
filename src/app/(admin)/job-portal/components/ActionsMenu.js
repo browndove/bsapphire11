@@ -33,17 +33,33 @@ export default function ActionsMenu({ items }) {
       </button>
       {open ? (
         <div className="ats-menu-dropdown" role="menu">
-          {items.map((item) => (
-            <Link
-              key={item.label}
-              href={item.href}
-              className="ats-menu-item"
-              role="menuitem"
-              onClick={() => setOpen(false)}
-            >
-              {item.label}
-            </Link>
-          ))}
+          {items.map((item) =>
+            item.onClick ? (
+              <button
+                key={item.label}
+                type="button"
+                className={`ats-menu-item${item.danger ? ' is-danger' : ''}`}
+                role="menuitem"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  setOpen(false);
+                  item.onClick();
+                }}
+              >
+                {item.label}
+              </button>
+            ) : (
+              <Link
+                key={item.label}
+                href={item.href}
+                className={`ats-menu-item${item.danger ? ' is-danger' : ''}`}
+                role="menuitem"
+                onClick={() => setOpen(false)}
+              >
+                {item.label}
+              </Link>
+            )
+          )}
         </div>
       ) : null}
     </div>

@@ -23,6 +23,7 @@ const FIELD_LABELS = {
   job_id: 'Job',
   cover_letter: 'Cover letter',
   resume_url: 'Resume',
+  logo_url: 'Logo',
   status: 'Status',
   title: 'Job title',
 };
@@ -62,13 +63,27 @@ function humanizeReason(reason) {
   return REASON_MESSAGES[lower] || text.replace(/_/g, ' ');
 }
 
+function labelForField(field) {
+  if (FIELD_LABELS[field]) return FIELD_LABELS[field];
+  if (field.startsWith('answers.')) {
+    return field.slice('answers.'.length).replace(/_/g, ' ');
+  }
+  return field.replace(/_/g, ' ');
+}
+
 function formatValidationDetails(details) {
   if (!details || typeof details !== 'object') return '';
   const parts = Object.entries(details).map(([field, reason]) => {
-    const label = FIELD_LABELS[field] || field.replace(/_/g, ' ');
+    const label = labelForField(field);
     return `${label} ${humanizeReason(reason)}.`;
   });
   return parts.join(' ');
+}
+
+export function getFieldErrors(err) {
+  const raw = err?.details || err?.payload?.errors || err?.payload?.details || {};
+  if (!raw || typeof raw !== 'object') return {};
+  return { ...raw };
 }
 
 function messageForStatus(status, context) {
@@ -89,6 +104,21 @@ function messageForStatus(status, context) {
   }
   if (context === 'job' && status === 401) {
     return 'Your session expired or is invalid. Sign in again, then retry saving the job.';
+  }
+  if (context === 'job' && status === 404) {
+    return 'That job posting could not be found. It may have already been deleted.';
+  }
+  if (context === 'job' && status === 409) {
+    return 'This job cannot be deleted right now because it still has related records.';
+  }
+  if (context === 'apply' && status === 409) {
+    return 'You already have an active application for this role.';
+  }
+  if (context === 'upload' && status === 503) {
+    return 'File uploads are temporarily unavailable. Please try again later.';
+  }
+  if (context === 'upload' && status === 403) {
+    return 'You do not have permission to upload this type of file.';
   }
   return STATUS_MESSAGES[status] || 'Something went wrong. Please try again.';
 }
@@ -121,7 +151,7 @@ export function createHttpError(res, data, context) {
   const err = new Error(data?.message || 'Request failed');
   err.status = status;
   err.code = data?.code;
-  err.details = data?.details;
+  err.details = data?.errors || data?.details;
   err.payload = data;
   err.message = toUserMessage(err, context);
   return err;

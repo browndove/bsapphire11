@@ -8,6 +8,7 @@ import {
 } from '@/lib/job-api/auth-storage';
 import {
   createEmployerJob,
+  deleteEmployerJob,
   fetchCategories,
   fetchDashboard,
   fetchEmployerApplications,
@@ -31,6 +32,7 @@ import {
   mapApplicationFromApi,
   mapJobFromApi,
   mapJobToApi,
+  matchesScreeningFilters,
   PortalStages,
 } from '@/lib/job-api/mappers';
 import { isPortalPreview, loadPreviewData } from '@/lib/job-api/preview';
@@ -111,64 +113,7 @@ export function PortalProvider({ children }) {
       const byId = Object.fromEntries(catList.map((c) => [c.id, c]));
       const jobRows = getPaginatedItems(jobsRes);
       const appRows = getPaginatedItems(appsRes);
-
-      // Hydrate missing candidate names by fetching user records when possible.
-      try {
-        const idsToFetch = Array.from(
-          new Set(
-            appRows
-              .map((a) => a.candidate_id || a.candidateId || a.candidate?.id)
-              .filter(Boolean)
-          )
-        );
-        if (idsToFetch.length > 0) {
-          const userMap = {};
-          await Promise.all(
-            idsToFetch.map(async (id) => {
-              try {
-                const res = await fetchEmployerUsers({ id });
-                const rows = Array.isArray(res) ? res : res?.data || [];
-                const u = rows[0] || null;
-                if (u) userMap[id] = u;
-              } catch (err) {
-                // ignore; we'll simply not hydrate that id
-              }
-            })
-          );
-          // apply hydrated names back to appRows
-          appRows.forEach((a) => {
-            const cid = a.candidate_id || a.candidateId || a.candidate?.id;
-            const u = cid ? userMap[cid] : null;
-            if (u) {
-              if (!a.candidate) a.candidate = {};
-              if (u.first_name && !a.candidate.first_name) a.candidate.first_name = u.first_name;
-              if (u.last_name && !a.candidate.last_name) a.candidate.last_name = u.last_name;
-              if (!a.candidate_name && (u.first_name || u.last_name)) {
-                a.candidate_name = [u.first_name, u.last_name].filter(Boolean).join(' ');
-              }
-            }
-          });
-          // small debug log
-          // console.log('Hydrated candidate names for ids:', Object.keys(userMap));
-        }
-      } catch (err) {
-        // don't block data refresh on hydration failure
-      }
-
-      // Debug logging: show raw + mapped application samples to verify API payload shape
-      try {
-        // limit output to first 3 records to avoid noisy logs
-        console.log('PORTAL: RAW appRows sample:', (appRows || []).slice(0, 3));
-      } catch (e) {
-        /* ignore logging errors */
-      }
-
       const mappedApps = (appRows || []).map(mapApplicationFromApi);
-      try {
-        console.log('PORTAL: MAPPED applications sample:', mappedApps.slice(0, 3));
-      } catch (e) {
-        /* ignore logging errors */
-      }
 
       setCategories(catList);
       setDashboardStats(dashRes);
@@ -182,6 +127,42 @@ export function PortalProvider({ children }) {
       setLoading(false);
     }
   }, [previewMode, applyPreviewData]);
+
+  const loadApplications = useCallback(async (params = {}) => {
+    if (previewMode) {
+      const data = loadPreviewData();
+      let rows = data.applications.map((a) => ({ ...a }));
+      if (params.job_id) {
+        rows = rows.filter((a) => a.jobId === params.job_id);
+      }
+      if (params.status) {
+        rows = rows.filter((a) => a.status === params.status);
+      }
+      if (params.q) {
+        const q = String(params.q).toLowerCase();
+        rows = rows.filter((a) => {
+          const name = (a.candidateName || '').toLowerCase();
+          const email = (a.email || '').toLowerCase();
+          const phone = (a.phone || '').toLowerCase();
+          return name.includes(q) || email.includes(q) || phone.includes(q);
+        });
+      }
+      if (params.screeningFilters) {
+        rows = rows.filter((a) => matchesScreeningFilters(a, params.screeningFilters));
+      }
+      const mapped = rows.map((a) => mapApplicationFromApi(a));
+      return { applications: mapped, total: mapped.length, appliedFilters: params.screeningFilters || {} };
+    }
+
+    const appsRes = await fetchEmployerApplications(params);
+    const appRows = getPaginatedItems(appsRes);
+    const mappedApps = appRows.map(mapApplicationFromApi);
+    return {
+      applications: mappedApps,
+      total: getPaginatedTotal(appsRes, appRows),
+      appliedFilters: appsRes?.applied_filters || {},
+    };
+  }, [previewMode]);
 
   useEffect(() => {
     let cancelled = false;
@@ -317,6 +298,16 @@ export function PortalProvider({ children }) {
     return mapped;
   };
 
+  const removeJob = async (id) => {
+    if (previewMode) {
+      setJobs((prev) => prev.filter((j) => j.id !== id));
+      return;
+    }
+
+    await deleteEmployerJob(id);
+    setJobs((prev) => prev.filter((j) => j.id !== id));
+  };
+
   const loadJobById = async (id) => {
     if (previewMode) {
       const found = jobs.find((j) => j.id === id);
@@ -430,10 +421,12 @@ export function PortalProvider({ children }) {
         newThisWeek,
         inInterview,
         upsertJob,
+        removeJob,
         loadJobById,
         upsertApplication,
         moveApplication,
         refreshData,
+        loadApplications,
         PIPELINE_STATUSES,
         STATUS_UPDATE_OPTIONS,
         PortalStages,
