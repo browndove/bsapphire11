@@ -8,8 +8,9 @@ import { fetchPublicJob, submitApplication, uploadResume } from '@/lib/job-api/c
 import { candidateLoginForJob, getActiveApplicationForJob, getWithdrawnApplicationForJob } from '@/lib/job-api/candidate-routes';
 import ResumeFilePicker from '@/components/candidate/ResumeFilePicker';
 import ScreeningAnswersForm from '@/components/candidate/ScreeningAnswersForm';
-import { formatEmploymentType, formatRemoteType, mapApplicationSubmitToApi, mapPublicJobFromApi } from '@/lib/job-api/mappers';
+import { formatEmploymentType, formatRemoteType, mapApplicationSubmitToApi, mapPublicJobFromApi, PortalStages, formatAnswerValue } from '@/lib/job-api/mappers';
 import { getFieldErrors, toUserMessage } from '@/lib/job-api/errors';
+import { formatRelativeTime } from '@/lib/job-api/format';
 import PortalHeader, { BreadcrumbLink } from '@/app/(admin)/job-portal/components/PortalHeader';
 
 function CandidateApplyInner() {
@@ -66,6 +67,25 @@ function CandidateApplyInner() {
 
   const activeApplication = getActiveApplicationForJob(applications, jobId);
   const withdrawnApplication = getWithdrawnApplicationForJob(applications, jobId);
+  const activeStatusClass = activeApplication
+    ? PortalStages.tagClassByStatus[activeApplication.status] || 'tag-stage-new'
+    : '';
+  const activeStatusLabel = activeApplication
+    ? PortalStages.labels[activeApplication.status] || activeApplication.status
+    : '';
+  const submittedAnswerEntries = activeApplication
+    ? (job?.screeningQuestions || []).length
+      ? (job.screeningQuestions || []).map((q) => ({
+          id: q.id,
+          label: q.label,
+          value: formatAnswerValue(activeApplication.answers?.[q.id]),
+        }))
+      : Object.entries(activeApplication.answers || {}).map(([id, value]) => ({
+          id,
+          label: id,
+          value: formatAnswerValue(value),
+        }))
+    : [];
 
   const handleResumeChange = (file, validationError = '') => {
     setResumeFile(file);
@@ -172,11 +192,71 @@ function CandidateApplyInner() {
 
             {activeApplication ? (
               <div>
-                <p className="hint" style={{ marginBottom: '1rem' }}>
-                  You already have an active application for this role. Track its status in your applications inbox.
+                <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
+                  <span className={`tag ${activeStatusClass}`}>{activeStatusLabel}</span>
+                  {activeApplication.submittedAt ? (
+                    <span className="ats-table-sub">
+                      Submitted {formatRelativeTime(activeApplication.submittedAt)}
+                    </span>
+                  ) : null}
+                </div>
+                <p className="hint" style={{ marginBottom: '1.25rem' }}>
+                  You already applied for this role. Below is what you submitted.
                 </p>
-                <Link href="/candidate/applications" className="btn btn-primary btn-sm">
-                  View my applications
+
+                <div className="ats-material-block">
+                  <p className="ats-material-label">Cover letter</p>
+                  {activeApplication.coverLetter ? (
+                    <blockquote className="ats-prose-block">{activeApplication.coverLetter}</blockquote>
+                  ) : (
+                    <div className="ats-empty-card">No cover letter provided.</div>
+                  )}
+                </div>
+
+                <div className="ats-material-block">
+                  <p className="ats-material-label">Resume</p>
+                  {activeApplication.resumeUrl ? (
+                    <div className="ats-file-card">
+                      <div className="ats-file-card-icon" aria-hidden="true">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
+                          <path d="M14 2H8a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8l-6-6Z" strokeLinejoin="round" />
+                          <path d="M14 2v6h6" strokeLinejoin="round" />
+                        </svg>
+                      </div>
+                      <div className="ats-file-card-body">
+                        <strong>Resume attached</strong>
+                        <span>PDF or document on file</span>
+                      </div>
+                      <a
+                        href={activeApplication.resumeUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="btn btn-primary btn-sm"
+                      >
+                        View resume
+                      </a>
+                    </div>
+                  ) : (
+                    <div className="ats-empty-card">No resume uploaded.</div>
+                  )}
+                </div>
+
+                {submittedAnswerEntries.length ? (
+                  <div className="ats-material-block">
+                    <p className="ats-material-label">Screening answers</p>
+                    <div className="ats-answer-grid">
+                      {submittedAnswerEntries.map((entry) => (
+                        <article className="ats-answer-card" key={entry.id}>
+                          <h4>{entry.label}</h4>
+                          <p>{entry.value || '—'}</p>
+                        </article>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+
+                <Link href="/candidate/applications" className="btn btn-outline btn-sm" style={{ marginTop: '1rem' }}>
+                  All my applications
                 </Link>
               </div>
             ) : (

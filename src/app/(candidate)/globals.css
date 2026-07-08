@@ -1,19 +1,10 @@
+@import '../../styles/portal-theme.css';
 @import '../../styles/brand-components.css';
+@import '../../styles/portal-brand-overrides.css';
 @import '../../styles/ats-portal.css';
 @import '../../styles/ats-forms.css';
 @import '../../styles/custom-ui.css';
-
-:root {
-  --bg-color: #000000;
-  --text-color: #ffffff;
-  --text-muted: #888888;
-  --border-color: #222222;
-  --border-hover: #ffffff;
-  --muted-soft: #666666;
-  --font-heading: var(--font-heading);
-  --font-body: var(--font-body);
-  --transition-snappy: 0.15s ease;
-}
+@import '../../styles/ui-checkbox.css';
 
 *,
 *::before,
@@ -25,8 +16,8 @@ html,
 body {
   margin: 0;
   min-height: 100vh;
-  background: #000000;
-  color: #ededed;
+  background: var(--bg-color);
+  color: var(--text-color);
   font-family: var(--font-body), system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
@@ -42,6 +33,7 @@ a {
   align-items: center;
   justify-content: center;
   padding: 2rem 1rem;
+  background: var(--bg-color);
 }
 
 .login-shell {
@@ -50,8 +42,8 @@ a {
 }
 
 .login-card {
-  background: #0a0a0a;
-  border: 1px solid #333333;
+  background: var(--portal-login-card-bg);
+  border: 1px solid var(--border-color);
   border-radius: 10px;
   padding: 2rem;
 }
@@ -59,20 +51,20 @@ a {
 .login-card h1 {
   font-size: 1.35rem;
   margin-bottom: 0.5rem;
-  color: #ededed;
+  color: var(--text-color);
 }
 
 .login-meta {
   margin-top: 1.25rem;
   font-size: 0.8125rem;
-  color: #666666;
+  color: var(--muted-soft);
 }
 
 .login-error {
   display: none;
   margin-top: 1rem;
   font-size: 0.875rem;
-  color: #f87171;
+  color: var(--danger);
 }
 
 .login-error.is-visible {
@@ -80,13 +72,13 @@ a {
 }
 
 .hint {
-  color: #888888;
+  color: var(--text-muted);
   font-size: 0.875rem;
   margin-bottom: 1.25rem;
 }
 
 .field-hint {
   font-size: 0.75rem;
-  color: #666666;
+  color: var(--muted-soft);
   margin-top: 0.35rem;
 }

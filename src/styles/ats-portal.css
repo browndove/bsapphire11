@@ -1,18 +1,4 @@
-/* ATS employer UI — dark Blvck Sapphire */
-
-:root {
-  --sidebar-w: 72px;
-  --sidebar-w-expanded: 248px;
-  --header-h: 68px;
-  --filter-rail-w: 252px;
-  --ats-surface: #060606;
-  --ats-surface-2: #0c0c0c;
-  --ats-surface-3: #111111;
-  --ats-radius: 6px;
-  --ats-radius-sm: 4px;
-  --ats-glow: 0 0 0 1px rgba(255, 255, 255, 0.04);
-  --ats-shadow: 0 12px 40px rgba(0, 0, 0, 0.45);
-}
+/* ATS employer + candidate portal UI */
 
 .ats-icon {
   width: 1.125rem;
@@ -56,8 +42,8 @@
 .portal-sidebar {
   width: 260px;
   flex-shrink: 0;
-  border-right: 1px solid #222222;
-  background: #000000;
+  border-right: 1px solid var(--border-color);
+  background: var(--portal-sidebar-bg);
   display: flex;
   flex-direction: column;
   min-height: 100vh;
@@ -68,7 +54,7 @@
 
 .portal-sidebar-top {
   padding: 1.25rem 1rem 1rem;
-  border-bottom: 1px solid #222222;
+  border-bottom: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
   gap: 1rem;
@@ -86,13 +72,13 @@
   width: 32px;
   height: 32px;
   border-radius: 8px;
-  border: 1px solid #333333;
-  background: #0a0a0a;
+  border: 1px solid var(--portal-elevated-border);
+  background: var(--portal-elevated);
   flex-shrink: 0;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: #ededed;
+  color: var(--text-color);
 }
 
 .portal-brand-mark svg {
@@ -104,14 +90,14 @@
   font-size: 0.8125rem;
   font-weight: 600;
   letter-spacing: -0.02em;
-  color: #ededed;
+  color: var(--text-color);
   line-height: 1.2;
 }
 
 .portal-brand-text span {
   display: block;
   font-size: 0.75rem;
-  color: #666666;
+  color: var(--muted-soft);
   margin-top: 0.1rem;
 }
 
@@ -138,24 +124,24 @@
   border-radius: 6px;
   font-size: 0.875rem;
   font-weight: 500;
-  color: #888888;
+  color: var(--text-muted);
   text-decoration: none;
   transition: background 0.15s ease, color 0.15s ease;
 }
 
 .portal-sidebar-link:hover {
-  color: #ededed;
-  background: rgba(255, 255, 255, 0.04);
+  color: var(--text-color);
+  background: var(--portal-hover);
 }
 
 .portal-sidebar-link.is-active {
-  color: #ededed;
-  background: rgba(255, 255, 255, 0.07);
+  color: var(--text-color);
+  background: var(--portal-active);
 }
 
 .portal-sidebar-bottom {
   padding: 0.75rem 0.65rem 1rem;
-  border-top: 1px solid #222222;
+  border-top: 1px solid var(--border-color);
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
@@ -167,20 +153,20 @@
   justify-content: space-between;
   padding: 0.5rem 0.65rem;
   font-size: 0.8125rem;
-  color: #666666;
+  color: var(--muted-soft);
   text-decoration: none;
   border-radius: 6px;
   transition: color 0.15s ease, background 0.15s ease;
 }
 
 .portal-sidebar-external:hover {
-  color: #ededed;
-  background: rgba(255, 255, 255, 0.03);
+  color: var(--text-color);
+  background: var(--portal-hover);
 }
 
 .portal-sidebar-user-card {
-  background: #0a0a0a;
-  border: 1px solid #333333;
+  background: var(--portal-elevated);
+  border: 1px solid var(--portal-elevated-border);
   border-radius: 8px;
   padding: 0.75rem;
 }
@@ -201,9 +187,9 @@
   justify-content: center;
   font-size: 0.7rem;
   font-weight: 600;
-  color: #ededed;
-  background: #171717;
-  border: 1px solid #333333;
+  color: var(--text-color);
+  background: var(--portal-avatar-bg);
+  border: 1px solid var(--portal-elevated-border);
   flex-shrink: 0;
 }
 
@@ -218,12 +204,12 @@
   font-size: 0.6875rem;
   text-transform: uppercase;
   letter-spacing: 0.05em;
-  color: #666666;
+  color: var(--muted-soft);
 }
 
 .portal-sidebar-user-email {
   font-size: 0.75rem;
-  color: #a1a1a1;
+  color: var(--portal-text-secondary);
   word-break: break-all;
   line-height: 1.3;
 }
@@ -250,7 +236,7 @@
 .ats-header {
   min-height: var(--header-h);
   border-bottom: 1px solid var(--border-color);
-  background: rgba(0, 0, 0, 0.88);
+  background: var(--portal-header-bg);
   backdrop-filter: blur(16px);
   display: flex;
   align-items: center;
@@ -307,16 +293,16 @@
   width: 100%;
   min-height: 2.25rem;
   padding: 0 0.75rem 0 2.15rem !important;
-  background: #0a0a0a !important;
-  border: 1px solid #333333 !important;
+  background: var(--portal-elevated) !important;
+  border: 1px solid var(--portal-elevated-border) !important;
   border-radius: 6px !important;
-  color: #ededed !important;
+  color: var(--text-color) !important;
   font-size: 0.875rem !important;
 }
 
 .ats-input-icon input:focus {
-  border-color: #555555 !important;
-  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.06);
+  border-color: var(--portal-input-placeholder) !important;
+  box-shadow: 0 0 0 3px var(--portal-border-subtle);
   outline: none;
 }
 
@@ -348,9 +334,9 @@
   font-size: 0.72rem;
   font-weight: 600;
   border-radius: 999px;
-  border: 1px solid rgba(56, 189, 248, 0.2);
-  color: #7dd3fc;
-  background: rgba(15, 82, 186, 0.12);
+  border: 1px solid var(--accent-sky-border);
+  color: var(--accent-sky-text);
+  background: var(--accent-sky-soft);
 }
 
 /* —— Page tabs —— */
@@ -382,7 +368,7 @@
 
 .ats-tab.is-active {
   color: var(--text-color);
-  border-bottom-color: #38bdf8;
+  border-bottom-color: var(--accent-sky);
 }
 
 /* —— View toggle —— */
@@ -414,8 +400,8 @@
 
 .ats-view-toggle button.is-active {
   color: var(--text-color);
-  background: rgba(255, 255, 255, 0.06);
-  box-shadow: inset 0 -2px 0 #38bdf8;
+  background: var(--portal-border-subtle);
+  box-shadow: inset 0 -2px 0 var(--accent-sky);
 }
 
 /* —— Stat cards —— */
@@ -457,7 +443,7 @@
 }
 
 .ats-stat-card.is-link:hover {
-  background: rgba(255, 255, 255, 0.025);
+  background: var(--portal-hover);
 }
 
 .ats-stat-label {
@@ -634,7 +620,7 @@
 }
 
 .ats-kanban-col-body.is-drag-over {
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--portal-hover);
 }
 
 .ats-candidate-card {
@@ -647,9 +633,9 @@
 }
 
 .ats-candidate-card:hover {
-  border-color: rgba(255, 255, 255, 0.14);
+  border-color: var(--portal-border-hover);
   transform: translateY(-1px);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  box-shadow: var(--portal-card-shadow);
 }
 
 .ats-candidate-card.is-dragging {
@@ -722,7 +708,7 @@
 }
 
 .ats-table tbody tr:hover td {
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--portal-hover);
 }
 
 .ats-table-cell-name {
@@ -761,9 +747,9 @@
 }
 
 .ats-count-pill.has-value {
-  color: #7dd3fc;
-  border-color: rgba(56, 189, 248, 0.2);
-  background: rgba(15, 82, 186, 0.1);
+  color: var(--accent-sky-text);
+  border-color: var(--accent-sky-border);
+  background: var(--accent-sky-soft);
 }
 
 .ats-table-wrap {
@@ -795,7 +781,7 @@
 .ats-menu-trigger[aria-expanded='true'] {
   color: var(--text-color);
   border-color: var(--border-color);
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--portal-hover);
 }
 
 .ats-menu-dropdown {
@@ -803,7 +789,7 @@
   right: 0;
   top: calc(100% + 0.35rem);
   min-width: 10.5rem;
-  background: #0a0a0a;
+  background: var(--portal-elevated);
   border: 1px solid var(--border-color);
   border-radius: var(--ats-radius-sm);
   box-shadow: var(--ats-shadow);
@@ -822,15 +808,15 @@
 
 .ats-menu-item:hover {
   color: var(--text-color);
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--portal-hover);
 }
 
 .ats-menu-item.is-danger {
-  color: #fca5a5;
+  color: var(--danger-text-soft);
 }
 
 .ats-menu-item.is-danger:hover {
-  color: #fecaca;
+  color: var(--danger-text-soft);
   background: rgba(248, 113, 113, 0.1);
 }
 
@@ -873,13 +859,13 @@ button.ats-menu-item {
 
 .ats-step.is-complete {
   color: var(--text-color);
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--portal-hover);
 }
 
 .ats-step.is-active {
   color: var(--text-color);
-  background: rgba(15, 82, 186, 0.1);
-  box-shadow: inset 0 -2px 0 #38bdf8;
+  background: var(--accent-sky-soft);
+  box-shadow: inset 0 -2px 0 var(--accent-sky);
 }
 
 .ats-step.is-rejected {
@@ -904,9 +890,9 @@ button.ats-menu-item {
   border: 1px solid var(--border-color);
   border-radius: var(--ats-radius);
   background:
-    radial-gradient(circle at top right, rgba(15, 82, 186, 0.14), transparent 48%),
+    radial-gradient(circle at top right, var(--accent-soft), transparent 48%),
     linear-gradient(180deg, var(--ats-surface-2), var(--ats-surface));
-  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+  box-shadow: var(--portal-card-shadow);
 }
 
 .ats-profile-info h1 {
@@ -954,23 +940,23 @@ button.ats-menu-item {
 
 .ats-filter-chip:hover {
   color: var(--text-color);
-  border-color: rgba(255, 255, 255, 0.14);
+  border-color: var(--portal-border-hover);
 }
 
 .ats-filter-chip.is-on {
-  color: #dbeafe;
-  border-color: rgba(56, 189, 248, 0.35);
-  background: rgba(15, 82, 186, 0.14);
+  color: var(--accent-sky-text);
+  border-color: var(--accent-sky-border);
+  background: var(--accent-soft);
 }
 
 /* —— Empty state —— */
 .ats-empty {
   text-align: center;
   padding: 3.25rem 1.5rem;
-  border: 1px dashed rgba(255, 255, 255, 0.08);
+  border: 1px dashed var(--portal-border-subtle);
   border-radius: var(--ats-radius);
   background:
-    radial-gradient(circle at center, rgba(15, 82, 186, 0.06), transparent 55%),
+    radial-gradient(circle at center, var(--accent-sky-soft), transparent 55%),
     var(--ats-surface);
 }
 
@@ -1002,7 +988,7 @@ button.ats-menu-item {
   bottom: 0;
   margin: 2rem -2rem -3rem;
   padding: 1rem 2rem;
-  background: rgba(0, 0, 0, 0.95);
+  background: var(--portal-sticky-bg);
   border-top: 1px solid var(--border-color);
   display: flex;
   align-items: center;
@@ -1075,7 +1061,7 @@ button.ats-menu-item {
   padding: 1.5rem;
   margin-bottom: 0;
   background:
-    radial-gradient(circle at top right, rgba(15, 82, 186, 0.06), transparent 50%),
+    radial-gradient(circle at top right, var(--accent-sky-soft), transparent 50%),
     var(--ats-surface);
 }
 
@@ -1096,7 +1082,7 @@ button.ats-menu-item {
   border-radius: 999px;
   border: 1px solid var(--border-color);
   color: var(--text-muted);
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--portal-hover);
 }
 
 .ats-meta-grid {
@@ -1109,9 +1095,9 @@ button.ats-menu-item {
 .ats-meta-cell {
   margin: 0;
   padding: 0.85rem 1rem;
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--portal-border-subtle);
   border-radius: var(--ats-radius-sm);
-  background: rgba(0, 0, 0, 0.25);
+  background: var(--portal-inset-bg);
 }
 
 .ats-meta-cell--wide {
@@ -1136,7 +1122,7 @@ button.ats-menu-item {
 }
 
 .ats-meta-value a {
-  color: #93c5fd;
+  color: var(--accent-link);
   text-decoration: none;
 }
 
@@ -1172,7 +1158,7 @@ button.ats-menu-item {
 .ats-panel-footer {
   margin-top: 1.25rem;
   padding-top: 1rem;
-  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  border-top: 1px solid var(--portal-border-subtle);
 }
 
 .ats-back-link {
@@ -1202,9 +1188,9 @@ button.ats-menu-item {
 .ats-prose-block {
   margin: 0;
   padding: 1rem 1.1rem;
-  border-left: 3px solid rgba(56, 189, 248, 0.45);
+  border-left: 3px solid var(--accent-sky-border);
   border-radius: 0 var(--ats-radius-sm) var(--ats-radius-sm) 0;
-  background: rgba(0, 0, 0, 0.3);
+  background: var(--portal-inset-bg-strong);
   color: var(--text-muted);
   font-size: 0.92rem;
   line-height: 1.7;
@@ -1213,9 +1199,9 @@ button.ats-menu-item {
 
 .ats-empty-card {
   padding: 1.1rem 1rem;
-  border: 1px dashed rgba(255, 255, 255, 0.1);
+  border: 1px dashed var(--portal-border-hover);
   border-radius: var(--ats-radius-sm);
-  background: rgba(0, 0, 0, 0.2);
+  background: var(--portal-inset-bg);
   color: var(--text-muted);
   font-size: 0.88rem;
   text-align: center;
@@ -1226,9 +1212,9 @@ button.ats-menu-item {
   align-items: center;
   gap: 0.85rem;
   padding: 0.9rem 1rem;
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--portal-border-subtle);
   border-radius: var(--ats-radius-sm);
-  background: rgba(0, 0, 0, 0.28);
+  background: var(--portal-inset-bg-strong);
 }
 
 .ats-file-card-icon {
@@ -1238,8 +1224,8 @@ button.ats-menu-item {
   align-items: center;
   justify-content: center;
   border-radius: 8px;
-  background: rgba(15, 82, 186, 0.15);
-  color: #93c5fd;
+  background: var(--accent-soft);
+  color: var(--accent-link);
   flex-shrink: 0;
 }
 
@@ -1274,9 +1260,9 @@ button.ats-menu-item {
 
 .ats-answer-card {
   padding: 1rem;
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--portal-border-subtle);
   border-radius: var(--ats-radius-sm);
-  background: rgba(0, 0, 0, 0.22);
+  background: var(--portal-inset-bg);
 }
 
 .ats-answer-card h4 {
@@ -1374,7 +1360,7 @@ button.ats-menu-item {
 
 /* —— Skeleton —— */
 .ats-skeleton {
-  background: linear-gradient(90deg, #0a0a0a 25%, #151515 50%, #0a0a0a 75%);
+  background: linear-gradient(90deg, var(--portal-elevated) 25%, var(--portal-skeleton-mid) 50%, var(--portal-elevated) 75%);
   background-size: 200% 100%;
   animation: ats-shimmer 1.2s infinite;
   border: 1px solid var(--border-color);
@@ -1403,8 +1389,8 @@ button.ats-menu-item {
 }
 
 .ats-toast.is-success {
-  border-color: #4ade80;
-  color: #86efac;
+  border-color: var(--success);
+  color: var(--success);
 }
 
 .ats-preview-banner {

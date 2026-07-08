@@ -1,0 +1,47 @@
+/* Portal-only fixes for shared brand-components hardcoded dark values */
+
+.login-card,
+.demo-form-box {
+  background: var(--portal-login-card-bg);
+}
+
+.login-card input:-webkit-autofill,
+.login-card input:-webkit-autofill:hover,
+.login-card input:-webkit-autofill:focus {
+  -webkit-box-shadow: 0 0 0 1000px var(--portal-login-input-autofill) inset;
+  box-shadow: 0 0 0 1000px var(--portal-login-input-autofill) inset;
+}
+
+.login-brand svg {
+  color: var(--text-color);
+}
+
+table.data th {
+  background: var(--ats-surface-2);
+}
+
+table.data tbody tr:hover td {
+  background: var(--portal-hover);
+}
+
+.q-block,
+.question-block {
+  background: var(--ats-surface-2);
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  background: var(--portal-hover);
+}
+
+.filter-btn,
+.filter-chip {
+  border-color: var(--border-strong);
+}
+
+.filter-btn:hover,
+.filter-chip:hover {
+  border-color: var(--portal-input-hover-border);
+  color: var(--portal-text-emphasis);
+}

@@ -1,0 +1,94 @@
+/* Light theme tokens — job portal (admin) + candidate portal */
+
+:root {
+  --bg-color: #f6f7f9;
+  --text-color: #111827;
+  --text-muted: #6b7280;
+  --border-color: #e5e7eb;
+  --border-hover: #111827;
+  --sapphire-hint: rgba(15, 82, 186, 0.12);
+  --transition-snappy: 0.15s ease;
+  --transition-smooth: 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+
+  --bg: var(--bg-color);
+  --bg-subtle: #eef0f3;
+  --surface: #ffffff;
+  --surface-2: #f9fafb;
+  --border: var(--border-color);
+  --border-strong: #d1d5db;
+  --text: var(--text-color);
+  --muted: var(--text-muted);
+  --muted-soft: #9ca3af;
+  --accent: #0f52ba;
+  --accent-hover: #0a4094;
+  --accent-soft: rgba(15, 82, 186, 0.1);
+  --accent-link: #0f52ba;
+  --accent-sky: #0284c7;
+  --accent-sky-text: #0369a1;
+  --accent-sky-soft: rgba(2, 132, 199, 0.12);
+  --accent-sky-border: rgba(2, 132, 199, 0.3);
+  --success: #16a34a;
+  --success-soft: #dcfce7;
+  --danger: #dc2626;
+  --danger-soft: #fee2e2;
+  --danger-text: #b91c1c;
+  --danger-text-soft: #dc2626;
+  --font-h: var(--font-heading);
+  --font-b: var(--font-body);
+  --ease: var(--transition-snappy);
+  --sidebar-w: 272px;
+  --radius: 0;
+  --radius-sm: 0;
+
+  --sidebar-w-collapsed: 72px;
+  --sidebar-w-expanded: 248px;
+  --header-h: 68px;
+  --filter-rail-w: 252px;
+  --ats-surface: #ffffff;
+  --ats-surface-2: #f9fafb;
+  --ats-surface-3: #f3f4f6;
+  --ats-radius: 6px;
+  --ats-radius-sm: 4px;
+  --ats-glow: 0 0 0 1px rgba(0, 0, 0, 0.04);
+  --ats-shadow: 0 12px 40px rgba(15, 23, 42, 0.08);
+
+  --portal-elevated: #ffffff;
+  --portal-elevated-border: #e5e7eb;
+  --portal-sidebar-bg: #ffffff;
+  --portal-brand-bg: #f9fafb;
+  --portal-user-card-bg: #f9fafb;
+  --portal-avatar-bg: #e5e7eb;
+  --portal-header-bg: rgba(255, 255, 255, 0.92);
+  --portal-sticky-bg: rgba(255, 255, 255, 0.96);
+  --portal-overlay: rgba(15, 23, 42, 0.45);
+  --portal-card-shadow: 0 10px 30px rgba(15, 23, 42, 0.08);
+  --portal-dropdown-shadow: 0 16px 48px rgba(15, 23, 42, 0.12);
+
+  --portal-hover: rgba(0, 0, 0, 0.04);
+  --portal-hover-strong: rgba(0, 0, 0, 0.06);
+  --portal-active: rgba(0, 0, 0, 0.08);
+  --portal-border-subtle: rgba(0, 0, 0, 0.06);
+  --portal-border-hover: rgba(0, 0, 0, 0.12);
+  --portal-inset-bg: rgba(0, 0, 0, 0.03);
+  --portal-inset-bg-strong: rgba(0, 0, 0, 0.05);
+
+  --portal-input-bg: #ffffff;
+  --portal-input-border: #d1d5db;
+  --portal-input-text: #111827;
+  --portal-input-placeholder: #9ca3af;
+  --portal-input-hover-bg: #f9fafb;
+  --portal-input-hover-border: #9ca3af;
+  --portal-input-focus-border: #0f52ba;
+  --portal-input-focus-ring: rgba(15, 82, 186, 0.15);
+  --portal-file-btn-bg: #f3f4f6;
+  --portal-skeleton-start: #f3f4f6;
+  --portal-skeleton-mid: #e5e7eb;
+
+  --portal-text-secondary: #4b5563;
+  --portal-text-tertiary: #6b7280;
+  --portal-text-quaternary: #9ca3af;
+  --portal-text-emphasis: #374151;
+
+  --portal-login-card-bg: #ffffff;
+  --portal-login-input-autofill: #ffffff;
+}

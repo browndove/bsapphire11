@@ -13,10 +13,10 @@
   align-items: center;
   justify-content: space-between;
   gap: 0.5rem;
-  background: #0a0a0a;
-  border: 1px solid #333333;
+  background: var(--portal-elevated);
+  border: 1px solid var(--portal-elevated-border);
   border-radius: 6px;
-  color: #ededed;
+  color: var(--text-color);
   font-family: var(--font-body);
   font-size: 0.875rem;
   text-align: left;
@@ -25,20 +25,20 @@
 }
 
 .custom-select-trigger.is-placeholder {
-  color: #666666;
+  color: var(--muted-soft);
 }
 
 .custom-select-trigger:hover:not(:disabled) {
-  border-color: #444444;
-  background: #0c0c0c;
+  border-color: var(--border-strong);
+  background: var(--ats-surface-2);
 }
 
 .custom-select.is-open .custom-select-trigger,
 .custom-select-trigger:focus-visible {
   outline: none;
-  border-color: #555555;
-  background: #0c0c0c;
-  box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.06);
+  border-color: var(--portal-input-focus-border);
+  background: var(--portal-input-hover-bg);
+  box-shadow: 0 0 0 3px var(--portal-input-focus-ring);
 }
 
 .custom-select.is-disabled .custom-select-trigger {
@@ -56,7 +56,7 @@
 .custom-select-chevron {
   width: 0.9rem;
   height: 0.9rem;
-  color: #888888;
+  color: var(--text-muted);
   flex-shrink: 0;
   transition: transform 0.15s ease;
 }
@@ -78,10 +78,10 @@
   margin: 0;
   padding: 0.35rem;
   list-style: none;
-  background: #111111;
-  border: 1px solid #333333;
+  background: var(--ats-surface-3);
+  border: 1px solid var(--portal-elevated-border);
   border-radius: 8px;
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.55);
+  box-shadow: var(--portal-dropdown-shadow);
   max-height: 16rem;
   overflow: auto;
 }
@@ -95,7 +95,7 @@
   border: none;
   border-radius: 6px;
   background: transparent;
-  color: #ededed;
+  color: var(--text-color);
   font-family: var(--font-body);
   font-size: 0.875rem;
   text-align: left;
@@ -104,11 +104,11 @@
 }
 
 .custom-select-option:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--portal-hover);
 }
 
 .custom-select-option.is-selected {
-  background: rgba(255, 255, 255, 0.04);
+  background: var(--portal-hover);
 }
 
 .custom-select-option-check {
@@ -118,7 +118,7 @@
   align-items: center;
   justify-content: center;
   flex-shrink: 0;
-  color: #ededed;
+  color: var(--text-color);
 }
 
 .custom-select-option-check svg {
@@ -135,30 +135,30 @@
   align-items: center;
   justify-content: center;
   padding: 1.25rem;
-  background: rgba(0, 0, 0, 0.72);
+  background: var(--portal-overlay);
   backdrop-filter: blur(4px);
 }
 
 .confirm-dialog {
   width: min(100%, 24rem);
-  background: #0a0a0a;
-  border: 1px solid #333333;
+  background: var(--portal-elevated);
+  border: 1px solid var(--portal-elevated-border);
   border-radius: 10px;
   padding: 1.25rem;
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6);
+  box-shadow: var(--portal-dropdown-shadow);
 }
 
 .confirm-dialog-title {
   font-size: 1rem;
   font-weight: 500;
-  color: #ededed;
+  color: var(--text-color);
   margin-bottom: 0.5rem;
   letter-spacing: -0.02em;
 }
 
 .confirm-dialog-message {
   font-size: 0.875rem;
-  color: #888888;
+  color: var(--text-muted);
   line-height: 1.5;
   margin-bottom: 1.25rem;
 }

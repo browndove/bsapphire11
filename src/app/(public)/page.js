@@ -225,7 +225,7 @@ export default function Home() {
           <div className="engage-careers slide-up delay-1" id="careers" style={{ backgroundColor: 'var(--bg-color)', padding: '140px 4%', textAlign: 'center' }}>
             <div className="container" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
               <h2 className="engage-title" style={{ fontSize: 'clamp(2.5rem, 5vw, 4rem)', marginBottom: '1rem' }}>Join Blvck Sapphire</h2>
-              <p className="engage-desc" style={{ fontSize: '1.2rem', marginBottom: '3rem', maxWidth: '600px', marginLeft: 'auto', marginRight: 'auto' }}>We are actively looking for complex problems and top-tier engineers. View our current openings.</p>
+              <p className="engage-desc" style={{ fontSize: '1.2rem', marginBottom: '3rem', maxWidth: '600px', marginLeft: 'auto', marginRight: 'auto' }}>Join the architects of infinite scale. We&apos;re looking for visionary thinkers to build the resilient automation layers of tomorrow.</p>
               <Link href="/careers" className="btn btn-outline btn-oval" style={{ padding: '16px 36px' }}>Explore Careers</Link>
             </div>
           </div>

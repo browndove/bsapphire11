@@ -1,42 +1,11 @@
-/* Recruiting portal — uses company site component primitives */
+/* Recruiting portal — light theme */
+@import '../../styles/portal-theme.css';
 @import '../../styles/brand-components.css';
+@import '../../styles/portal-brand-overrides.css';
 @import '../../styles/ats-portal.css';
 @import '../../styles/ats-forms.css';
 @import '../../styles/custom-ui.css';
 @import '../../styles/ui-checkbox.css';
-
-:root {
-  --bg-color: #000000;
-  --text-color: #ffffff;
-  --text-muted: #888888;
-  --border-color: #222222;
-  --border-hover: #ffffff;
-  --sapphire-hint: rgba(15, 82, 186, 0.4);
-  --transition-snappy: 0.3s cubic-bezier(0.25, 1, 0.5, 1);
-  --transition-smooth: 0.8s cubic-bezier(0.16, 1, 0.3, 1);
-
-  /* Portal aliases (inline styles reference these) */
-  --bg: var(--bg-color);
-  --bg-subtle: #050505;
-  --surface: transparent;
-  --surface-2: #030303;
-  --border: var(--border-color);
-  --border-strong: #444444;
-  --text: var(--text-color);
-  --muted: var(--text-muted);
-  --muted-soft: #666666;
-  --accent: #0f52ba;
-  --accent-hover: #1668dc;
-  --accent-soft: rgba(15, 82, 186, 0.15);
-  --success: #4ade80;
-  --danger: #f87171;
-  --font-h: var(--font-heading);
-  --font-b: var(--font-body);
-  --ease: var(--transition-snappy);
-  --sidebar-w: 272px;
-  --radius: 0;
-  --radius-sm: 0;
-}
 
 *,
 *::before,
@@ -163,7 +132,8 @@ a:hover {
 }
 
 .login-card {
-  border: none;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
 }
 
 .login-card .btn-primary {
