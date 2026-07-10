@@ -27,6 +27,17 @@ a {
   text-decoration: none;
 }
 
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-heading), system-ui, sans-serif;
+  font-weight: 500;
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+  color: var(--text-color);
+}
+
 .login-body {
   min-height: 100vh;
   display: flex;
@@ -81,4 +92,67 @@ a {
   font-size: 0.75rem;
   color: var(--muted-soft);
   margin-top: 0.35rem;
+}
+
+/* Guest apply — full-width shell without sidebar */
+.portal-guest-shell {
+  min-height: 100vh;
+  background: var(--bg-color);
+}
+
+.portal-main.portal-main-guest {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 2.5rem 2rem 3rem;
+}
+
+.portal-guest-shell .ats-header {
+  position: static;
+  min-height: 0;
+  align-items: center;
+  background: transparent;
+  backdrop-filter: none;
+  border-bottom: 1px solid var(--border-color);
+  padding: 0 0 1.5rem;
+  margin: 0 0 2rem;
+}
+
+.portal-guest-shell .ats-header-left {
+  gap: 0.45rem;
+  min-width: 0;
+}
+
+.portal-guest-shell .ats-header-title {
+  margin: 0;
+}
+
+@media (max-width: 900px) {
+  .portal-main.portal-main-guest {
+    padding: 2rem 1.5rem 2.5rem;
+  }
+}
+
+@media (max-width: 640px) {
+  .portal-main.portal-main-guest {
+    padding: 1.5rem 1.25rem 2rem;
+  }
+
+  .portal-guest-shell .ats-header {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 1rem;
+    padding-bottom: 1.25rem;
+    margin-bottom: 1.5rem;
+  }
+
+  .portal-guest-shell .ats-header-right {
+    width: 100%;
+  }
+
+  .portal-guest-shell .ats-header-right .btn {
+    width: 100%;
+    justify-content: center;
+  }
 }

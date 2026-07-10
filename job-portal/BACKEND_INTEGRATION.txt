@@ -26,7 +26,8 @@ PUBLIC SITE
 -----------
 - Careers: GET `/api/public/jobs` (published jobs from `GET /jobs`)
 - Job detail: GET `/api/public/jobs/:id`
-- Apply: candidate register/login + 2FA, then POST `/me/applications`
+- Apply (no account): POST `/api/public/jobs/:id/applications` + POST `/api/public/files/upload-url`
+- Legacy candidate portal login remains for existing accounts only (no new registration)
 
 
 KEY FILES

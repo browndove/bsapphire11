@@ -6,8 +6,7 @@ import BgCanvas from '@/components/BgCanvas';
 import { fetchPublicJobs, fetchPublicCompany } from '@/lib/job-api/client';
 import { toUserMessage } from '@/lib/job-api/errors';
 import { formatEmploymentType, formatRemoteType, getPaginatedItems, mapPublicJobFromApi } from '@/lib/job-api/mappers';
-import { candidateApplyPath, candidateLoginForJob } from '@/lib/job-api/candidate-routes';
-import { getAccessToken, getStoredUser } from '@/lib/job-api/auth-storage';
+import { candidateApplyPath } from '@/lib/job-api/candidate-routes';
 
 export default function CareersClient({ initialJobs, initialCategories, initialCompany, initialError = '' }) {
   const [filter, setFilter] = useState('all');
@@ -16,12 +15,6 @@ export default function CareersClient({ initialJobs, initialCategories, initialC
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(initialError);
   const [company, setCompany] = useState(initialCompany);
-  const [isCandidateAuthed, setIsCandidateAuthed] = useState(false);
-
-  useEffect(() => {
-    const user = getStoredUser();
-    setIsCandidateAuthed(!!getAccessToken() && user?.role === 'candidate');
-  }, []);
 
   useEffect(() => {
     let cancelled = false;
@@ -76,7 +69,7 @@ export default function CareersClient({ initialJobs, initialCategories, initialC
   const filteredJobs = filter === 'all' ? jobs : jobs.filter((job) => job.department === filter);
 
   function jobApplyHref(jobId) {
-    return isCandidateAuthed ? candidateApplyPath(jobId) : candidateLoginForJob(jobId);
+    return candidateApplyPath(jobId);
   }
 
   return (

@@ -6,18 +6,21 @@ import { IconSearch } from './PortalIcons';
 export default function PortalHeader({
   title,
   breadcrumb,
+  breadcrumbs,
   badge,
   search,
   onSearchChange,
   searchPlaceholder = 'Search…',
   action,
 }) {
+  const trail = breadcrumb ?? breadcrumbs;
+
   return (
     <header className="ats-header">
       <div className="ats-header-left">
-        {breadcrumb ? (
+        {trail ? (
           <nav className="ats-breadcrumb" aria-label="Breadcrumb">
-            {breadcrumb}
+            {trail}
           </nav>
         ) : null}
         {title ? (

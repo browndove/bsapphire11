@@ -114,6 +114,12 @@ function messageForStatus(status, context) {
   if (context === 'apply' && status === 409) {
     return 'You already have an active application for this role.';
   }
+  if (context === 'guest-apply' && status === 409) {
+    return 'You have already applied for this role with this email address.';
+  }
+  if (context === 'guest-apply' && status === 404) {
+    return 'Applications are temporarily unavailable. Please try again shortly.';
+  }
   if (context === 'upload' && status === 503) {
     return 'File uploads are temporarily unavailable. Please try again later.';
   }

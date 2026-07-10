@@ -165,6 +165,39 @@ export function mapApplicationSubmitToApi({ jobId, coverLetter, resumeUrl, answe
   return body;
 }
 
+export function mapGuestApplicationSubmitToApi({
+  firstName,
+  lastName,
+  email,
+  phone,
+  coverLetter,
+  resumeUrl,
+  answers = {},
+}) {
+  const body = {
+    first_name: firstName.trim(),
+    last_name: lastName.trim(),
+    email: email.trim(),
+    cover_letter: coverLetter,
+    resume_url: resumeUrl,
+  };
+  if (phone?.trim()) {
+    body.phone = phone.trim();
+  }
+  const cleanAnswers = {};
+  for (const [id, value] of Object.entries(answers)) {
+    if (Array.isArray(value)) {
+      if (value.length) cleanAnswers[id] = value;
+    } else if (value != null && String(value).trim()) {
+      cleanAnswers[id] = String(value).trim();
+    }
+  }
+  if (Object.keys(cleanAnswers).length) {
+    body.answers = cleanAnswers;
+  }
+  return body;
+}
+
 export function deriveScreeningFiltersFromApplications(applications, jobQuestions = []) {
   const byId = Object.fromEntries((jobQuestions || []).map((q) => [q.id, q]));
   const buckets = new Map();

@@ -347,6 +347,51 @@ export async function uploadResume(file) {
   return { url: fileUrl, file_url: fileUrl };
 }
 
+async function uploadPublicFile(file, purpose = 'resume') {
+  const contentType = file.type || 'application/octet-stream';
+  const meta = await parseResponse(
+    await fetch('/api/public/files/upload-url', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        content_type: contentType,
+        filename: file.name,
+        purpose,
+      }),
+    }),
+    'upload'
+  );
+
+  const putRes = await fetch(meta.upload_url, {
+    method: 'PUT',
+    headers: { 'Content-Type': contentType },
+    body: file,
+  });
+
+  if (!putRes.ok) {
+    const err = new Error('File upload to storage failed. Please try again.');
+    err.status = putRes.status;
+    throw err;
+  }
+
+  return meta.file_url;
+}
+
+export async function uploadResumePublic(file) {
+  const fileUrl = await uploadPublicFile(file, 'resume');
+  return { url: fileUrl, file_url: fileUrl };
+}
+
+export async function submitGuestApplication(jobId, body) {
+  const res = await fetch(`/api/public/jobs/${encodeURIComponent(jobId)}/applications`, {
+    method: 'POST',
+    cache: 'no-store',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  return parseResponse(res, 'guest-apply');
+}
+
 export async function submitApplication(body) {
   return portalFetch('/me/applications', {
     method: 'POST',

@@ -4,14 +4,43 @@ import { useEffect, useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCandidate } from '../CandidateContext';
-import { fetchPublicJob, submitApplication, uploadResume } from '@/lib/job-api/client';
-import { candidateLoginForJob, getActiveApplicationForJob, getWithdrawnApplicationForJob } from '@/lib/job-api/candidate-routes';
+import {
+  fetchPublicJob,
+  submitApplication,
+  submitGuestApplication,
+  uploadResume,
+  uploadResumePublic,
+} from '@/lib/job-api/client';
+import { getActiveApplicationForJob, getWithdrawnApplicationForJob } from '@/lib/job-api/candidate-routes';
 import ResumeFilePicker from '@/components/candidate/ResumeFilePicker';
 import ScreeningAnswersForm from '@/components/candidate/ScreeningAnswersForm';
-import { formatEmploymentType, formatRemoteType, mapApplicationSubmitToApi, mapPublicJobFromApi, PortalStages, formatAnswerValue } from '@/lib/job-api/mappers';
+import ApplyContactFields from '@/components/candidate/ApplyContactFields';
+import {
+  formatEmploymentType,
+  formatRemoteType,
+  mapApplicationSubmitToApi,
+  mapGuestApplicationSubmitToApi,
+  mapPublicJobFromApi,
+  PortalStages,
+  formatAnswerValue,
+} from '@/lib/job-api/mappers';
 import { getFieldErrors, toUserMessage } from '@/lib/job-api/errors';
 import { formatRelativeTime } from '@/lib/job-api/format';
 import PortalHeader, { BreadcrumbLink } from '@/app/(admin)/job-portal/components/PortalHeader';
+
+function validateScreeningAnswers(questions, answers) {
+  for (const q of questions) {
+    const value = answers[q.id];
+    if (q.type === 'multi') {
+      if (!Array.isArray(value) || !value.length) {
+        return `Please answer: ${q.label}`;
+      }
+    } else if (!value || !String(value).trim()) {
+      return `Please answer: ${q.label}`;
+    }
+  }
+  return '';
+}
 
 function CandidateApplyInner() {
   const router = useRouter();
@@ -22,6 +51,10 @@ function CandidateApplyInner() {
   const [job, setJob] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [firstName, setFirstName] = useState('');
+  const [lastName, setLastName] = useState('');
+  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [coverLetter, setCoverLetter] = useState('');
   const [resumeFile, setResumeFile] = useState(null);
   const [resumeError, setResumeError] = useState('');
@@ -29,13 +62,6 @@ function CandidateApplyInner() {
   const [fieldErrors, setFieldErrors] = useState({});
   const [screeningAnswers, setScreeningAnswers] = useState({});
   const [submitting, setSubmitting] = useState(false);
-
-  useEffect(() => {
-    if (!isReady) return;
-    if (!isAuthed) {
-      router.replace(jobId ? candidateLoginForJob(jobId) : '/candidate/login');
-    }
-  }, [isReady, isAuthed, jobId, router]);
 
   useEffect(() => {
     if (!jobId) {
@@ -63,10 +89,11 @@ function CandidateApplyInner() {
     };
   }, [jobId]);
 
-  if (!isReady || !isAuthed) return null;
+  const activeApplication =
+    isReady && isAuthed ? getActiveApplicationForJob(applications, jobId) : null;
+  const withdrawnApplication =
+    isReady && isAuthed ? getWithdrawnApplicationForJob(applications, jobId) : null;
 
-  const activeApplication = getActiveApplicationForJob(applications, jobId);
-  const withdrawnApplication = getWithdrawnApplicationForJob(applications, jobId);
   const activeStatusClass = activeApplication
     ? PortalStages.tagClassByStatus[activeApplication.status] || 'tag-stage-new'
     : '';
@@ -95,44 +122,61 @@ function CandidateApplyInner() {
   const handleApply = async (e) => {
     e.preventDefault();
     if (!job) return;
+
+    if (!isAuthed && (!firstName.trim() || !lastName.trim() || !email.trim())) {
+      setApplyError('Please enter your name and email.');
+      return;
+    }
+
     if (!resumeFile) {
       setResumeError('Please attach your resume.');
       return;
     }
 
-    const questions = job.screeningQuestions || [];
-    for (const q of questions) {
-      const value = screeningAnswers[q.id];
-      if (q.type === 'multi') {
-        if (!Array.isArray(value) || !value.length) {
-          setApplyError(`Please answer: ${q.label}`);
-          return;
-        }
-      } else if (!value || !String(value).trim()) {
-        setApplyError(`Please answer: ${q.label}`);
-        return;
-      }
+    const screeningError = validateScreeningAnswers(job.screeningQuestions || [], screeningAnswers);
+    if (screeningError) {
+      setApplyError(screeningError);
+      return;
     }
 
     setSubmitting(true);
     setApplyError('');
     setFieldErrors({});
     setResumeError('');
+
     try {
-      const uploaded = await uploadResume(resumeFile);
-      await submitApplication(
-        mapApplicationSubmitToApi({
-          jobId: job.id,
+      if (isAuthed) {
+        const uploaded = await uploadResume(resumeFile);
+        await submitApplication(
+          mapApplicationSubmitToApi({
+            jobId: job.id,
+            coverLetter,
+            resumeUrl: uploaded.file_url || uploaded.url,
+            answers: screeningAnswers,
+          })
+        );
+        await refreshApplications();
+        router.push('/candidate/applications');
+        return;
+      }
+
+      const uploaded = await uploadResumePublic(resumeFile);
+      await submitGuestApplication(
+        job.id,
+        mapGuestApplicationSubmitToApi({
+          firstName,
+          lastName,
+          email,
+          phone,
           coverLetter,
           resumeUrl: uploaded.file_url || uploaded.url,
           answers: screeningAnswers,
         })
       );
-      await refreshApplications();
-      router.push('/candidate/applications');
+      router.push('/success-job');
     } catch (err) {
       setFieldErrors(getFieldErrors(err));
-      setApplyError(toUserMessage(err, 'apply'));
+      setApplyError(toUserMessage(err, isAuthed ? 'apply' : 'guest-apply'));
     } finally {
       setSubmitting(false);
     }
@@ -141,14 +185,14 @@ function CandidateApplyInner() {
   return (
     <>
       <PortalHeader
-        title={job?.title || 'Apply for role'}
-        breadcrumbs={
+        breadcrumb={
           <>
             <BreadcrumbLink href="/careers">Careers</BreadcrumbLink>
-            <span aria-hidden="true">/</span>
+            <span aria-hidden="true"> / </span>
             <span>Apply</span>
           </>
         }
+        title={job?.title || 'Apply for role'}
         action={
           <Link href="/careers" className="btn btn-outline btn-sm">
             Back to roles
@@ -261,11 +305,27 @@ function CandidateApplyInner() {
               </div>
             ) : (
               <form className="ats-form" onSubmit={handleApply}>
+                {!isAuthed ? (
+                  <ApplyContactFields
+                    firstName={firstName}
+                    lastName={lastName}
+                    email={email}
+                    phone={phone}
+                    onFirstNameChange={setFirstName}
+                    onLastNameChange={setLastName}
+                    onEmailChange={setEmail}
+                    onPhoneChange={setPhone}
+                    disabled={submitting}
+                    errors={fieldErrors}
+                  />
+                ) : null}
+
                 {withdrawnApplication ? (
                   <div className="ats-toast" style={{ marginBottom: '1rem' }}>
                     You previously withdrew from this role. Submit a new application below.
                   </div>
                 ) : null}
+
                 <div className="ats-field">
                   <label className="ats-field-label" htmlFor="cover-letter">Cover letter</label>
                   <textarea
@@ -275,6 +335,7 @@ function CandidateApplyInner() {
                     value={coverLetter}
                     onChange={(e) => setCoverLetter(e.target.value)}
                     placeholder="Tell us why you are a strong fit for this role."
+                    disabled={submitting}
                   />
                 </div>
                 <div className="ats-field">
@@ -298,6 +359,11 @@ function CandidateApplyInner() {
                 <button type="submit" className="btn btn-primary" disabled={submitting}>
                   {submitting ? 'Submitting…' : 'Submit application'}
                 </button>
+                {!isAuthed ? (
+                  <p className="ats-field-hint">
+                    No account required — submit your application in one step.
+                  </p>
+                ) : null}
               </form>
             )}
           </section>
