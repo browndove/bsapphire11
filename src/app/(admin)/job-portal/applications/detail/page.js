@@ -7,10 +7,12 @@ import { usePortal, PortalStages } from '../../PortalContext';
 import { toUserMessage } from '@/lib/job-api/errors';
 import { formatDateTime } from '@/lib/job-api/format';
 import { formatAnswerValue } from '@/lib/job-api/mappers';
+import { buildStatusEmailDefaults } from '@/lib/job-api/email-templates';
 import PortalHeader, { BreadcrumbLink } from '../../components/PortalHeader';
 import Avatar from '../../components/Avatar';
 import StageStepper from '../../components/StageStepper';
 import QuickActions from '../../components/QuickActions';
+import StatusEmailModal from '../../components/StatusEmailModal';
 import CustomSelect from '@/components/CustomSelect';
 import { useConfirm } from '@/components/ConfirmProvider';
 
@@ -21,14 +23,26 @@ function ApplicationDetailView() {
   const jobFilter = searchParams.get('job');
   const confirm = useConfirm();
 
-  const { isReady, isAuthed, applications, jobs, STATUS_UPDATE_OPTIONS, upsertApplication } = usePortal();
+  const {
+    isReady,
+    isAuthed,
+    isPreview,
+    applications,
+    jobs,
+    STATUS_UPDATE_OPTIONS,
+    updateApplicationWithEmail,
+    moveApplication,
+  } = usePortal();
 
   const [app, setApp] = useState(null);
   const [job, setJob] = useState(null);
   const [stage, setStage] = useState('submitted');
   const [toast, setToast] = useState('');
+  const [toastVariant, setToastVariant] = useState('success');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [statusModal, setStatusModal] = useState(null);
+  const [statusModalError, setStatusModalError] = useState('');
 
   useEffect(() => {
     if (isReady && !isAuthed) {
@@ -64,17 +78,52 @@ function ApplicationDetailView() {
       .join(' ') ||
     (app.email ? String(app.email).split('@')[0] : 'Applicant');
 
-  const applyStatus = async (newStatus) => {
+  const companyName = app.companyName || 'Blvck Sapphire';
+
+  const showToast = (message, variant = 'success') => {
+    setToast(message);
+    setToastVariant(variant);
+    setTimeout(() => setToast(''), variant === 'warning' ? 6000 : 3000);
+  };
+
+  const openStatusModal = (targetStatus, { resend = false } = {}) => {
+    setStatusModalError('');
+    const defaults = buildStatusEmailDefaults(app, job, companyName, targetStatus);
+    setStatusModal({ targetStatus, resend, ...defaults });
+  };
+
+  const applyStatusPreview = async (newStatus) => {
     setSaving(true);
     setError('');
     try {
-      const updated = await upsertApplication({ ...app, status: newStatus });
+      const updated = await moveApplication(app.id, newStatus);
       setApp(updated);
       setStage(updated.status);
-      setToast('Status updated.');
-      setTimeout(() => setToast(''), 3000);
+      showToast('Status updated.');
     } catch (err) {
       setError(toUserMessage(err));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleStatusEmailSubmit = async (payload) => {
+    setSaving(true);
+    setStatusModalError('');
+    try {
+      const { application, emailWarning } = await updateApplicationWithEmail(app.id, payload);
+      setApp(application);
+      setStage(application.status);
+      setStatusModal(null);
+      if (emailWarning) {
+        showToast(emailWarning, 'warning');
+      } else {
+        showToast(
+          statusModal?.resend ? 'Email sent.' : 'Status updated and email sent.'
+        );
+      }
+    } catch (err) {
+      setStatusModalError(toUserMessage(err, 'status-email'));
     } finally {
       setSaving(false);
     }
@@ -83,26 +132,34 @@ function ApplicationDetailView() {
   const confirmReject = async () =>
     confirm({
       title: 'Reject candidate?',
-      message: `${displayName || 'This candidate'} will be marked as rejected.`,
-      confirmText: 'Reject',
+      message: `${displayName || 'This candidate'} will be marked as rejected and notified by email.`,
+      confirmText: 'Continue',
       cancelText: 'Cancel',
       variant: 'danger',
     });
 
-  const handleQuickAction = async (newStatus) => {
+  const requestStatusChange = async (newStatus) => {
+    if (newStatus === app.status) return;
+
     if (newStatus === 'rejected') {
       const ok = await confirmReject();
       if (!ok) return;
     }
-    await applyStatus(newStatus);
+
+    if (isPreview) {
+      await applyStatusPreview(newStatus);
+      return;
+    }
+
+    openStatusModal(newStatus);
+  };
+
+  const handleQuickAction = async (newStatus) => {
+    await requestStatusChange(newStatus);
   };
 
   const handleSave = async () => {
-    if (stage === 'rejected' && stage !== app.status) {
-      const ok = await confirmReject();
-      if (!ok) return;
-    }
-    await applyStatus(stage);
+    await requestStatusChange(stage);
   };
 
   const stageOptions = (stage === 'submitted' && !STATUS_UPDATE_OPTIONS.includes(stage)
@@ -141,7 +198,11 @@ function ApplicationDetailView() {
         <div className="ats-profile-info">
           <h1>{displayName}</h1>
           <p className="ats-profile-meta">
-            {app.email || 'No email'}
+            {app.email ? (
+              <a href={`mailto:${app.email}`}>{app.email}</a>
+            ) : (
+              'No email'
+            )}
             {app.submittedAt ? ` · Applied ${formatDateTime(app.submittedAt)}` : ''}
           </p>
           <span className={`tag ${tagClass}`}>{tagLabel}</span>
@@ -152,8 +213,52 @@ function ApplicationDetailView() {
 
       <QuickActions currentStatus={stage} onAction={handleQuickAction} saving={saving} />
 
-      {toast ? <div className="ats-toast is-success">{toast}</div> : null}
+      {toast ? (
+        <div className={`ats-toast is-${toastVariant === 'warning' ? 'warning' : 'success'}`}>
+          {toast}
+        </div>
+      ) : null}
       {error ? <div className="ats-toast is-error">{error}</div> : null}
+
+      {app.emailSent === false ? (
+        <div className="ats-email-retry-banner" role="status">
+          <div>
+            <strong>Email could not be delivered.</strong>
+            <p>
+              {app.emailError ||
+                'The status was saved, but the candidate did not receive the notification.'}
+            </p>
+          </div>
+          <button
+            type="button"
+            className="btn btn-outline btn-sm"
+            disabled={saving}
+            onClick={() => openStatusModal(app.status, { resend: true })}
+          >
+            Retry email
+          </button>
+        </div>
+      ) : null}
+
+      <StatusEmailModal
+        key={
+          statusModal
+            ? `${app.id}-${statusModal.targetStatus}-${statusModal.resend ? 'resend' : 'change'}`
+            : 'closed'
+        }
+        open={!!statusModal}
+        application={app}
+        initialFields={statusModal?.fields}
+        interviewIso={statusModal?.interviewIso}
+        targetStatus={statusModal?.targetStatus}
+        isResend={!!statusModal?.resend}
+        onClose={() => {
+          if (!saving) setStatusModal(null);
+        }}
+        onSubmit={handleStatusEmailSubmit}
+        submitting={saving}
+        error={statusModalError}
+      />
 
       <div className="ats-candidate-detail">
         <div className="ats-detail-grid">
@@ -196,6 +301,17 @@ function ApplicationDetailView() {
                 <dt className="ats-meta-label">Source</dt>
                 <dd className="ats-meta-value">{app.source || 'Website'}</dd>
               </div>
+              {app.interviewAt ? (
+                <div className="ats-meta-cell ats-meta-cell--wide">
+                  <dt className="ats-meta-label">Interview</dt>
+                  <dd className="ats-meta-value">
+                    {formatDateTime(app.interviewAt)}
+                    {app.interviewReminderSentAt
+                      ? ` · Reminder sent ${formatDateTime(app.interviewReminderSentAt)}`
+                      : ''}
+                  </dd>
+                </div>
+              ) : null}
             </dl>
 
             <div className="ats-panel-divider" />

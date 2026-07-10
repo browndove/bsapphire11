@@ -238,11 +238,20 @@ export async function fetchJobApplications(jobId, params = {}) {
   return portalFetch(`/employer/jobs/${jobId}/applications${query ? `?${query}` : ''}`);
 }
 
-export async function updateApplicationStatus(id, status) {
-  return portalFetch(`/employer/applications/${id}/status`, {
-    method: 'PATCH',
-    body: JSON.stringify({ status }),
-  });
+export async function updateApplicationStatus(id, statusOrPayload) {
+  const body =
+    typeof statusOrPayload === 'string'
+      ? { status: statusOrPayload }
+      : statusOrPayload;
+  return portalFetch(
+    `/employer/applications/${id}/status`,
+    {
+      method: 'PATCH',
+      body: JSON.stringify(body),
+    },
+    true,
+    'status-email'
+  );
 }
 
 export async function fetchCategories() {

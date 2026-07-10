@@ -26,6 +26,11 @@ const FIELD_LABELS = {
   logo_url: 'Logo',
   status: 'Status',
   title: 'Job title',
+  email_subject: 'Email subject',
+  email_body: 'Email body',
+  interview_at: 'Interview date & time',
+  reminder_email_subject: 'Reminder email subject',
+  reminder_email_body: 'Reminder email body',
 };
 
 const REASON_MESSAGES = {
@@ -56,19 +61,38 @@ function isTechnicalMessage(message) {
   return technicalPatterns.some((pattern) => pattern.test(message.trim()));
 }
 
+function normalizeFieldKey(field) {
+  const aliases = {
+    EmailSubject: 'email_subject',
+    EmailBody: 'email_body',
+    EmailHtml: 'email_html',
+    InterviewAt: 'interview_at',
+    ReminderEmailSubject: 'reminder_email_subject',
+    ReminderEmailBody: 'reminder_email_body',
+    ReminderEmailHtml: 'reminder_email_html',
+  };
+  return aliases[field] || field;
+}
+
+function labelForField(field) {
+  const normalized = normalizeFieldKey(field);
+  if (FIELD_LABELS[normalized]) return FIELD_LABELS[normalized];
+  if (FIELD_LABELS[field]) return FIELD_LABELS[field];
+  if (normalized.startsWith('answers.')) {
+    return normalized.slice('answers.'.length).replace(/_/g, ' ');
+  }
+  return normalized
+    .replace(/_/g, ' ')
+    .replace(/([a-z])([A-Z])/g, '$1 $2')
+    .replace(/^\w/, (c) => c.toUpperCase());
+}
+
 function humanizeReason(reason) {
   if (reason == null) return 'is not valid';
   const text = String(reason).trim();
   const lower = text.toLowerCase();
+  if (lower === 'field is required' || lower === 'required') return 'is required';
   return REASON_MESSAGES[lower] || text.replace(/_/g, ' ');
-}
-
-function labelForField(field) {
-  if (FIELD_LABELS[field]) return FIELD_LABELS[field];
-  if (field.startsWith('answers.')) {
-    return field.slice('answers.'.length).replace(/_/g, ' ');
-  }
-  return field.replace(/_/g, ' ');
 }
 
 function formatValidationDetails(details) {
@@ -125,6 +149,9 @@ function messageForStatus(status, context) {
   }
   if (context === 'upload' && status === 403) {
     return 'You do not have permission to upload this type of file.';
+  }
+  if (context === 'status-email' && status === 503) {
+    return 'Email is not configured on the server. The application status was not updated.';
   }
   return STATUS_MESSAGES[status] || 'Something went wrong. Please try again.';
 }

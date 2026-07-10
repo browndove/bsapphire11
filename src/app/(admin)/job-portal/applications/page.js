@@ -5,12 +5,14 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { usePortal } from '../PortalContext';
 import { toUserMessage } from '@/lib/job-api/errors';
 import { getFilterableScreeningQuestions } from '@/lib/job-api/mappers';
+import { buildStatusEmailDefaults } from '@/lib/job-api/email-templates';
 import PortalHeader from '../components/PortalHeader';
 import ViewToggle from '../components/ViewToggle';
 import FilterRail from '../components/FilterRail';
 import PipelineBoard from '../components/PipelineBoard';
 import CandidateTable from '../components/CandidateTable';
 import EmptyState from '../components/EmptyState';
+import StatusEmailModal from '../components/StatusEmailModal';
 
 const PAGE_SIZE = 50;
 const VIEW_KEY = 'ats-candidates-view';
@@ -23,11 +25,13 @@ function ApplicationsInbox() {
   const {
     isReady,
     isAuthed,
+    isPreview,
     applications: allApplications,
     applicationsTotal,
     jobs,
     PIPELINE_STATUSES,
     moveApplication,
+    updateApplicationWithEmail,
     loadApplications,
     loadJobById,
   } = usePortal();
@@ -39,11 +43,15 @@ function ApplicationsInbox() {
   const [view, setView] = useState('board');
   const [page, setPage] = useState(0);
   const [toast, setToast] = useState('');
+  const [toastVariant, setToastVariant] = useState('error');
   const [serverApps, setServerApps] = useState(null);
   const [serverTotal, setServerTotal] = useState(0);
   const [loadingApps, setLoadingApps] = useState(false);
   const [selectedJobDetail, setSelectedJobDetail] = useState(null);
   const [loadingJobDetail, setLoadingJobDetail] = useState(false);
+  const [statusModal, setStatusModal] = useState(null);
+  const [statusModalError, setStatusModalError] = useState('');
+  const [statusSaving, setStatusSaving] = useState(false);
 
   const selectedJobRecord = useMemo(
     () => selectedJobDetail || (selectedJob !== '__all' ? jobs.find((j) => j.id === selectedJob) : null),
@@ -192,22 +200,66 @@ function ApplicationsInbox() {
   const totalPages = Math.ceil(filteredApps.length / PAGE_SIZE);
   const showPagination = view === 'list' && filteredApps.length > PAGE_SIZE;
 
+  const showToast = useCallback((message, variant = 'error') => {
+    setToast(message);
+    setToastVariant(variant);
+    setTimeout(() => setToast(''), variant === 'warning' ? 6000 : 4000);
+  }, []);
+
   const handleMove = useCallback(
     async (id, status) => {
-      try {
-        await moveApplication(id, status);
-        if (selectedJob !== '__all' && serverApps) {
-          setServerApps((prev) =>
-            (prev || []).map((a) => (a.id === id ? { ...a, status } : a))
-          );
+      const app = filteredApps.find((a) => a.id === id);
+      if (!app || app.status === status) return;
+
+      if (isPreview) {
+        try {
+          await moveApplication(id, status);
+          if (selectedJob !== '__all' && serverApps) {
+            setServerApps((prev) =>
+              (prev || []).map((a) => (a.id === id ? { ...a, status } : a))
+            );
+          }
+        } catch (err) {
+          showToast(toUserMessage(err));
         }
-      } catch (err) {
-        setToast(toUserMessage(err));
-        setTimeout(() => setToast(''), 4000);
+        return;
       }
+
+      setStatusModalError('');
+      const modalJob = jobs.find((j) => j.id === app.jobId) || selectedJobRecord;
+      const defaults = buildStatusEmailDefaults(
+        app,
+        modalJob,
+        app.companyName || 'Blvck Sapphire',
+        status
+      );
+      setStatusModal({ app, targetStatus: status, ...defaults });
     },
-    [moveApplication, selectedJob, serverApps]
+    [filteredApps, isPreview, jobs, moveApplication, selectedJob, selectedJobRecord, serverApps, showToast]
   );
+
+  const handleStatusEmailSubmit = async (payload) => {
+    if (!statusModal?.app) return;
+    const { app } = statusModal;
+    setStatusSaving(true);
+    setStatusModalError('');
+    try {
+      const { application, emailWarning } = await updateApplicationWithEmail(app.id, payload);
+      if (selectedJob !== '__all' && serverApps) {
+        setServerApps((prev) =>
+          (prev || []).map((a) => (a.id === application.id ? { ...a, ...application } : a))
+        );
+      }
+      setStatusModal(null);
+      if (emailWarning) {
+        showToast(emailWarning, 'warning');
+      }
+    } catch (err) {
+      setStatusModalError(toUserMessage(err, 'status-email'));
+    } finally {
+      setStatusSaving(false);
+    }
+  };
 
   const clearFilters = () => {
     setSelectedJob('__all');
@@ -226,7 +278,30 @@ function ApplicationsInbox() {
         action={<ViewToggle value={view} onChange={handleViewChange} />}
       />
 
-      {toast ? <div className="ats-toast is-error">{toast}</div> : null}
+      {toast ? (
+        <div className={`ats-toast is-${toastVariant === 'warning' ? 'warning' : 'error'}`}>
+          {toast}
+        </div>
+      ) : null}
+
+      <StatusEmailModal
+        key={
+          statusModal
+            ? `${statusModal.app.id}-${statusModal.targetStatus}`
+            : 'closed'
+        }
+        open={!!statusModal}
+        application={statusModal?.app}
+        initialFields={statusModal?.fields}
+        interviewIso={statusModal?.interviewIso}
+        targetStatus={statusModal?.targetStatus}
+        onClose={() => {
+          if (!statusSaving) setStatusModal(null);
+        }}
+        onSubmit={handleStatusEmailSubmit}
+        submitting={statusSaving}
+        error={statusModalError}
+      />
 
       <div className="ats-board-layout">
         <FilterRail

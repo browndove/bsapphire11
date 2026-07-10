@@ -11,8 +11,11 @@ export default function SuccessJob() {
             </svg>
           </div>
           <h1 style={{ fontSize: '2.5rem', marginBottom: '1rem', color: 'var(--text-color)' }}>Application Received</h1>
-          <p style={{ fontSize: '1.2rem', color: 'var(--text-muted)', marginBottom: '2rem' }}>
+          <p style={{ fontSize: '1.2rem', color: 'var(--text-muted)', marginBottom: '1rem' }}>
             Thank you for applying to Blvck Sapphire. We are reviewing your application and will be in touch if your profile aligns with our requirements.
+          </p>
+          <p style={{ fontSize: '1rem', color: 'var(--text-muted)', marginBottom: '2rem' }}>
+            Check your email for a tracking link to follow your application status.
           </p>
           <Link href="/careers" className="btn btn-outline" style={{ padding: '12px 30px' }}>Back to Careers</Link>
         </div>

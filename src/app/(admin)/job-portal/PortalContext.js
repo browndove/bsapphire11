@@ -350,8 +350,35 @@ export function PortalProvider({ children }) {
       return mapped;
     }
 
-    const updated = await updateApplicationStatus(app.id, app.status);
-    const mapped = mapApplicationFromApi(updated?.data || updated);
+    throw new Error('Use updateApplicationWithEmail to change application status.');
+  };
+
+  const updateApplicationWithEmail = async (id, emailPayload) => {
+    const existing = applications.find((a) => a.id === id);
+
+    if (previewMode) {
+      const mapped = {
+        ...(existing || { id }),
+        status: emailPayload.status,
+        interviewAt: emailPayload.interview_at || existing?.interviewAt || null,
+        emailSent: true,
+        emailError: '',
+      };
+      setApplications((prev) => {
+        const idx = prev.findIndex((a) => a.id === id);
+        if (idx >= 0) {
+          const next = [...prev];
+          next[idx] = { ...next[idx], ...mapped };
+          return next;
+        }
+        return [...prev, mapped];
+      });
+      return { application: mapped, emailWarning: '' };
+    }
+
+    const updated = await updateApplicationStatus(id, emailPayload);
+    const raw = updated?.data || updated;
+    const mapped = mapApplicationFromApi(raw);
     setApplications((prev) => {
       const idx = prev.findIndex((a) => a.id === mapped.id);
       if (idx >= 0) {
@@ -361,12 +388,23 @@ export function PortalProvider({ children }) {
       }
       return [...prev, mapped];
     });
-    return mapped;
+
+    const emailWarning =
+      raw?.email_sent === false
+        ? raw.email_error ||
+          'Status was saved but the email could not be sent. Retry or contact the candidate manually.'
+        : '';
+
+    return { application: mapped, emailWarning };
   };
 
   const moveApplication = async (id, status) => {
     const existing = applications.find((a) => a.id === id);
     if (!existing) return;
+
+    if (!previewMode) {
+      throw new Error('Use updateApplicationWithEmail to change application status.');
+    }
 
     const prevStatus = existing.status;
     setApplications((prev) =>
@@ -435,6 +473,7 @@ export function PortalProvider({ children }) {
         removeJob,
         loadJobById,
         upsertApplication,
+        updateApplicationWithEmail,
         moveApplication,
         refreshData,
         loadApplications,

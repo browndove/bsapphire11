@@ -3,12 +3,12 @@
 import { getInitials } from '@/lib/job-api/format';
 
 const PALETTES = [
-  ['#0f2744', '#38bdf8'],
-  ['#2d1b4e', '#a78bfa'],
-  ['#1a3a2a', '#4ade80'],
-  ['#3d2a14', '#fbbf24'],
-  ['#3d1f1f', '#f87171'],
-  ['#1e293b', '#94a3b8'],
+  { bg: '#dbeafe', border: '#93c5fd', text: '#1d4ed8' },
+  { bg: '#ede9fe', border: '#c4b5fd', text: '#6d28d9' },
+  { bg: '#dcfce7', border: '#86efac', text: '#15803d' },
+  { bg: '#ffedd5', border: '#fdba74', text: '#c2410c' },
+  { bg: '#fee2e2', border: '#fca5a5', text: '#b91c1c' },
+  { bg: '#e0f2fe', border: '#7dd3fc', text: '#0369a1' },
 ];
 
 function paletteForName(name) {
@@ -21,15 +21,15 @@ function paletteForName(name) {
 }
 
 export default function Avatar({ name, size = 'md' }) {
-  const [bg, accent] = paletteForName(name);
+  const palette = paletteForName(name);
 
   return (
     <span
       className={`ats-avatar ats-avatar-${size}`}
       style={{
-        background: `linear-gradient(135deg, ${bg} 0%, ${accent}22 100%)`,
-        borderColor: `${accent}44`,
-        color: accent,
+        background: palette.bg,
+        borderColor: palette.border,
+        color: palette.text,
       }}
       aria-hidden="true"
     >

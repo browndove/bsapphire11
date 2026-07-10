@@ -19,7 +19,18 @@ EMPLOYER PORTAL (/job-portal)
 - Employer role required (`role = employer`)
 - Jobs: GET/POST `/employer/jobs`, GET/PATCH/DELETE `/employer/jobs/:id`
 - Applications: GET `/employer/applications`, PATCH `/employer/applications/:id/status`
+  (status PATCH includes candidate email fields — see below)
 - Tokens sent as `Authorization: Bearer <access_token>` via BFF proxy
+
+CANDIDATE EMAIL NOTIFICATIONS
+-----------------------------
+- Status change: frontend composes email and sends with PATCH
+  `/employer/applications/:id/status` (`email_subject`, `email_body`; for
+  `interview` also `interview_at`, `reminder_email_*`)
+- Placeholders expanded client-side; UI: StatusEmailModal on detail + kanban
+- `email_sent: false` → warning + retry; `503` → email not configured
+- Mailto links remain available for manual follow-up
+- Guest apply success page still notes checking email for a tracking link
 
 
 PUBLIC SITE

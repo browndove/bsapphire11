@@ -1393,6 +1393,107 @@ button.ats-menu-item {
   color: var(--success);
 }
 
+.ats-toast.is-warning {
+  border-color: #d97706;
+  color: #d97706;
+}
+
+.status-email-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  background: rgba(15, 23, 42, 0.45);
+}
+
+.status-email-dialog {
+  width: min(640px, 100%);
+  max-height: min(90vh, 900px);
+  overflow: auto;
+  padding: 1.5rem;
+  background: var(--ats-surface);
+  border: 1px solid var(--border-color);
+  border-radius: 12px;
+  box-shadow: 0 24px 48px rgba(15, 23, 42, 0.18);
+}
+
+.status-email-dialog-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.25rem;
+}
+
+.status-email-dialog-head h2 {
+  margin: 0 0 0.35rem;
+  font-size: 1.25rem;
+}
+
+.status-email-close {
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 1.5rem;
+  line-height: 1;
+  cursor: pointer;
+  padding: 0.15rem 0.35rem;
+}
+
+.status-email-fieldset {
+  margin: 1rem 0 0;
+  padding: 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+}
+
+.status-email-fieldset legend {
+  padding: 0 0.35rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+.status-email-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+}
+
+.status-email-error {
+  margin-top: 1rem;
+  padding: 0.75rem 0.9rem;
+  border: 1px solid var(--danger);
+  border-radius: var(--ats-radius-sm);
+  background: var(--danger-soft);
+  color: var(--danger-text);
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.ats-email-retry-banner {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  padding: 0.85rem 1rem;
+  background: #fffbeb;
+  border: 1px solid #fcd34d;
+  border-radius: var(--ats-radius);
+  color: #92400e;
+}
+
+.ats-email-retry-banner p {
+  margin: 0.25rem 0 0;
+  font-size: 0.88rem;
+  color: #b45309;
+}
+
 .ats-preview-banner {
   padding: 0.55rem 2rem;
   font-size: 0.78rem;

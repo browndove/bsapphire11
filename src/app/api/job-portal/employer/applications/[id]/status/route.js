@@ -18,6 +18,6 @@ export async function PATCH(request, { params }) {
       method: 'PATCH',
       headers: authHeaders(request),
       body: JSON.stringify(body),
-    });
-  });
+    }, 'status-email');
+  }, 'status-email');
 }
