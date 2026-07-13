@@ -122,8 +122,8 @@ export default function StatusEmailModal({
                 </>
               ) : targetStatus === 'hired' ? (
                 <>
-                  Hiring <strong>{candidateLabel}</strong>. Other open applicants for this job will
-                  be rejected and emailed, and the job posting will be closed.
+                  Hiring <strong>{candidateLabel}</strong>. Every other applicant for this job
+                  will be rejected and emailed, and the job posting will be closed.
                 </>
               ) : (
                 <>

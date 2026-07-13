@@ -5,7 +5,7 @@ import Link from 'next/link';
 import BgCanvas from '@/components/BgCanvas';
 import { fetchPublicJobs, fetchPublicCompany } from '@/lib/job-api/client';
 import { toUserMessage } from '@/lib/job-api/errors';
-import { formatEmploymentType, formatRemoteType, getPaginatedItems, mapPublicJobFromApi } from '@/lib/job-api/mappers';
+import { formatEmploymentType, formatRemoteType, formatSalaryRange, getPaginatedItems, mapPublicJobFromApi } from '@/lib/job-api/mappers';
 import { candidateApplyPath } from '@/lib/job-api/candidate-routes';
 
 export default function CareersClient({ initialJobs, initialCategories, initialCompany, initialError = '' }) {
@@ -113,10 +113,18 @@ export default function CareersClient({ initialJobs, initialCategories, initialC
                 filteredJobs.map((job) => (
                   <Link href={jobApplyHref(job.id)} key={job.id} className="job-tray">
                     <div className="job-tray-info">
-                      <span className="job-dept">{job.department || formatEmploymentType(job.employmentType)}</span>
+                      <span className="job-dept">
+                        {[
+                          job.department,
+                          formatEmploymentType(job.employmentType),
+                        ]
+                          .filter(Boolean)
+                          .join(' · ') || 'Open role'}
+                      </span>
                       <h3 className="job-title-text">{job.title}</h3>
                       <span className="job-location">
                         {job.location || 'Location flexible'} · {formatRemoteType(job.remoteType)}
+                        {formatSalaryRange(job) ? ` · ${formatSalaryRange(job)}` : ''}
                       </span>
                     </div>
                     <div className="job-tray-arrow">&#8594;</div>

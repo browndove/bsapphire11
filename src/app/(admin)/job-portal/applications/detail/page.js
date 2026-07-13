@@ -129,7 +129,12 @@ function ApplicationDetailView() {
         }
         if (result.rejectedCount > 0) {
           parts.push(
-            `Rejected ${result.rejectedCount} other applicant${result.rejectedCount === 1 ? '' : 's'} with rejection emails.`
+            `Rejected all ${result.rejectedCount} other applicant${result.rejectedCount === 1 ? '' : 's'} with rejection emails.`
+          );
+        }
+        if (result.leftoverCount > 0) {
+          parts.push(
+            `${result.leftoverCount} applicant${result.leftoverCount === 1 ? '' : 's'} could not be rejected — check the board.`
           );
         }
         if (result.rejectionEmailFailures > 0) {
@@ -152,6 +157,7 @@ function ApplicationDetailView() {
           !!result.emailWarning ||
           result.rejectionEmailFailures > 0 ||
           (result.rejectionFailures?.length || 0) > 0 ||
+          (result.leftoverCount || 0) > 0 ||
           !!result.jobCloseError;
         showToast(parts.join(' '), isWarning ? 'warning' : 'success');
         return;
@@ -193,10 +199,10 @@ function ApplicationDetailView() {
       message:
         `${displayName || 'This candidate'} will be hired and emailed.\n\n` +
         (others > 0
-          ? `${others} other applicant${others === 1 ? '' : 's'} will be rejected and emailed a rejection.\n\n`
-          : '') +
+          ? `All ${others} other applicant${others === 1 ? '' : 's'} for this job will be rejected and emailed a rejection.\n\n`
+          : 'There are no other open applicants for this job.\n\n') +
         'This job posting will be closed.',
-      confirmText: 'Hire & close job',
+      confirmText: 'Hire & reject others',
       cancelText: 'Cancel',
       variant: 'default',
     });

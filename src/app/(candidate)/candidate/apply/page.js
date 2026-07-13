@@ -18,6 +18,7 @@ import ApplyContactFields from '@/components/candidate/ApplyContactFields';
 import {
   formatEmploymentType,
   formatRemoteType,
+  formatSalaryRange,
   mapApplicationSubmitToApi,
   mapGuestApplicationSubmitToApi,
   mapPublicJobFromApi,
@@ -182,6 +183,8 @@ function CandidateApplyInner() {
     }
   };
 
+  const compensation = job ? formatSalaryRange(job) : '';
+
   return (
     <>
       <PortalHeader
@@ -214,10 +217,24 @@ function CandidateApplyInner() {
               <h2 className="ats-panel-title">Role details</h2>
             </div>
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1rem' }}>
-              <span className="tag">{job.department || formatEmploymentType(job.employmentType)}</span>
+              {job.department ? <span className="tag">{job.department}</span> : null}
+              <span className="tag">{formatEmploymentType(job.employmentType)}</span>
               <span className="tag">{formatRemoteType(job.remoteType)}</span>
               <span className="tag">{job.location || 'Location flexible'}</span>
             </div>
+            {compensation ? (
+              <div className="ats-material-block" style={{ marginBottom: '1.25rem' }}>
+                <p className="ats-material-label">Compensation</p>
+                <p style={{ margin: 0, fontSize: '1.05rem', color: 'var(--text-color)' }}>
+                  {compensation}
+                  {job.currency ? (
+                    <span className="ats-table-sub" style={{ marginLeft: '0.5rem' }}>
+                      {job.currency}
+                    </span>
+                  ) : null}
+                </p>
+              </div>
+            ) : null}
             {job.description ? (
               <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.7, color: 'var(--text-muted)' }}>{job.description}</div>
             ) : null}

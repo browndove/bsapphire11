@@ -42,7 +42,11 @@ import {
 } from '@/lib/job-api/email-templates';
 import { isPortalPreview, loadPreviewData } from '@/lib/job-api/preview';
 
-const SKIP_ON_HIRE_REJECT = new Set(['rejected', 'hired', 'withdrawn']);
+const ALREADY_SETTLED_ON_HIRE = new Set(['rejected', 'hired']);
+
+function isApplicantStillOpen(app, hiredId) {
+  return app.id !== hiredId && !ALREADY_SETTLED_ON_HIRE.has(app.status);
+}
 
 const PortalContext = createContext();
 
@@ -411,49 +415,84 @@ export function PortalProvider({ children }) {
 
   const countOtherOpenApplicants = useCallback(
     (jobId, hiredId) =>
-      applications.filter(
-        (a) =>
-          a.jobId === jobId &&
-          a.id !== hiredId &&
-          !SKIP_ON_HIRE_REJECT.has(a.status)
-      ).length,
+      applications.filter((a) => a.jobId === jobId && isApplicantStillOpen(a, hiredId))
+        .length,
     [applications]
   );
 
+  const loadAllApplicantsForJob = async (jobId) => {
+    if (previewMode) {
+      return applications.filter((a) => a.jobId === jobId);
+    }
+
+    const all = [];
+    let offset = 0;
+    const limit = 200;
+    for (;;) {
+      const { applications: page, total } = await loadApplications({
+        job_id: jobId,
+        limit,
+        offset,
+      });
+      const rows = page || [];
+      all.push(...rows);
+      offset += rows.length;
+      if (rows.length === 0 || offset >= (total || rows.length)) break;
+      if (offset > 5000) break;
+    }
+    return all;
+  };
+
   /**
-   * After hiring one candidate: reject other open applicants (with rejection
-   * emails) and close the job posting.
+   * After hiring one candidate: reject every other applicant for the job
+   * (anyone not already hired/rejected), email them a rejection, and close
+   * the job posting.
    */
   const finalizeHirePipeline = async (hiredId, hirePayload) => {
     const hireResult = await updateApplicationWithEmail(hiredId, hirePayload);
     const hired = hireResult.application;
     const jobId = hired.jobId;
+    if (!jobId) {
+      return {
+        ...hireResult,
+        rejectedCount: 0,
+        rejectionEmailFailures: 0,
+        rejectionFailures: [],
+        jobClosed: false,
+        jobCloseError: 'Hired candidate is missing a job id; other applicants were not rejected.',
+      };
+    }
+
     const job =
       jobs.find((j) => j.id === jobId) ||
-      (jobId ? await loadJobById(jobId).catch(() => null) : null);
-    const companyName = hired.companyName || 'Blvck Sapphire';
+      (await loadJobById(jobId).catch(() => null));
+    const companyName = hired.companyName || job?.companyName || 'Blvck Sapphire';
 
-    let siblings = applications.filter(
-      (a) =>
-        a.jobId === jobId &&
-        a.id !== hiredId &&
-        !SKIP_ON_HIRE_REJECT.has(a.status)
-    );
-
-    if (!previewMode && jobId) {
-      try {
-        const { applications: fresh } = await loadApplications({
-          job_id: jobId,
-          limit: 500,
-          offset: 0,
-        });
-        siblings = (fresh || []).filter(
-          (a) => a.id !== hiredId && !SKIP_ON_HIRE_REJECT.has(a.status)
-        );
-      } catch {
-        // Fall back to in-memory list
+    let allForJob = [];
+    try {
+      allForJob = await loadAllApplicantsForJob(jobId);
+    } catch (err) {
+      // Prefer in-memory over aborting after a successful hire
+      allForJob = applications.filter((a) => a.jobId === jobId);
+      if (!allForJob.length) {
+        return {
+          ...hireResult,
+          rejectedCount: 0,
+          rejectionEmailFailures: 0,
+          rejectionFailures: [
+            {
+              id: jobId,
+              name: 'all other applicants',
+              message: toUserMessage(err),
+            },
+          ],
+          jobClosed: false,
+          jobCloseError: 'Could not load other applicants to reject them.',
+        };
       }
     }
+
+    const siblings = allForJob.filter((a) => isApplicantStillOpen(a, hiredId));
 
     const rejectionFailures = [];
     let rejectedCount = 0;
@@ -496,6 +535,23 @@ export function PortalProvider({ children }) {
       }
     }
 
+    // Second pass: anyone still not hired/rejected must be reported
+    let leftover = [];
+    try {
+      const after = await loadAllApplicantsForJob(jobId);
+      leftover = after.filter((a) => isApplicantStillOpen(a, hiredId));
+      for (const left of leftover) {
+        if (rejectionFailures.some((f) => f.id === left.id)) continue;
+        rejectionFailures.push({
+          id: left.id,
+          name: left.candidateName || left.email || left.id,
+          message: 'Still not rejected after hire cascade.',
+        });
+      }
+    } catch {
+      // ignore verification fetch errors
+    }
+
     let jobClosed = false;
     let jobCloseError = '';
     if (job && job.status !== 'closed' && job.status !== 'archived') {
@@ -514,6 +570,7 @@ export function PortalProvider({ children }) {
       rejectedCount,
       rejectionEmailFailures,
       rejectionFailures,
+      leftoverCount: leftover.length,
       jobClosed,
       jobCloseError,
     };

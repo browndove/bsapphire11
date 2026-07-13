@@ -1,4 +1,4 @@
-import { DEFAULT_JOB_CURRENCY, EMPLOYER_APPLICATION_STATUSES, EMPLOYER_STATUS_UPDATES } from './config';
+import { DEFAULT_JOB_CURRENCY, EMPLOYER_APPLICATION_STATUSES, EMPLOYER_STATUS_UPDATES, JOB_CURRENCY_SYMBOL } from './config';
 
 export function getPaginatedItems(res) {
   if (!res) return [];
@@ -302,6 +302,27 @@ export function formatEmploymentType(value) {
 export function formatRemoteType(value) {
   const labels = { onsite: 'On-site', hybrid: 'Hybrid', remote: 'Remote' };
   return labels[value] || value || 'Remote';
+}
+
+export function formatSalaryRange(job) {
+  if (!job) return '';
+  const min = job.salaryMin != null && job.salaryMin !== '' ? Number(job.salaryMin) : null;
+  const max = job.salaryMax != null && job.salaryMax !== '' ? Number(job.salaryMax) : null;
+  const hasMin = min != null && !Number.isNaN(min);
+  const hasMax = max != null && !Number.isNaN(max);
+  if (!hasMin && !hasMax) return '';
+
+  const currency = job.currency || DEFAULT_JOB_CURRENCY;
+  const symbol = currency === 'GHS' ? JOB_CURRENCY_SYMBOL : `${currency} `;
+  const formatAmount = (n) =>
+    new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 }).format(n);
+
+  if (hasMin && hasMax) {
+    if (min === max) return `${symbol}${formatAmount(min)}`;
+    return `${symbol}${formatAmount(min)} – ${symbol}${formatAmount(max)}`;
+  }
+  if (hasMin) return `From ${symbol}${formatAmount(min)}`;
+  return `Up to ${symbol}${formatAmount(max)}`;
 }
 
 export function getPipelineStatuses() {
