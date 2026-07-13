@@ -47,7 +47,7 @@ export default function ScreeningAnswersForm({
             Screening questions
           </h3>
           <p className="ats-screening-form-lead">
-            Answer each question below. All responses are required for this role.
+            All responses are required.
           </p>
         </div>
         <span className="ats-screening-count">

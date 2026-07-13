@@ -319,7 +319,7 @@ function CandidateApplyInner() {
                 </Link>
               </div>
             ) : (
-              <form className="ats-form" onSubmit={handleApply}>
+              <form className="ats-form ats-form--compact" onSubmit={handleApply}>
                 {!isAuthed ? (
                   <ApplyContactFields
                     firstName={firstName}
@@ -336,7 +336,7 @@ function CandidateApplyInner() {
                 ) : null}
 
                 {withdrawnApplication ? (
-                  <div className="ats-toast" style={{ marginBottom: '1rem' }}>
+                  <div className="ats-toast" style={{ marginBottom: '0.5rem' }}>
                     You previously withdrew from this role. Submit a new application below.
                   </div>
                 ) : null}
@@ -345,7 +345,7 @@ function CandidateApplyInner() {
                   <label className="ats-field-label" htmlFor="cover-letter">Cover letter</label>
                   <textarea
                     id="cover-letter"
-                    rows={5}
+                    rows={3}
                     required
                     value={coverLetter}
                     onChange={(e) => setCoverLetter(e.target.value)}
