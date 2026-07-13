@@ -120,6 +120,11 @@ export default function StatusEmailModal({
                   Resend the <strong>{statusLabel}</strong> notification to{' '}
                   <strong>{candidateLabel}</strong>. Status stays unchanged.
                 </>
+              ) : targetStatus === 'hired' ? (
+                <>
+                  Hiring <strong>{candidateLabel}</strong>. Other open applicants for this job will
+                  be rejected and emailed, and the job posting will be closed.
+                </>
               ) : (
                 <>
                   Moving <strong>{candidateLabel}</strong> to{' '}
@@ -226,7 +231,9 @@ export default function StatusEmailModal({
                 ? 'Sending…'
                 : isResend
                   ? 'Resend email'
-                  : 'Update status & send email'}
+                  : targetStatus === 'hired'
+                    ? 'Hire, notify others & close job'
+                    : 'Update status & send email'}
             </button>
           </div>
         </form>

@@ -36,7 +36,13 @@ import {
   matchesScreeningFilters,
   PortalStages,
 } from '@/lib/job-api/mappers';
+import {
+  buildStatusEmailDefaults,
+  buildStatusEmailPatch,
+} from '@/lib/job-api/email-templates';
 import { isPortalPreview, loadPreviewData } from '@/lib/job-api/preview';
+
+const SKIP_ON_HIRE_REJECT = new Set(['rejected', 'hired', 'withdrawn']);
 
 const PortalContext = createContext();
 
@@ -389,13 +395,128 @@ export function PortalProvider({ children }) {
       return [...prev, mapped];
     });
 
-    const emailWarning =
-      raw?.email_sent === false
-        ? raw.email_error ||
-          'Status was saved but the email could not be sent. Retry or contact the candidate manually.'
-        : '';
+    // Backend contract: email_sent === true means Resend accepted the send.
+    // Anything else after a status update must surface as a warning.
+    const emailSent = raw?.email_sent === true || mapped.emailSent === true;
+    const emailError =
+      raw?.email_error ||
+      mapped.emailError ||
+      'Status was saved but the email could not be sent. Retry or contact the candidate manually.';
 
-    return { application: mapped, emailWarning };
+    return {
+      application: { ...mapped, emailSent, emailError: emailSent ? '' : emailError },
+      emailWarning: emailSent ? '' : emailError,
+    };
+  };
+
+  const countOtherOpenApplicants = useCallback(
+    (jobId, hiredId) =>
+      applications.filter(
+        (a) =>
+          a.jobId === jobId &&
+          a.id !== hiredId &&
+          !SKIP_ON_HIRE_REJECT.has(a.status)
+      ).length,
+    [applications]
+  );
+
+  /**
+   * After hiring one candidate: reject other open applicants (with rejection
+   * emails) and close the job posting.
+   */
+  const finalizeHirePipeline = async (hiredId, hirePayload) => {
+    const hireResult = await updateApplicationWithEmail(hiredId, hirePayload);
+    const hired = hireResult.application;
+    const jobId = hired.jobId;
+    const job =
+      jobs.find((j) => j.id === jobId) ||
+      (jobId ? await loadJobById(jobId).catch(() => null) : null);
+    const companyName = hired.companyName || 'Blvck Sapphire';
+
+    let siblings = applications.filter(
+      (a) =>
+        a.jobId === jobId &&
+        a.id !== hiredId &&
+        !SKIP_ON_HIRE_REJECT.has(a.status)
+    );
+
+    if (!previewMode && jobId) {
+      try {
+        const { applications: fresh } = await loadApplications({
+          job_id: jobId,
+          limit: 500,
+          offset: 0,
+        });
+        siblings = (fresh || []).filter(
+          (a) => a.id !== hiredId && !SKIP_ON_HIRE_REJECT.has(a.status)
+        );
+      } catch {
+        // Fall back to in-memory list
+      }
+    }
+
+    const rejectionFailures = [];
+    let rejectedCount = 0;
+    let rejectionEmailFailures = 0;
+
+    for (const other of siblings) {
+      try {
+        const defaults = buildStatusEmailDefaults(
+          other,
+          job,
+          companyName,
+          'rejected'
+        );
+        const rejectPayload = buildStatusEmailPatch({
+          status: 'rejected',
+          emailSubject: defaults.fields.emailSubject,
+          emailBody: defaults.fields.emailBody,
+        });
+
+        if (previewMode) {
+          setApplications((prev) =>
+            prev.map((a) => (a.id === other.id ? { ...a, status: 'rejected' } : a))
+          );
+          rejectedCount += 1;
+          continue;
+        }
+
+        const { emailWarning } = await updateApplicationWithEmail(
+          other.id,
+          rejectPayload
+        );
+        rejectedCount += 1;
+        if (emailWarning) rejectionEmailFailures += 1;
+      } catch (err) {
+        rejectionFailures.push({
+          id: other.id,
+          name: other.candidateName || other.email || other.id,
+          message: toUserMessage(err, 'status-email'),
+        });
+      }
+    }
+
+    let jobClosed = false;
+    let jobCloseError = '';
+    if (job && job.status !== 'closed' && job.status !== 'archived') {
+      try {
+        await upsertJob({ ...job, status: 'closed' });
+        jobClosed = true;
+      } catch (err) {
+        jobCloseError = toUserMessage(err, 'job');
+      }
+    } else if (job?.status === 'closed' || job?.status === 'archived') {
+      jobClosed = true;
+    }
+
+    return {
+      ...hireResult,
+      rejectedCount,
+      rejectionEmailFailures,
+      rejectionFailures,
+      jobClosed,
+      jobCloseError,
+    };
   };
 
   const moveApplication = async (id, status) => {
@@ -474,6 +595,8 @@ export function PortalProvider({ children }) {
         loadJobById,
         upsertApplication,
         updateApplicationWithEmail,
+        finalizeHirePipeline,
+        countOtherOpenApplicants,
         moveApplication,
         refreshData,
         loadApplications,

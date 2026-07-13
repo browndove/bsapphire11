@@ -167,22 +167,40 @@ export function buildStatusEmailPatch({
   reminderEmailBody,
   reminderEmailHtml,
 }) {
+  const subject = String(emailSubject || '').trim();
+  const bodyText = String(emailBody || '').trim();
+
+  if (!status) {
+    throw new Error('Status is required.');
+  }
+  if (!subject || !bodyText) {
+    throw new Error('Email subject and body are required before updating status.');
+  }
+
   const body = {
     status,
-    email_subject: emailSubject.trim(),
-    email_body: emailBody.trim(),
+    email_subject: subject,
+    email_body: bodyText,
   };
 
   if (emailHtml?.trim()) {
-    body.email_html = emailHtml.trim();
+    body.email_html = String(emailHtml).trim();
   }
 
   if (status === 'interview') {
+    const reminderSubject = String(reminderEmailSubject || '').trim();
+    const reminderBody = String(reminderEmailBody || '').trim();
+    if (!interviewAt) {
+      throw new Error('Interview date and time are required.');
+    }
+    if (!reminderSubject || !reminderBody) {
+      throw new Error('Reminder email subject and body are required for interviews.');
+    }
     body.interview_at = interviewAt;
-    body.reminder_email_subject = reminderEmailSubject.trim();
-    body.reminder_email_body = reminderEmailBody.trim();
+    body.reminder_email_subject = reminderSubject;
+    body.reminder_email_body = reminderBody;
     if (reminderEmailHtml?.trim()) {
-      body.reminder_email_html = reminderEmailHtml.trim();
+      body.reminder_email_html = String(reminderEmailHtml).trim();
     }
   }
 

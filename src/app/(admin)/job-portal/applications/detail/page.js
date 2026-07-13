@@ -7,7 +7,7 @@ import { usePortal, PortalStages } from '../../PortalContext';
 import { toUserMessage } from '@/lib/job-api/errors';
 import { formatDateTime } from '@/lib/job-api/format';
 import { formatAnswerValue } from '@/lib/job-api/mappers';
-import { buildStatusEmailDefaults } from '@/lib/job-api/email-templates';
+import { buildStatusEmailDefaults, buildStatusEmailPatch } from '@/lib/job-api/email-templates';
 import PortalHeader, { BreadcrumbLink } from '../../components/PortalHeader';
 import Avatar from '../../components/Avatar';
 import StageStepper from '../../components/StageStepper';
@@ -31,6 +31,8 @@ function ApplicationDetailView() {
     jobs,
     STATUS_UPDATE_OPTIONS,
     updateApplicationWithEmail,
+    finalizeHirePipeline,
+    countOtherOpenApplicants,
     moveApplication,
   } = usePortal();
 
@@ -111,6 +113,50 @@ function ApplicationDetailView() {
     setSaving(true);
     setStatusModalError('');
     try {
+      if (payload.status === 'hired' && !statusModal?.resend) {
+        const result = await finalizeHirePipeline(app.id, payload);
+        setApp(result.application);
+        setStage(result.application.status);
+        setStatusModal(null);
+
+        const parts = [];
+        if (result.emailWarning) {
+          parts.push(result.emailWarning);
+        } else {
+          parts.push(
+            `Hired ${result.application.candidateName || displayName} and emailed them.`
+          );
+        }
+        if (result.rejectedCount > 0) {
+          parts.push(
+            `Rejected ${result.rejectedCount} other applicant${result.rejectedCount === 1 ? '' : 's'} with rejection emails.`
+          );
+        }
+        if (result.rejectionEmailFailures > 0) {
+          parts.push(
+            `${result.rejectionEmailFailures} rejection email${result.rejectionEmailFailures === 1 ? '' : 's'} failed to send.`
+          );
+        }
+        if (result.rejectionFailures?.length) {
+          parts.push(
+            `Could not reject ${result.rejectionFailures.length} applicant${result.rejectionFailures.length === 1 ? '' : 's'}.`
+          );
+        }
+        if (result.jobClosed) {
+          parts.push('Job posting closed.');
+        } else if (result.jobCloseError) {
+          parts.push(`Job was not closed: ${result.jobCloseError}`);
+        }
+
+        const isWarning =
+          !!result.emailWarning ||
+          result.rejectionEmailFailures > 0 ||
+          (result.rejectionFailures?.length || 0) > 0 ||
+          !!result.jobCloseError;
+        showToast(parts.join(' '), isWarning ? 'warning' : 'success');
+        return;
+      }
+
       const { application, emailWarning } = await updateApplicationWithEmail(app.id, payload);
       setApp(application);
       setStage(application.status);
@@ -119,7 +165,9 @@ function ApplicationDetailView() {
         showToast(emailWarning, 'warning');
       } else {
         showToast(
-          statusModal?.resend ? 'Email sent.' : 'Status updated and email sent.'
+          statusModal?.resend
+            ? `Email sent to ${application.email || 'candidate'}.`
+            : `Status updated and email sent to ${application.email || 'candidate'}.`
         );
       }
     } catch (err) {
@@ -138,6 +186,22 @@ function ApplicationDetailView() {
       variant: 'danger',
     });
 
+  const confirmHire = async () => {
+    const others = countOtherOpenApplicants(app.jobId, app.id);
+    return confirm({
+      title: 'Hire candidate?',
+      message:
+        `${displayName || 'This candidate'} will be hired and emailed.\n\n` +
+        (others > 0
+          ? `${others} other applicant${others === 1 ? '' : 's'} will be rejected and emailed a rejection.\n\n`
+          : '') +
+        'This job posting will be closed.',
+      confirmText: 'Hire & close job',
+      cancelText: 'Cancel',
+      variant: 'default',
+    });
+  };
+
   const requestStatusChange = async (newStatus) => {
     if (newStatus === app.status) return;
 
@@ -146,7 +210,35 @@ function ApplicationDetailView() {
       if (!ok) return;
     }
 
+    if (newStatus === 'hired') {
+      const ok = await confirmHire();
+      if (!ok) return;
+    }
+
     if (isPreview) {
+      if (newStatus === 'hired') {
+        setSaving(true);
+        setError('');
+        try {
+          const defaults = buildStatusEmailDefaults(app, job, companyName, 'hired');
+          const payload = buildStatusEmailPatch({
+            status: 'hired',
+            emailSubject: defaults.fields.emailSubject,
+            emailBody: defaults.fields.emailBody,
+          });
+          const result = await finalizeHirePipeline(app.id, payload);
+          setApp(result.application);
+          setStage(result.application.status);
+          showToast(
+            `Hired. Rejected ${result.rejectedCount} other(s).${result.jobClosed ? ' Job closed.' : ''}`
+          );
+        } catch (err) {
+          setError(toUserMessage(err));
+        } finally {
+          setSaving(false);
+        }
+        return;
+      }
       await applyStatusPreview(newStatus);
       return;
     }

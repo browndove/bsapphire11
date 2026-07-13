@@ -24,11 +24,14 @@ EMPLOYER PORTAL (/job-portal)
 
 CANDIDATE EMAIL NOTIFICATIONS
 -----------------------------
+See `job-portal/CANDIDATE_EMAILS.md` for the full backend ↔ frontend contract.
+
 - Status change: frontend composes email and sends with PATCH
   `/employer/applications/:id/status` (`email_subject`, `email_body`; for
   `interview` also `interview_at`, `reminder_email_*`)
 - Placeholders expanded client-side; UI: StatusEmailModal on detail + kanban
-- `email_sent: false` → warning + retry; `503` → email not configured
+- Only treat as delivered when response has `email_sent: true`
+- `email_sent` not true → warning + retry; `503` → email not configured
 - Mailto links remain available for manual follow-up
 - Guest apply success page still notes checking email for a tracking link
 

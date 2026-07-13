@@ -6,6 +6,7 @@ import { usePortal } from '../PortalContext';
 import { toUserMessage } from '@/lib/job-api/errors';
 import { getFilterableScreeningQuestions } from '@/lib/job-api/mappers';
 import { buildStatusEmailDefaults } from '@/lib/job-api/email-templates';
+import { useConfirm } from '@/components/ConfirmProvider';
 import PortalHeader from '../components/PortalHeader';
 import ViewToggle from '../components/ViewToggle';
 import FilterRail from '../components/FilterRail';
@@ -21,6 +22,7 @@ function ApplicationsInbox() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const jobParam = searchParams.get('job');
+  const confirm = useConfirm();
 
   const {
     isReady,
@@ -32,6 +34,8 @@ function ApplicationsInbox() {
     PIPELINE_STATUSES,
     moveApplication,
     updateApplicationWithEmail,
+    finalizeHirePipeline,
+    countOtherOpenApplicants,
     loadApplications,
     loadJobById,
   } = usePortal();
@@ -203,7 +207,7 @@ function ApplicationsInbox() {
   const showToast = useCallback((message, variant = 'error') => {
     setToast(message);
     setToastVariant(variant);
-    setTimeout(() => setToast(''), variant === 'warning' ? 6000 : 4000);
+    setTimeout(() => setToast(''), variant === 'warning' || variant === 'success' ? 7000 : 4000);
   }, []);
 
   const handleMove = useCallback(
@@ -225,6 +229,22 @@ function ApplicationsInbox() {
         return;
       }
 
+      if (status === 'hired') {
+        const others = countOtherOpenApplicants(app.jobId, app.id);
+        const ok = await confirm({
+          title: 'Hire candidate?',
+          message:
+            `${app.candidateName || 'This candidate'} will be hired and emailed.\n\n` +
+            (others > 0
+              ? `${others} other applicant${others === 1 ? '' : 's'} will be rejected and emailed a rejection.\n\n`
+              : '') +
+            'This job posting will be closed.',
+          confirmText: 'Hire & close job',
+          cancelText: 'Cancel',
+        });
+        if (!ok) return;
+      }
+
       setStatusModalError('');
       const modalJob = jobs.find((j) => j.id === app.jobId) || selectedJobRecord;
       const defaults = buildStatusEmailDefaults(
@@ -235,7 +255,18 @@ function ApplicationsInbox() {
       );
       setStatusModal({ app, targetStatus: status, ...defaults });
     },
-    [filteredApps, isPreview, jobs, moveApplication, selectedJob, selectedJobRecord, serverApps, showToast]
+    [
+      filteredApps,
+      isPreview,
+      jobs,
+      moveApplication,
+      selectedJob,
+      selectedJobRecord,
+      serverApps,
+      showToast,
+      confirm,
+      countOtherOpenApplicants,
+    ]
   );
 
   const handleStatusEmailSubmit = async (payload) => {
@@ -244,6 +275,54 @@ function ApplicationsInbox() {
     setStatusSaving(true);
     setStatusModalError('');
     try {
+      if (payload.status === 'hired') {
+        const result = await finalizeHirePipeline(app.id, payload);
+        if (selectedJob !== '__all') {
+          // Refresh board from server after hire cascade
+          try {
+            const refreshed = await loadApplications({
+              job_id: selectedJob,
+              limit: 500,
+              offset: 0,
+            });
+            setServerApps(refreshed.applications);
+            setServerTotal(refreshed.total);
+          } catch {
+            setServerApps((prev) =>
+              (prev || []).map((a) => {
+                if (a.id === result.application.id) return { ...a, ...result.application };
+                if (a.jobId === result.application.jobId && a.id !== result.application.id) {
+                  return { ...a, status: 'rejected' };
+                }
+                return a;
+              })
+            );
+          }
+        }
+        setStatusModal(null);
+        const parts = [];
+        if (result.emailWarning) parts.push(result.emailWarning);
+        else parts.push('Candidate hired and emailed.');
+        if (result.rejectedCount > 0) {
+          parts.push(`Rejected ${result.rejectedCount} other applicant(s).`);
+        }
+        if (result.rejectionEmailFailures > 0) {
+          parts.push(`${result.rejectionEmailFailures} rejection email(s) failed.`);
+        }
+        if (result.rejectionFailures?.length) {
+          parts.push(`Could not reject ${result.rejectionFailures.length} applicant(s).`);
+        }
+        if (result.jobClosed) parts.push('Job closed.');
+        else if (result.jobCloseError) parts.push(`Job not closed: ${result.jobCloseError}`);
+        const isWarning =
+          !!result.emailWarning ||
+          result.rejectionEmailFailures > 0 ||
+          (result.rejectionFailures?.length || 0) > 0 ||
+          !!result.jobCloseError;
+        showToast(parts.join(' '), isWarning ? 'warning' : 'success');
+        return;
+      }
+
       const { application, emailWarning } = await updateApplicationWithEmail(app.id, payload);
       if (selectedJob !== '__all' && serverApps) {
         setServerApps((prev) =>
@@ -253,6 +332,8 @@ function ApplicationsInbox() {
       setStatusModal(null);
       if (emailWarning) {
         showToast(emailWarning, 'warning');
+      } else if (application.email) {
+        showToast(`Status updated · email sent to ${application.email}`, 'success');
       }
     } catch (err) {
       setStatusModalError(toUserMessage(err, 'status-email'));
@@ -279,7 +360,15 @@ function ApplicationsInbox() {
       />
 
       {toast ? (
-        <div className={`ats-toast is-${toastVariant === 'warning' ? 'warning' : 'error'}`}>
+        <div
+          className={`ats-toast is-${
+            toastVariant === 'success'
+              ? 'success'
+              : toastVariant === 'warning'
+                ? 'warning'
+                : 'error'
+          }`}
+        >
           {toast}
         </div>
       ) : null}
