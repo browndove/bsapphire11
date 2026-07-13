@@ -59,7 +59,8 @@ export function mapJobFromApi(job, categoriesById = {}) {
     employmentType: job.employment_type || 'full_time',
     salaryMin: job.salary_min ?? null,
     salaryMax: job.salary_max ?? null,
-    currency: job.currency || DEFAULT_JOB_CURRENCY,
+    // Portal only supports Ghana Cedis; normalize legacy USD/other values.
+    currency: DEFAULT_JOB_CURRENCY,
     categoryId: job.category_id || null,
     screeningQuestions: rawQuestions.map(mapScreeningQuestionFromApi).filter(Boolean),
     createdAt: job.created_at,
@@ -85,7 +86,7 @@ export function mapJobToApi(job, { isCreate = false } = {}) {
   if (job.categoryId) body.category_id = job.categoryId;
   if (job.salaryMin != null && job.salaryMin !== '') body.salary_min = Number(job.salaryMin);
   if (job.salaryMax != null && job.salaryMax !== '') body.salary_max = Number(job.salaryMax);
-  if (job.currency) body.currency = job.currency;
+  body.currency = DEFAULT_JOB_CURRENCY;
   if (Array.isArray(job.screeningQuestions) && job.screeningQuestions.length > 0) {
     body.screening_questions = job.screeningQuestions
       .filter((q) => q.label?.trim())
@@ -312,10 +313,9 @@ export function formatSalaryRange(job) {
   const hasMax = max != null && !Number.isNaN(max);
   if (!hasMin && !hasMax) return '';
 
-  const currency = job.currency || DEFAULT_JOB_CURRENCY;
-  const symbol = currency === 'GHS' ? JOB_CURRENCY_SYMBOL : `${currency} `;
+  const symbol = JOB_CURRENCY_SYMBOL;
   const formatAmount = (n) =>
-    new Intl.NumberFormat(undefined, { maximumFractionDigits: 0 }).format(n);
+    new Intl.NumberFormat('en-GH', { maximumFractionDigits: 0 }).format(n);
 
   if (hasMin && hasMax) {
     if (min === max) return `${symbol}${formatAmount(min)}`;

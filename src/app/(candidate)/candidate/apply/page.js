@@ -227,11 +227,9 @@ function CandidateApplyInner() {
                 <p className="ats-material-label">Compensation</p>
                 <p style={{ margin: 0, fontSize: '1.05rem', color: 'var(--text-color)' }}>
                   {compensation}
-                  {job.currency ? (
-                    <span className="ats-table-sub" style={{ marginLeft: '0.5rem' }}>
-                      {job.currency}
-                    </span>
-                  ) : null}
+                  <span className="ats-table-sub" style={{ marginLeft: '0.5rem' }}>
+                    Ghana Cedis (GHS)
+                  </span>
                 </p>
               </div>
             ) : null}
