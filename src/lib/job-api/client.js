@@ -391,6 +391,17 @@ export async function uploadResumePublic(file) {
   return { url: fileUrl, file_url: fileUrl };
 }
 
+/** Guest cover letters use purpose `resume` (public upload allowlist). */
+export async function uploadCoverLetterPublic(file) {
+  const fileUrl = await uploadPublicFile(file, 'resume');
+  return { url: fileUrl, file_url: fileUrl };
+}
+
+export async function uploadCoverLetter(file) {
+  const fileUrl = await uploadFile(file, 'document');
+  return { url: fileUrl, file_url: fileUrl };
+}
+
 export async function submitGuestApplication(jobId, body) {
   const res = await fetch(`/api/public/jobs/${encodeURIComponent(jobId)}/applications`, {
     method: 'POST',

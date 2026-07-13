@@ -8,11 +8,16 @@ import {
   fetchPublicJob,
   submitApplication,
   submitGuestApplication,
+  uploadCoverLetter,
+  uploadCoverLetterPublic,
   uploadResume,
   uploadResumePublic,
 } from '@/lib/job-api/client';
+import { composeCoverLetter } from '@/lib/job-api/cover-letter';
 import { getActiveApplicationForJob, getWithdrawnApplicationForJob } from '@/lib/job-api/candidate-routes';
 import ResumeFilePicker from '@/components/candidate/ResumeFilePicker';
+import MediaFilePicker from '@/components/candidate/MediaFilePicker';
+import CoverLetterMaterials from '@/components/candidate/CoverLetterMaterials';
 import ScreeningAnswersForm from '@/components/candidate/ScreeningAnswersForm';
 import ApplyContactFields from '@/components/candidate/ApplyContactFields';
 import {
@@ -57,6 +62,8 @@ function CandidateApplyInner() {
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [coverLetter, setCoverLetter] = useState('');
+  const [coverLetterFile, setCoverLetterFile] = useState(null);
+  const [coverLetterError, setCoverLetterError] = useState('');
   const [resumeFile, setResumeFile] = useState(null);
   const [resumeError, setResumeError] = useState('');
   const [applyError, setApplyError] = useState('');
@@ -120,12 +127,22 @@ function CandidateApplyInner() {
     setResumeError(validationError);
   };
 
+  const handleCoverLetterFileChange = (file, validationError = '') => {
+    setCoverLetterFile(file);
+    setCoverLetterError(validationError);
+  };
+
   const handleApply = async (e) => {
     e.preventDefault();
     if (!job) return;
 
     if (!isAuthed && (!firstName.trim() || !lastName.trim() || !email.trim())) {
       setApplyError('Please enter your name and email.');
+      return;
+    }
+
+    if (!coverLetter.trim() && !coverLetterFile) {
+      setCoverLetterError('Please write or upload a cover letter.');
       return;
     }
 
@@ -144,14 +161,22 @@ function CandidateApplyInner() {
     setApplyError('');
     setFieldErrors({});
     setResumeError('');
+    setCoverLetterError('');
 
     try {
       if (isAuthed) {
-        const uploaded = await uploadResume(resumeFile);
+        const [coverLetterPayload, uploaded] = await Promise.all([
+          composeCoverLetter({
+            text: coverLetter,
+            file: coverLetterFile,
+            uploadFn: uploadCoverLetter,
+          }),
+          uploadResume(resumeFile),
+        ]);
         await submitApplication(
           mapApplicationSubmitToApi({
             jobId: job.id,
-            coverLetter,
+            coverLetter: coverLetterPayload,
             resumeUrl: uploaded.file_url || uploaded.url,
             answers: screeningAnswers,
           })
@@ -161,7 +186,14 @@ function CandidateApplyInner() {
         return;
       }
 
-      const uploaded = await uploadResumePublic(resumeFile);
+      const [coverLetterPayload, uploaded] = await Promise.all([
+        composeCoverLetter({
+          text: coverLetter,
+          file: coverLetterFile,
+          uploadFn: uploadCoverLetterPublic,
+        }),
+        uploadResumePublic(resumeFile),
+      ]);
       await submitGuestApplication(
         job.id,
         mapGuestApplicationSubmitToApi({
@@ -169,7 +201,7 @@ function CandidateApplyInner() {
           lastName,
           email,
           phone,
-          coverLetter,
+          coverLetter: coverLetterPayload,
           resumeUrl: uploaded.file_url || uploaded.url,
           answers: screeningAnswers,
         })
@@ -265,11 +297,7 @@ function CandidateApplyInner() {
 
                 <div className="ats-material-block">
                   <p className="ats-material-label">Cover letter</p>
-                  {activeApplication.coverLetter ? (
-                    <blockquote className="ats-prose-block">{activeApplication.coverLetter}</blockquote>
-                  ) : (
-                    <div className="ats-empty-card">No cover letter provided.</div>
-                  )}
+                  <CoverLetterMaterials coverLetter={activeApplication.coverLetter} />
                 </div>
 
                 <div className="ats-material-block">
@@ -346,10 +374,23 @@ function CandidateApplyInner() {
                   <textarea
                     id="cover-letter"
                     rows={3}
-                    required
                     value={coverLetter}
-                    onChange={(e) => setCoverLetter(e.target.value)}
+                    onChange={(e) => {
+                      setCoverLetter(e.target.value);
+                      if (coverLetterError && (e.target.value.trim() || coverLetterFile)) {
+                        setCoverLetterError('');
+                      }
+                    }}
                     placeholder="Tell us why you are a strong fit for this role."
+                    disabled={submitting}
+                  />
+                  <p className="ats-field-hint">Write a cover letter, upload a file, or both.</p>
+                  <MediaFilePicker
+                    id="cover-letter-file"
+                    purpose="cover_letter"
+                    value={coverLetterFile}
+                    onChange={handleCoverLetterFileChange}
+                    error={coverLetterError}
                     disabled={submitting}
                   />
                 </div>

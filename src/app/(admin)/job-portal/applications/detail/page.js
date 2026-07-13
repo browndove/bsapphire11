@@ -14,6 +14,7 @@ import StageStepper from '../../components/StageStepper';
 import QuickActions from '../../components/QuickActions';
 import StatusEmailModal from '../../components/StatusEmailModal';
 import CustomSelect from '@/components/CustomSelect';
+import CoverLetterMaterials from '@/components/candidate/CoverLetterMaterials';
 import { useConfirm } from '@/components/ConfirmProvider';
 
 function ApplicationDetailView() {
@@ -446,11 +447,7 @@ function ApplicationDetailView() {
 
             <div className="ats-material-block">
               <p className="ats-material-label">Cover letter</p>
-              {app.coverLetter ? (
-                <blockquote className="ats-prose-block">{app.coverLetter}</blockquote>
-              ) : (
-                <div className="ats-empty-card">No cover letter provided.</div>
-              )}
+              <CoverLetterMaterials coverLetter={app.coverLetter} />
             </div>
 
             <div className="ats-material-block">
