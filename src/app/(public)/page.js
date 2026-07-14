@@ -162,27 +162,27 @@ export default function Home() {
             </div>
 
             <div className="industry-grid">
-              <Link href="/solutions#healthcare" id="card-healthcare" className="industry-card slide-up">
+              <Link href="/solutions/healthcare" id="card-healthcare" className="industry-card slide-up">
                 <div className="industry-overlay">
                   <h3>Healthcare</h3>
                 </div>
               </Link>
-              <Link href="/solutions#environmental" id="card-environmental" className="industry-card slide-up delay-1">
+              <Link href="/solutions/environmental" id="card-environmental" className="industry-card slide-up delay-1">
                 <div className="industry-overlay">
                   <h3>Environmental</h3>
                 </div>
               </Link>
-              <Link href="/solutions#security" id="card-security" className="industry-card slide-up delay-2">
+              <Link href="/solutions/security" id="card-security" className="industry-card slide-up delay-2">
                 <div className="industry-overlay">
                   <h3>Security</h3>
                 </div>
               </Link>
-              <Link href="/solutions#public-sector" id="card-public-sector" className="industry-card slide-up">
+              <Link href="/solutions/public-sector" id="card-public-sector" className="industry-card slide-up">
                 <div className="industry-overlay">
                   <h3>Public Sector</h3>
                 </div>
               </Link>
-              <Link href="/solutions#technology" id="card-technology" className="industry-card slide-up delay-1">
+              <Link href="/solutions/technology" id="card-technology" className="industry-card slide-up delay-1">
                 <div className="industry-overlay">
                   <h3>Technology</h3>
                 </div>

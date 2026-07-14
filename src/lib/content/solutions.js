@@ -102,7 +102,10 @@ export const solutionsPage = {
   ],
 };
 
-/** Maps /industries/[slug] route slugs to solutions section ids */
+/** Slugs for /solutions/[slug] — match section ids */
+export const solutionSlugs = solutionsPage.sections.map((section) => section.id);
+
+/** Maps legacy /industries/[slug] route slugs to solutions section ids */
 export const industrySlugToSectionId = {
   healthcare: 'healthcare',
   environment: 'environmental',
@@ -119,4 +122,16 @@ export function getSectionByIndustrySlug(slug) {
   const sectionId = industrySlugToSectionId[slug];
   if (!sectionId) return null;
   return getSectionById(sectionId);
+}
+
+export function solutionBreadcrumbLabel(section) {
+  if (!section) return '';
+  const labels = {
+    healthcare: 'Healthcare',
+    environmental: 'Environmental',
+    security: 'Security',
+    'public-sector': 'Public Sector',
+    technology: 'Technology',
+  };
+  return labels[section.id] || section.title;
 }

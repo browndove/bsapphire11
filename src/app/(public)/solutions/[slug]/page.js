@@ -1,27 +1,27 @@
 import { notFound } from 'next/navigation';
 import Link from 'next/link';
 import {
-  getSectionByIndustrySlug,
-  industrySlugs,
+  getSectionById,
+  solutionSlugs,
   solutionBreadcrumbLabel,
 } from '@/lib/content/solutions';
 import SolutionsPageStyles from '@/components/solutions/SolutionsPageStyles';
 import SolutionsSection from '@/components/solutions/SolutionsSection';
 
 export function generateStaticParams() {
-  return industrySlugs.map((slug) => ({ slug }));
+  return solutionSlugs.map((slug) => ({ slug }));
 }
 
 export async function generateMetadata({ params }) {
   const { slug } = await params;
-  const section = getSectionByIndustrySlug(slug);
+  const section = getSectionById(slug);
   if (!section) return { title: 'Not Found' };
   return { title: `${section.title} | Blvck Sapphire` };
 }
 
-export default async function IndustryPage({ params }) {
+export default async function SolutionDetailPage({ params }) {
   const { slug } = await params;
-  const section = getSectionByIndustrySlug(slug);
+  const section = getSectionById(slug);
 
   if (!section) {
     notFound();
