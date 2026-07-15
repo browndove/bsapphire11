@@ -41,6 +41,8 @@ PUBLIC SITE
 - Careers: GET `/api/public/jobs` (published jobs from `GET /jobs`)
 - Job detail: GET `/api/public/jobs/:id`
 - Apply (no account): POST `/api/public/jobs/:id/applications` + POST `/api/public/files/upload-url`
+  (upload purposes: `resume`, `document`; apply supports optional `github_url`,
+  `additional_link`, `additional_document_url`)
 - Legacy candidate portal login remains for existing accounts only (no new registration)
 
 

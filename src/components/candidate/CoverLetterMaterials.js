@@ -11,30 +11,78 @@ function FileIcon() {
   );
 }
 
-export default function CoverLetterMaterials({ coverLetter = '' }) {
-  const { text, fileUrl, fileName } = parseCoverLetterMaterials(coverLetter);
+function FileCard({ title, subtitle, href, actionLabel }) {
+  if (!href) return null;
+  return (
+    <div className="ats-file-card">
+      <div className="ats-file-card-icon" aria-hidden="true">
+        <FileIcon />
+      </div>
+      <div className="ats-file-card-body">
+        <strong>{title}</strong>
+        <span>{subtitle}</span>
+      </div>
+      <a href={href} target="_blank" rel="noreferrer" className="btn btn-primary btn-sm">
+        {actionLabel}
+      </a>
+    </div>
+  );
+}
 
-  if (!text && !fileUrl) {
-    return <div className="ats-empty-card">No cover letter provided.</div>;
+function LinkRow({ label, href }) {
+  if (!href) return null;
+  return (
+    <p style={{ margin: '0 0 0.5rem', wordBreak: 'break-all' }}>
+      <span className="ats-table-sub" style={{ display: 'inline-block', minWidth: '5.5rem' }}>
+        {label}
+      </span>{' '}
+      <a href={href} target="_blank" rel="noreferrer">
+        {href}
+      </a>
+    </p>
+  );
+}
+
+export default function CoverLetterMaterials({
+  coverLetter = '',
+  additionalDocumentUrl = '',
+  githubUrl = '',
+  additionalLink = '',
+}) {
+  const parsed = parseCoverLetterMaterials(coverLetter);
+  const documentUrl = additionalDocumentUrl || parsed.fileUrl;
+  const documentName = parsed.fileName || 'PDF or document on file';
+  const stubText = /^see attached cover letter\.?$/i.test(parsed.text);
+  // Upload-only policy: only show legacy typed text when no file exists
+  const legacyText = !documentUrl && parsed.text && !stubText ? parsed.text : '';
+
+  const hasLinks = Boolean(githubUrl || additionalLink);
+
+  if (!documentUrl && !legacyText && !hasLinks) {
+    return <div className="ats-empty-card">No cover letter uploaded.</div>;
   }
 
   return (
     <div className="ats-cover-letter-materials">
-      {fileUrl ? (
-        <div className="ats-file-card" style={{ marginBottom: text ? '0.75rem' : 0 }}>
-          <div className="ats-file-card-icon" aria-hidden="true">
-            <FileIcon />
-          </div>
-          <div className="ats-file-card-body">
-            <strong>Cover letter attached</strong>
-            <span>{fileName || 'PDF or document on file'}</span>
-          </div>
-          <a href={fileUrl} target="_blank" rel="noreferrer" className="btn btn-primary btn-sm">
-            View cover letter
-          </a>
+      {documentUrl ? (
+        <FileCard
+          title="Cover letter attached"
+          subtitle={documentName}
+          href={documentUrl}
+          actionLabel="View cover letter"
+        />
+      ) : null}
+      {legacyText ? (
+        <blockquote className="ats-prose-block" style={{ marginTop: 0 }}>
+          {legacyText}
+        </blockquote>
+      ) : null}
+      {hasLinks ? (
+        <div style={{ marginTop: documentUrl || legacyText ? '0.75rem' : 0 }}>
+          <LinkRow label="GitHub" href={githubUrl} />
+          <LinkRow label="Link" href={additionalLink} />
         </div>
       ) : null}
-      {text ? <blockquote className="ats-prose-block">{text}</blockquote> : null}
     </div>
   );
 }

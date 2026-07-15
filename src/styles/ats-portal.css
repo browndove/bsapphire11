@@ -1025,8 +1025,14 @@ button.ats-menu-item {
   margin-top: 1.25rem;
 }
 
+/* Apply page: give role description more horizontal room */
+.ats-detail-grid--role-wide {
+  grid-template-columns: minmax(0, 1.9fr) minmax(340px, 1fr);
+}
+
 @media (max-width: 900px) {
-  .ats-detail-grid {
+  .ats-detail-grid,
+  .ats-detail-grid--role-wide {
     grid-template-columns: 1fr;
   }
 }

@@ -148,17 +148,32 @@ export function mapApplicationFromApi(app) {
     emailError: app.email_error || '',
     coverLetter: app.cover_letter || '',
     resumeUrl: app.resume_url || '',
+    githubUrl: app.github_url || '',
+    additionalLink: app.additional_link || '',
+    additionalDocumentUrl: app.additional_document_url || '',
     answers: app.answers ?? {},
     source: app.source || 'Website',
   };
 }
 
-export function mapApplicationSubmitToApi({ jobId, coverLetter, resumeUrl, answers = {} }) {
-  const body = {
-    job_id: jobId,
-    cover_letter: coverLetter,
-    resume_url: resumeUrl,
-  };
+function appendOptionalApplicationFields(body, {
+  githubUrl,
+  additionalLink,
+  additionalDocumentUrl,
+}) {
+  if (githubUrl?.trim()) {
+    body.github_url = githubUrl.trim();
+  }
+  if (additionalLink?.trim()) {
+    body.additional_link = additionalLink.trim();
+  }
+  if (additionalDocumentUrl?.trim()) {
+    body.additional_document_url = additionalDocumentUrl.trim();
+  }
+  return body;
+}
+
+function appendScreeningAnswers(body, answers = {}) {
   const cleanAnswers = {};
   for (const [id, value] of Object.entries(answers)) {
     if (Array.isArray(value)) {
@@ -173,6 +188,24 @@ export function mapApplicationSubmitToApi({ jobId, coverLetter, resumeUrl, answe
   return body;
 }
 
+export function mapApplicationSubmitToApi({
+  jobId,
+  coverLetter,
+  resumeUrl,
+  githubUrl,
+  additionalLink,
+  additionalDocumentUrl,
+  answers = {},
+}) {
+  const body = {
+    job_id: jobId,
+    cover_letter: coverLetter,
+    resume_url: resumeUrl,
+  };
+  appendOptionalApplicationFields(body, { githubUrl, additionalLink, additionalDocumentUrl });
+  return appendScreeningAnswers(body, answers);
+}
+
 export function mapGuestApplicationSubmitToApi({
   firstName,
   lastName,
@@ -180,6 +213,9 @@ export function mapGuestApplicationSubmitToApi({
   phone,
   coverLetter,
   resumeUrl,
+  githubUrl,
+  additionalLink,
+  additionalDocumentUrl,
   answers = {},
 }) {
   const body = {
@@ -192,18 +228,8 @@ export function mapGuestApplicationSubmitToApi({
   if (phone?.trim()) {
     body.phone = phone.trim();
   }
-  const cleanAnswers = {};
-  for (const [id, value] of Object.entries(answers)) {
-    if (Array.isArray(value)) {
-      if (value.length) cleanAnswers[id] = value;
-    } else if (value != null && String(value).trim()) {
-      cleanAnswers[id] = String(value).trim();
-    }
-  }
-  if (Object.keys(cleanAnswers).length) {
-    body.answers = cleanAnswers;
-  }
-  return body;
+  appendOptionalApplicationFields(body, { githubUrl, additionalLink, additionalDocumentUrl });
+  return appendScreeningAnswers(body, answers);
 }
 
 export function deriveScreeningFiltersFromApplications(applications, jobQuestions = []) {

@@ -1,20 +1,12 @@
-const FILE_MARKER_RE =
-  /(?:^|\n)(?:---\n)?Cover letter file: (.+)\n(https?:\/\/\S+)\s*$/i;
-
 /**
- * Build the `cover_letter` string the API expects (text only).
- * Uploaded files are linked in the body so employers can open them.
+ * Cover letters are file uploads only.
+ * Uploaded files go to `additional_document_url`; `cover_letter` keeps a short stub for the API.
  */
-export async function composeCoverLetter({ text = '', file = null, uploadFn }) {
-  const typed = String(text || '').trim();
-
+export async function composeCoverLetterMaterials({ file = null, uploadFn }) {
   if (!file) {
-    if (!typed) {
-      const err = new Error('Please write or upload a cover letter.');
-      err.status = 400;
-      throw err;
-    }
-    return typed;
+    const err = new Error('Please upload a cover letter.');
+    err.status = 400;
+    throw err;
   }
 
   if (typeof uploadFn !== 'function') {
@@ -27,30 +19,33 @@ export async function composeCoverLetter({ text = '', file = null, uploadFn }) {
     throw new Error('Cover letter upload did not return a file URL.');
   }
 
-  const marker = `Cover letter file: ${file.name}\n${url}`;
-
-  let body = typed;
-  if (
-    !body &&
-    (file.type === 'text/plain' || String(file.name || '').toLowerCase().endsWith('.txt'))
-  ) {
+  let coverLetter = '';
+  if (file.type === 'text/plain' || String(file.name || '').toLowerCase().endsWith('.txt')) {
     try {
-      body = String(await file.text()).trim();
+      coverLetter = String(await file.text()).trim();
     } catch {
-      body = '';
+      coverLetter = '';
     }
   }
 
-  return body ? `${body}\n\n---\n${marker}` : marker;
+  if (!coverLetter) {
+    coverLetter = 'See attached cover letter.';
+  }
+
+  return { coverLetter, additionalDocumentUrl: url };
 }
 
+const LEGACY_FILE_MARKER_RE =
+  /(?:^|\n)(?:---\n)?Cover letter file: (.+)\n(https?:\/\/\S+)\s*$/i;
+
+/** Split typed cover letter from older apps that embedded a file URL in the text. */
 export function parseCoverLetterMaterials(coverLetter = '') {
   const raw = String(coverLetter || '');
   if (!raw.trim()) {
     return { text: '', fileUrl: '', fileName: '' };
   }
 
-  const match = raw.match(FILE_MARKER_RE);
+  const match = raw.match(LEGACY_FILE_MARKER_RE);
   if (!match) {
     return { text: raw.trim(), fileUrl: '', fileName: '' };
   }
@@ -60,4 +55,11 @@ export function parseCoverLetterMaterials(coverLetter = '') {
   const text = raw.slice(0, match.index).replace(/\n---\s*$/, '').trim();
 
   return { text, fileUrl, fileName };
+}
+
+export function normalizeOptionalUrl(value) {
+  const trimmed = String(value || '').trim();
+  if (!trimmed) return '';
+  if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  return `https://${trimmed}`;
 }

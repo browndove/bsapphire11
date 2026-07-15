@@ -447,8 +447,21 @@ function ApplicationDetailView() {
 
             <div className="ats-material-block">
               <p className="ats-material-label">Cover letter</p>
-              <CoverLetterMaterials coverLetter={app.coverLetter} />
+              <CoverLetterMaterials
+                coverLetter={app.coverLetter}
+                additionalDocumentUrl={app.additionalDocumentUrl}
+              />
             </div>
+
+            {(app.githubUrl || app.additionalLink) ? (
+              <div className="ats-material-block">
+                <p className="ats-material-label">Links</p>
+                <CoverLetterMaterials
+                  githubUrl={app.githubUrl}
+                  additionalLink={app.additionalLink}
+                />
+              </div>
+            ) : null}
 
             <div className="ats-material-block">
               <p className="ats-material-label">Resume</p>

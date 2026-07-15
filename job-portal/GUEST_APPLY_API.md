@@ -104,7 +104,7 @@ Presigned S3 upload for resumes **without** authentication.
 
 | Rule | Behavior |
 |------|----------|
-| `purpose` | **Only** `resume` — reject `company_logo`, `document`, etc. with `403` |
+| `purpose` | **`resume` or `document`** — reject `company_logo` etc. with `403` |
 | `content_type` | Same allowlist as `POST /files/upload-url` (PDF, DOC, DOCX, …) |
 | `filename` | Sanitize; reject path traversal |
 | Presigned PUT TTL | ~15 minutes |
@@ -157,6 +157,9 @@ Submit an application without a candidate session.
 | `phone` | No | Omitted when empty |
 | `cover_letter` | Yes | Non-empty after trim |
 | `resume_url` | Yes | Must be a `file_url` from `POST /public/files/upload-url` (or authenticated upload) |
+| `github_url` | No | Optional GitHub profile / repo URL |
+| `additional_link` | No | Optional portfolio / website URL |
+| `additional_document_url` | No | Optional `file_url` from upload (`purpose: "document"`) — used for cover-letter PDF uploads |
 | `answers` | Conditional | Same rules as `POST /me/applications` |
 
 **Optional aliases** (frontend sends canonical names only; aliases help other clients):
@@ -321,7 +324,7 @@ Registration is **disabled** on the frontend; do not require it for guest apply 
 | Password on apply? | **No** |
 | 2FA on apply? | **No** |
 | Email verification before submit? | **No** (optional email after submit) |
-| Public upload purposes | **`resume` only** on `/public/files/upload-url` |
+| Public upload purposes | **`resume` and `document`** on `/public/files/upload-url` |
 | Upload mechanism | Presigned PUT (same as existing file flow) |
 | Duplicate active apply | `409` |
 | Reapply after withdraw | Allow |

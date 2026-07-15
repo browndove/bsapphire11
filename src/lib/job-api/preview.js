@@ -119,6 +119,9 @@ export const PREVIEW_APPLICATIONS = [
     status: 'interview',
     coverLetter: 'I have led backend teams for six years and am excited about your platform work.',
     resumeUrl: 'https://example.com/resume-ama.pdf',
+    githubUrl: 'https://github.com/amaosei',
+    additionalLink: 'https://amaosei.dev',
+    additionalDocumentUrl: '',
     answers: { sq_years: '6–10', sq_stack: ['Go', 'Node.js'] },
   },
   {
@@ -133,6 +136,9 @@ export const PREVIEW_APPLICATIONS = [
     status: 'shortlisted',
     coverLetter: 'Strong distributed systems background with Go and Kubernetes.',
     resumeUrl: 'https://example.com/resume-kwesi.pdf',
+    githubUrl: 'https://github.com/kwesimensah',
+    additionalLink: '',
+    additionalDocumentUrl: 'https://example.com/cover-kwesi.pdf',
     answers: { sq_years: '3–5', sq_stack: ['Go', 'Python'] },
   },
   {
@@ -147,6 +153,9 @@ export const PREVIEW_APPLICATIONS = [
     status: 'reviewing',
     coverLetter: 'Built NLP pipelines in production at scale.',
     resumeUrl: 'https://example.com/resume-rosa.pdf',
+    githubUrl: '',
+    additionalLink: 'https://rosakim.ai',
+    additionalDocumentUrl: '',
   },
   {
     id: 'preview-app-4',

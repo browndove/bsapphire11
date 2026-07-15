@@ -13,7 +13,7 @@ import {
   uploadResume,
   uploadResumePublic,
 } from '@/lib/job-api/client';
-import { composeCoverLetter } from '@/lib/job-api/cover-letter';
+import { composeCoverLetterMaterials, normalizeOptionalUrl } from '@/lib/job-api/cover-letter';
 import { getActiveApplicationForJob, getWithdrawnApplicationForJob } from '@/lib/job-api/candidate-routes';
 import ResumeFilePicker from '@/components/candidate/ResumeFilePicker';
 import MediaFilePicker from '@/components/candidate/MediaFilePicker';
@@ -61,9 +61,10 @@ function CandidateApplyInner() {
   const [lastName, setLastName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
-  const [coverLetter, setCoverLetter] = useState('');
   const [coverLetterFile, setCoverLetterFile] = useState(null);
   const [coverLetterError, setCoverLetterError] = useState('');
+  const [githubUrl, setGithubUrl] = useState('');
+  const [additionalLink, setAdditionalLink] = useState('');
   const [resumeFile, setResumeFile] = useState(null);
   const [resumeError, setResumeError] = useState('');
   const [applyError, setApplyError] = useState('');
@@ -141,8 +142,8 @@ function CandidateApplyInner() {
       return;
     }
 
-    if (!coverLetter.trim() && !coverLetterFile) {
-      setCoverLetterError('Please write or upload a cover letter.');
+    if (!coverLetterFile) {
+      setCoverLetterError('Please upload a cover letter.');
       return;
     }
 
@@ -165,9 +166,8 @@ function CandidateApplyInner() {
 
     try {
       if (isAuthed) {
-        const [coverLetterPayload, uploaded] = await Promise.all([
-          composeCoverLetter({
-            text: coverLetter,
+        const [coverMaterials, uploaded] = await Promise.all([
+          composeCoverLetterMaterials({
             file: coverLetterFile,
             uploadFn: uploadCoverLetter,
           }),
@@ -176,8 +176,11 @@ function CandidateApplyInner() {
         await submitApplication(
           mapApplicationSubmitToApi({
             jobId: job.id,
-            coverLetter: coverLetterPayload,
+            coverLetter: coverMaterials.coverLetter,
             resumeUrl: uploaded.file_url || uploaded.url,
+            githubUrl: normalizeOptionalUrl(githubUrl),
+            additionalLink: normalizeOptionalUrl(additionalLink),
+            additionalDocumentUrl: coverMaterials.additionalDocumentUrl,
             answers: screeningAnswers,
           })
         );
@@ -186,9 +189,8 @@ function CandidateApplyInner() {
         return;
       }
 
-      const [coverLetterPayload, uploaded] = await Promise.all([
-        composeCoverLetter({
-          text: coverLetter,
+      const [coverMaterials, uploaded] = await Promise.all([
+        composeCoverLetterMaterials({
           file: coverLetterFile,
           uploadFn: uploadCoverLetterPublic,
         }),
@@ -201,8 +203,11 @@ function CandidateApplyInner() {
           lastName,
           email,
           phone,
-          coverLetter: coverLetterPayload,
+          coverLetter: coverMaterials.coverLetter,
           resumeUrl: uploaded.file_url || uploaded.url,
+          githubUrl: normalizeOptionalUrl(githubUrl),
+          additionalLink: normalizeOptionalUrl(additionalLink),
+          additionalDocumentUrl: coverMaterials.additionalDocumentUrl,
           answers: screeningAnswers,
         })
       );
@@ -243,7 +248,7 @@ function CandidateApplyInner() {
           <Link href="/careers" className="btn btn-outline btn-sm">Browse open roles</Link>
         </div>
       ) : (
-        <div className="ats-detail-grid">
+        <div className="ats-detail-grid ats-detail-grid--role-wide">
           <section className="ats-panel">
             <div className="ats-panel-head">
               <h2 className="ats-panel-title">Role details</h2>
@@ -297,8 +302,21 @@ function CandidateApplyInner() {
 
                 <div className="ats-material-block">
                   <p className="ats-material-label">Cover letter</p>
-                  <CoverLetterMaterials coverLetter={activeApplication.coverLetter} />
+                  <CoverLetterMaterials
+                    coverLetter={activeApplication.coverLetter}
+                    additionalDocumentUrl={activeApplication.additionalDocumentUrl}
+                  />
                 </div>
+
+                {(activeApplication.githubUrl || activeApplication.additionalLink) ? (
+                  <div className="ats-material-block">
+                    <p className="ats-material-label">Links</p>
+                    <CoverLetterMaterials
+                      githubUrl={activeApplication.githubUrl}
+                      additionalLink={activeApplication.additionalLink}
+                    />
+                  </div>
+                ) : null}
 
                 <div className="ats-material-block">
                   <p className="ats-material-label">Resume</p>
@@ -370,21 +388,7 @@ function CandidateApplyInner() {
                 ) : null}
 
                 <div className="ats-field">
-                  <label className="ats-field-label" htmlFor="cover-letter">Cover letter</label>
-                  <textarea
-                    id="cover-letter"
-                    rows={3}
-                    value={coverLetter}
-                    onChange={(e) => {
-                      setCoverLetter(e.target.value);
-                      if (coverLetterError && (e.target.value.trim() || coverLetterFile)) {
-                        setCoverLetterError('');
-                      }
-                    }}
-                    placeholder="Tell us why you are a strong fit for this role."
-                    disabled={submitting}
-                  />
-                  <p className="ats-field-hint">Write a cover letter, upload a file, or both.</p>
+                  <label className="ats-field-label" htmlFor="cover-letter-file">Cover letter</label>
                   <MediaFilePicker
                     id="cover-letter-file"
                     purpose="cover_letter"
@@ -404,6 +408,40 @@ function CandidateApplyInner() {
                     disabled={submitting}
                   />
                 </div>
+                <div className="ats-field">
+                  <label className="ats-field-label" htmlFor="github-url">GitHub (optional)</label>
+                  <input
+                    id="github-url"
+                    type="url"
+                    inputMode="url"
+                    autoComplete="url"
+                    placeholder="https://github.com/username"
+                    value={githubUrl}
+                    onChange={(e) => setGithubUrl(e.target.value)}
+                    disabled={submitting}
+                  />
+                  {fieldErrors.github_url ? (
+                    <p className="ats-field-error">{fieldErrors.github_url}</p>
+                  ) : null}
+                </div>
+                <div className="ats-field">
+                  <label className="ats-field-label" htmlFor="additional-link">
+                    Portfolio or other link (optional)
+                  </label>
+                  <input
+                    id="additional-link"
+                    type="url"
+                    inputMode="url"
+                    autoComplete="url"
+                    placeholder="https://…"
+                    value={additionalLink}
+                    onChange={(e) => setAdditionalLink(e.target.value)}
+                    disabled={submitting}
+                  />
+                  {fieldErrors.additional_link ? (
+                    <p className="ats-field-error">{fieldErrors.additional_link}</p>
+                  ) : null}
+                </div>
                 <ScreeningAnswersForm
                   questions={job.screeningQuestions || []}
                   values={screeningAnswers}
@@ -415,11 +453,6 @@ function CandidateApplyInner() {
                 <button type="submit" className="btn btn-primary" disabled={submitting}>
                   {submitting ? 'Submitting…' : 'Submit application'}
                 </button>
-                {!isAuthed ? (
-                  <p className="ats-field-hint">
-                    No account required — submit your application in one step.
-                  </p>
-                ) : null}
               </form>
             )}
           </section>

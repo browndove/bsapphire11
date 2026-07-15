@@ -391,9 +391,9 @@ export async function uploadResumePublic(file) {
   return { url: fileUrl, file_url: fileUrl };
 }
 
-/** Guest cover letters use purpose `resume` (public upload allowlist). */
+/** Guest cover / additional docs — public upload allows `document`. */
 export async function uploadCoverLetterPublic(file) {
-  const fileUrl = await uploadPublicFile(file, 'resume');
+  const fileUrl = await uploadPublicFile(file, 'document');
   return { url: fileUrl, file_url: fileUrl };
 }
 
