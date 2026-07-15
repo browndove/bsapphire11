@@ -10,12 +10,11 @@ import { formatAnswerValue } from '@/lib/job-api/mappers';
 import { buildStatusEmailDefaults, buildStatusEmailPatch } from '@/lib/job-api/email-templates';
 import PortalHeader, { BreadcrumbLink } from '../../components/PortalHeader';
 import Avatar from '../../components/Avatar';
-import StageStepper from '../../components/StageStepper';
-import QuickActions from '../../components/QuickActions';
 import StatusEmailModal from '../../components/StatusEmailModal';
 import CustomSelect from '@/components/CustomSelect';
 import CoverLetterMaterials from '@/components/candidate/CoverLetterMaterials';
 import { useConfirm } from '@/components/ConfirmProvider';
+import { resolveApplicationDocuments } from '@/lib/job-api/cover-letter';
 
 function ApplicationDetailView() {
   const router = useRouter();
@@ -65,6 +64,11 @@ function ApplicationDetailView() {
   }, [isReady, isAuthed, id, applications, jobs, router]);
 
   if (!isReady || !isAuthed || !app) return null;
+
+  const documents = resolveApplicationDocuments({
+    coverLetter: app.coverLetter,
+    additionalDocumentUrl: app.additionalDocumentUrl,
+  });
 
   const backUrl = jobFilter
     ? `/job-portal/applications?job=${encodeURIComponent(jobFilter)}`
@@ -253,10 +257,6 @@ function ApplicationDetailView() {
     openStatusModal(newStatus);
   };
 
-  const handleQuickAction = async (newStatus) => {
-    await requestStatusChange(newStatus);
-  };
-
   const handleSave = async () => {
     await requestStatusChange(stage);
   };
@@ -307,10 +307,6 @@ function ApplicationDetailView() {
           <span className={`tag ${tagClass}`}>{tagLabel}</span>
         </div>
       </div>
-
-      <StageStepper currentStatus={stage} />
-
-      <QuickActions currentStatus={stage} onAction={handleQuickAction} saving={saving} />
 
       {toast ? (
         <div className={`ats-toast is-${toastVariant === 'warning' ? 'warning' : 'success'}`}>
@@ -453,10 +449,22 @@ function ApplicationDetailView() {
               />
             </div>
 
+            {documents.additionalDocumentUrl ? (
+              <div className="ats-material-block">
+                <p className="ats-material-label">Additional document</p>
+                <CoverLetterMaterials
+                  mode="additional"
+                  coverLetter={app.coverLetter}
+                  additionalDocumentUrl={app.additionalDocumentUrl}
+                />
+              </div>
+            ) : null}
+
             {(app.githubUrl || app.additionalLink) ? (
               <div className="ats-material-block">
                 <p className="ats-material-label">Links</p>
                 <CoverLetterMaterials
+                  mode="links"
                   githubUrl={app.githubUrl}
                   additionalLink={app.additionalLink}
                 />

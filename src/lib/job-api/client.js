@@ -402,6 +402,16 @@ export async function uploadCoverLetter(file) {
   return { url: fileUrl, file_url: fileUrl };
 }
 
+export async function uploadAdditionalDocumentPublic(file) {
+  const fileUrl = await uploadPublicFile(file, 'document');
+  return { url: fileUrl, file_url: fileUrl };
+}
+
+export async function uploadAdditionalDocument(file) {
+  const fileUrl = await uploadFile(file, 'document');
+  return { url: fileUrl, file_url: fileUrl };
+}
+
 export async function submitGuestApplication(jobId, body) {
   const res = await fetch(`/api/public/jobs/${encodeURIComponent(jobId)}/applications`, {
     method: 'POST',

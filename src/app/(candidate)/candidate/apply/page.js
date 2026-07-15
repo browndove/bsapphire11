@@ -8,12 +8,19 @@ import {
   fetchPublicJob,
   submitApplication,
   submitGuestApplication,
+  uploadAdditionalDocument,
+  uploadAdditionalDocumentPublic,
   uploadCoverLetter,
   uploadCoverLetterPublic,
   uploadResume,
   uploadResumePublic,
 } from '@/lib/job-api/client';
-import { composeCoverLetterMaterials, normalizeOptionalUrl } from '@/lib/job-api/cover-letter';
+import {
+  composeCoverLetterMaterials,
+  normalizeOptionalUrl,
+  resolveApplicationDocuments,
+  uploadOptionalDocument,
+} from '@/lib/job-api/cover-letter';
 import { getActiveApplicationForJob, getWithdrawnApplicationForJob } from '@/lib/job-api/candidate-routes';
 import ResumeFilePicker from '@/components/candidate/ResumeFilePicker';
 import MediaFilePicker from '@/components/candidate/MediaFilePicker';
@@ -63,6 +70,8 @@ function CandidateApplyInner() {
   const [phone, setPhone] = useState('');
   const [coverLetterFile, setCoverLetterFile] = useState(null);
   const [coverLetterError, setCoverLetterError] = useState('');
+  const [additionalDocumentFile, setAdditionalDocumentFile] = useState(null);
+  const [additionalDocumentError, setAdditionalDocumentError] = useState('');
   const [githubUrl, setGithubUrl] = useState('');
   const [additionalLink, setAdditionalLink] = useState('');
   const [resumeFile, setResumeFile] = useState(null);
@@ -133,6 +142,11 @@ function CandidateApplyInner() {
     setCoverLetterError(validationError);
   };
 
+  const handleAdditionalDocumentChange = (file, validationError = '') => {
+    setAdditionalDocumentFile(file);
+    setAdditionalDocumentError(validationError);
+  };
+
   const handleApply = async (e) => {
     e.preventDefault();
     if (!job) return;
@@ -163,15 +177,20 @@ function CandidateApplyInner() {
     setFieldErrors({});
     setResumeError('');
     setCoverLetterError('');
+    setAdditionalDocumentError('');
 
     try {
       if (isAuthed) {
-        const [coverMaterials, uploaded] = await Promise.all([
+        const [coverMaterials, uploaded, additionalDocumentUrl] = await Promise.all([
           composeCoverLetterMaterials({
             file: coverLetterFile,
             uploadFn: uploadCoverLetter,
           }),
           uploadResume(resumeFile),
+          uploadOptionalDocument({
+            file: additionalDocumentFile,
+            uploadFn: uploadAdditionalDocument,
+          }),
         ]);
         await submitApplication(
           mapApplicationSubmitToApi({
@@ -180,7 +199,7 @@ function CandidateApplyInner() {
             resumeUrl: uploaded.file_url || uploaded.url,
             githubUrl: normalizeOptionalUrl(githubUrl),
             additionalLink: normalizeOptionalUrl(additionalLink),
-            additionalDocumentUrl: coverMaterials.additionalDocumentUrl,
+            additionalDocumentUrl,
             answers: screeningAnswers,
           })
         );
@@ -189,12 +208,16 @@ function CandidateApplyInner() {
         return;
       }
 
-      const [coverMaterials, uploaded] = await Promise.all([
+      const [coverMaterials, uploaded, additionalDocumentUrl] = await Promise.all([
         composeCoverLetterMaterials({
           file: coverLetterFile,
           uploadFn: uploadCoverLetterPublic,
         }),
         uploadResumePublic(resumeFile),
+        uploadOptionalDocument({
+          file: additionalDocumentFile,
+          uploadFn: uploadAdditionalDocumentPublic,
+        }),
       ]);
       await submitGuestApplication(
         job.id,
@@ -207,7 +230,7 @@ function CandidateApplyInner() {
           resumeUrl: uploaded.file_url || uploaded.url,
           githubUrl: normalizeOptionalUrl(githubUrl),
           additionalLink: normalizeOptionalUrl(additionalLink),
-          additionalDocumentUrl: coverMaterials.additionalDocumentUrl,
+          additionalDocumentUrl,
           answers: screeningAnswers,
         })
       );
@@ -219,6 +242,13 @@ function CandidateApplyInner() {
       setSubmitting(false);
     }
   };
+
+  const submittedDocuments = activeApplication
+    ? resolveApplicationDocuments({
+        coverLetter: activeApplication.coverLetter,
+        additionalDocumentUrl: activeApplication.additionalDocumentUrl,
+      })
+    : null;
 
   const compensation = job ? formatSalaryRange(job) : '';
 
@@ -308,10 +338,22 @@ function CandidateApplyInner() {
                   />
                 </div>
 
+                {submittedDocuments?.additionalDocumentUrl ? (
+                  <div className="ats-material-block">
+                    <p className="ats-material-label">Additional document</p>
+                    <CoverLetterMaterials
+                      mode="additional"
+                      coverLetter={activeApplication.coverLetter}
+                      additionalDocumentUrl={activeApplication.additionalDocumentUrl}
+                    />
+                  </div>
+                ) : null}
+
                 {(activeApplication.githubUrl || activeApplication.additionalLink) ? (
                   <div className="ats-material-block">
                     <p className="ats-material-label">Links</p>
                     <CoverLetterMaterials
+                      mode="links"
                       githubUrl={activeApplication.githubUrl}
                       additionalLink={activeApplication.additionalLink}
                     />
@@ -405,6 +447,19 @@ function CandidateApplyInner() {
                     value={resumeFile}
                     onChange={handleResumeChange}
                     error={resumeError}
+                    disabled={submitting}
+                  />
+                </div>
+                <div className="ats-field">
+                  <label className="ats-field-label" htmlFor="additional-document-file">
+                    Additional document (optional)
+                  </label>
+                  <MediaFilePicker
+                    id="additional-document-file"
+                    purpose="document"
+                    value={additionalDocumentFile}
+                    onChange={handleAdditionalDocumentChange}
+                    error={additionalDocumentError || fieldErrors.additional_document_url}
                     disabled={submitting}
                   />
                 </div>

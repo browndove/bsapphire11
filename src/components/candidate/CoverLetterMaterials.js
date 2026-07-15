@@ -1,6 +1,6 @@
 'use client';
 
-import { parseCoverLetterMaterials } from '@/lib/job-api/cover-letter';
+import { resolveApplicationDocuments } from '@/lib/job-api/cover-letter';
 
 function FileIcon() {
   return (
@@ -11,7 +11,7 @@ function FileIcon() {
   );
 }
 
-function FileCard({ title, subtitle, href, actionLabel }) {
+export function FileCard({ title, subtitle, href, actionLabel }) {
   if (!href) return null;
   return (
     <div className="ats-file-card">
@@ -48,40 +48,54 @@ export default function CoverLetterMaterials({
   additionalDocumentUrl = '',
   githubUrl = '',
   additionalLink = '',
+  mode = 'cover', // 'cover' | 'links' | 'additional'
 }) {
-  const parsed = parseCoverLetterMaterials(coverLetter);
-  const documentUrl = additionalDocumentUrl || parsed.fileUrl;
-  const documentName = parsed.fileName || 'PDF or document on file';
-  const stubText = /^see attached cover letter\.?$/i.test(parsed.text);
-  // Upload-only policy: only show legacy typed text when no file exists
-  const legacyText = !documentUrl && parsed.text && !stubText ? parsed.text : '';
+  if (mode === 'links') {
+    if (!githubUrl && !additionalLink) {
+      return null;
+    }
+    return (
+      <div className="ats-cover-letter-materials">
+        <LinkRow label="GitHub" href={githubUrl} />
+        <LinkRow label="Link" href={additionalLink} />
+      </div>
+    );
+  }
 
-  const hasLinks = Boolean(githubUrl || additionalLink);
+  const docs = resolveApplicationDocuments({ coverLetter, additionalDocumentUrl });
 
-  if (!documentUrl && !legacyText && !hasLinks) {
+  if (mode === 'additional') {
+    if (!docs.additionalDocumentUrl) {
+      return <div className="ats-empty-card">No additional document uploaded.</div>;
+    }
+    return (
+      <FileCard
+        title="Additional document attached"
+        subtitle="PDF or document on file"
+        href={docs.additionalDocumentUrl}
+        actionLabel="View document"
+      />
+    );
+  }
+
+  if (!docs.coverLetterUrl && !docs.coverLetterText) {
     return <div className="ats-empty-card">No cover letter uploaded.</div>;
   }
 
   return (
     <div className="ats-cover-letter-materials">
-      {documentUrl ? (
+      {docs.coverLetterUrl ? (
         <FileCard
           title="Cover letter attached"
-          subtitle={documentName}
-          href={documentUrl}
+          subtitle={docs.coverLetterFileName}
+          href={docs.coverLetterUrl}
           actionLabel="View cover letter"
         />
       ) : null}
-      {legacyText ? (
-        <blockquote className="ats-prose-block" style={{ marginTop: 0 }}>
-          {legacyText}
+      {docs.coverLetterText ? (
+        <blockquote className="ats-prose-block" style={{ marginTop: docs.coverLetterUrl ? '0.75rem' : 0 }}>
+          {docs.coverLetterText}
         </blockquote>
-      ) : null}
-      {hasLinks ? (
-        <div style={{ marginTop: documentUrl || legacyText ? '0.75rem' : 0 }}>
-          <LinkRow label="GitHub" href={githubUrl} />
-          <LinkRow label="Link" href={additionalLink} />
-        </div>
       ) : null}
     </div>
   );
