@@ -37,6 +37,12 @@ import {
   PortalStages,
   formatAnswerValue,
 } from '@/lib/job-api/mappers';
+import {
+  applicationFieldLabel,
+  isApplicationFieldRequired,
+  isApplicationFieldVisible,
+  normalizeApplicationFields,
+} from '@/lib/job-api/application-fields';
 import { getFieldErrors, toUserMessage } from '@/lib/job-api/errors';
 import { formatRelativeTime } from '@/lib/job-api/format';
 import PortalHeader, { BreadcrumbLink } from '@/app/(admin)/job-portal/components/PortalHeader';
@@ -147,6 +153,18 @@ function CandidateApplyInner() {
     setAdditionalDocumentError(validationError);
   };
 
+  const applicationFields = normalizeApplicationFields(job?.applicationFields);
+  const showCoverLetter = isApplicationFieldVisible(applicationFields, 'cover_letter');
+  const showResume = isApplicationFieldVisible(applicationFields, 'resume');
+  const showAdditionalDocument = isApplicationFieldVisible(applicationFields, 'additional_document');
+  const showGithub = isApplicationFieldVisible(applicationFields, 'github_url');
+  const showAdditionalLink = isApplicationFieldVisible(applicationFields, 'additional_link');
+  const requireCoverLetter = isApplicationFieldRequired(applicationFields, 'cover_letter');
+  const requireResume = isApplicationFieldRequired(applicationFields, 'resume');
+  const requireAdditionalDocument = isApplicationFieldRequired(applicationFields, 'additional_document');
+  const requireGithub = isApplicationFieldRequired(applicationFields, 'github_url');
+  const requireAdditionalLink = isApplicationFieldRequired(applicationFields, 'additional_link');
+
   const handleApply = async (e) => {
     e.preventDefault();
     if (!job) return;
@@ -156,13 +174,30 @@ function CandidateApplyInner() {
       return;
     }
 
-    if (!coverLetterFile) {
+    if (showCoverLetter && requireCoverLetter && !coverLetterFile) {
       setCoverLetterError('Please upload a cover letter.');
       return;
     }
 
-    if (!resumeFile) {
+    if (showResume && requireResume && !resumeFile) {
       setResumeError('Please attach your resume.');
+      return;
+    }
+
+    if (showAdditionalDocument && requireAdditionalDocument && !additionalDocumentFile) {
+      setAdditionalDocumentError('Please upload an additional document.');
+      return;
+    }
+
+    if (showGithub && requireGithub && !githubUrl.trim()) {
+      setFieldErrors((prev) => ({ ...prev, github_url: 'GitHub URL is required.' }));
+      setApplyError('Please enter your GitHub URL.');
+      return;
+    }
+
+    if (showAdditionalLink && requireAdditionalLink && !additionalLink.trim()) {
+      setFieldErrors((prev) => ({ ...prev, additional_link: 'Portfolio or other link is required.' }));
+      setApplyError('Please enter a portfolio or other link.');
       return;
     }
 
@@ -180,45 +215,52 @@ function CandidateApplyInner() {
     setAdditionalDocumentError('');
 
     try {
+      const coverUploadFn = isAuthed ? uploadCoverLetter : uploadCoverLetterPublic;
+      const resumeUploadFn = isAuthed ? uploadResume : uploadResumePublic;
+      const additionalUploadFn = isAuthed ? uploadAdditionalDocument : uploadAdditionalDocumentPublic;
+
+      const [coverMaterials, uploaded, additionalDocumentUrl] = await Promise.all([
+        showCoverLetter && coverLetterFile
+          ? composeCoverLetterMaterials({
+              file: coverLetterFile,
+              uploadFn: coverUploadFn,
+              required: requireCoverLetter,
+            })
+          : Promise.resolve({ coverLetter: '' }),
+        showResume && resumeFile
+          ? resumeUploadFn(resumeFile)
+          : Promise.resolve({ file_url: '', url: '' }),
+        showAdditionalDocument
+          ? uploadOptionalDocument({
+              file: additionalDocumentFile,
+              uploadFn: additionalUploadFn,
+            })
+          : Promise.resolve(''),
+      ]);
+
+      if (showResume && requireResume && !(uploaded.file_url || uploaded.url)) {
+        setResumeError('Please attach your resume.');
+        setSubmitting(false);
+        return;
+      }
+
+      const payload = {
+        jobId: job.id,
+        coverLetter: coverMaterials.coverLetter,
+        resumeUrl: uploaded.file_url || uploaded.url || '',
+        githubUrl: showGithub ? normalizeOptionalUrl(githubUrl) : '',
+        additionalLink: showAdditionalLink ? normalizeOptionalUrl(additionalLink) : '',
+        additionalDocumentUrl: showAdditionalDocument ? additionalDocumentUrl : '',
+        answers: screeningAnswers,
+      };
+
       if (isAuthed) {
-        const [coverMaterials, uploaded, additionalDocumentUrl] = await Promise.all([
-          composeCoverLetterMaterials({
-            file: coverLetterFile,
-            uploadFn: uploadCoverLetter,
-          }),
-          uploadResume(resumeFile),
-          uploadOptionalDocument({
-            file: additionalDocumentFile,
-            uploadFn: uploadAdditionalDocument,
-          }),
-        ]);
-        await submitApplication(
-          mapApplicationSubmitToApi({
-            jobId: job.id,
-            coverLetter: coverMaterials.coverLetter,
-            resumeUrl: uploaded.file_url || uploaded.url,
-            githubUrl: normalizeOptionalUrl(githubUrl),
-            additionalLink: normalizeOptionalUrl(additionalLink),
-            additionalDocumentUrl,
-            answers: screeningAnswers,
-          })
-        );
+        await submitApplication(mapApplicationSubmitToApi(payload));
         await refreshApplications();
         router.push('/candidate/applications');
         return;
       }
 
-      const [coverMaterials, uploaded, additionalDocumentUrl] = await Promise.all([
-        composeCoverLetterMaterials({
-          file: coverLetterFile,
-          uploadFn: uploadCoverLetterPublic,
-        }),
-        uploadResumePublic(resumeFile),
-        uploadOptionalDocument({
-          file: additionalDocumentFile,
-          uploadFn: uploadAdditionalDocumentPublic,
-        }),
-      ]);
       await submitGuestApplication(
         job.id,
         mapGuestApplicationSubmitToApi({
@@ -226,12 +268,7 @@ function CandidateApplyInner() {
           lastName,
           email,
           phone,
-          coverLetter: coverMaterials.coverLetter,
-          resumeUrl: uploaded.file_url || uploaded.url,
-          githubUrl: normalizeOptionalUrl(githubUrl),
-          additionalLink: normalizeOptionalUrl(additionalLink),
-          additionalDocumentUrl,
-          answers: screeningAnswers,
+          ...payload,
         })
       );
       router.push('/success-job');
@@ -429,74 +466,92 @@ function CandidateApplyInner() {
                   </div>
                 ) : null}
 
-                <div className="ats-field">
-                  <label className="ats-field-label" htmlFor="cover-letter-file">Cover letter</label>
-                  <MediaFilePicker
-                    id="cover-letter-file"
-                    purpose="cover_letter"
-                    value={coverLetterFile}
-                    onChange={handleCoverLetterFileChange}
-                    error={coverLetterError}
-                    disabled={submitting}
-                  />
-                </div>
-                <div className="ats-field">
-                  <label className="ats-field-label" htmlFor="resume-file">Resume</label>
-                  <ResumeFilePicker
-                    id="resume-file"
-                    value={resumeFile}
-                    onChange={handleResumeChange}
-                    error={resumeError}
-                    disabled={submitting}
-                  />
-                </div>
-                <div className="ats-field">
-                  <label className="ats-field-label" htmlFor="additional-document-file">
-                    Additional document (optional)
-                  </label>
-                  <MediaFilePicker
-                    id="additional-document-file"
-                    purpose="document"
-                    value={additionalDocumentFile}
-                    onChange={handleAdditionalDocumentChange}
-                    error={additionalDocumentError || fieldErrors.additional_document_url}
-                    disabled={submitting}
-                  />
-                </div>
-                <div className="ats-field">
-                  <label className="ats-field-label" htmlFor="github-url">GitHub (optional)</label>
-                  <input
-                    id="github-url"
-                    type="url"
-                    inputMode="url"
-                    autoComplete="url"
-                    placeholder="https://github.com/username"
-                    value={githubUrl}
-                    onChange={(e) => setGithubUrl(e.target.value)}
-                    disabled={submitting}
-                  />
-                  {fieldErrors.github_url ? (
-                    <p className="ats-field-error">{fieldErrors.github_url}</p>
-                  ) : null}
-                </div>
-                <div className="ats-field">
-                  <label className="ats-field-label" htmlFor="additional-link">
-                    Portfolio or other link (optional)
-                  </label>
-                  <input
-                    id="additional-link"
-                    type="url"
-                    inputMode="url"
-                    autoComplete="url"
-                    placeholder="https://…"
-                    value={additionalLink}
-                    onChange={(e) => setAdditionalLink(e.target.value)}
-                    disabled={submitting}
-                  />
-                  {fieldErrors.additional_link ? (
-                    <p className="ats-field-error">{fieldErrors.additional_link}</p>
-                  ) : null}
-                </div>
+                {showCoverLetter ? (
+                  <div className="ats-field">
+                    <label className="ats-field-label" htmlFor="cover-letter-file">
+                      {applicationFieldLabel('cover_letter', applicationFields)}
+                    </label>
+                    <MediaFilePicker
+                      id="cover-letter-file"
+                      purpose="cover_letter"
+                      value={coverLetterFile}
+                      onChange={handleCoverLetterFileChange}
+                      error={coverLetterError}
+                      disabled={submitting}
+                    />
+                  </div>
+                ) : null}
+                {showResume ? (
+                  <div className="ats-field">
+                    <label className="ats-field-label" htmlFor="resume-file">
+                      {applicationFieldLabel('resume', applicationFields)}
+                    </label>
+                    <ResumeFilePicker
+                      id="resume-file"
+                      value={resumeFile}
+                      onChange={handleResumeChange}
+                      error={resumeError}
+                      disabled={submitting}
+                    />
+                  </div>
+                ) : null}
+                {showAdditionalDocument ? (
+                  <div className="ats-field">
+                    <label className="ats-field-label" htmlFor="additional-document-file">
+                      {applicationFieldLabel('additional_document', applicationFields)}
+                    </label>
+                    <MediaFilePicker
+                      id="additional-document-file"
+                      purpose="document"
+                      value={additionalDocumentFile}
+                      onChange={handleAdditionalDocumentChange}
+                      error={additionalDocumentError || fieldErrors.additional_document_url}
+                      disabled={submitting}
+                    />
+                  </div>
+                ) : null}
+                {showGithub ? (
+                  <div className="ats-field">
+                    <label className="ats-field-label" htmlFor="github-url">
+                      {applicationFieldLabel('github_url', applicationFields)}
+                    </label>
+                    <input
+                      id="github-url"
+                      type="url"
+                      inputMode="url"
+                      autoComplete="url"
+                      placeholder="https://github.com/username"
+                      value={githubUrl}
+                      onChange={(e) => setGithubUrl(e.target.value)}
+                      disabled={submitting}
+                      required={requireGithub}
+                    />
+                    {fieldErrors.github_url ? (
+                      <p className="ats-field-error">{fieldErrors.github_url}</p>
+                    ) : null}
+                  </div>
+                ) : null}
+                {showAdditionalLink ? (
+                  <div className="ats-field">
+                    <label className="ats-field-label" htmlFor="additional-link">
+                      {applicationFieldLabel('additional_link', applicationFields)}
+                    </label>
+                    <input
+                      id="additional-link"
+                      type="url"
+                      inputMode="url"
+                      autoComplete="url"
+                      placeholder="https://…"
+                      value={additionalLink}
+                      onChange={(e) => setAdditionalLink(e.target.value)}
+                      disabled={submitting}
+                      required={requireAdditionalLink}
+                    />
+                    {fieldErrors.additional_link ? (
+                      <p className="ats-field-error">{fieldErrors.additional_link}</p>
+                    ) : null}
+                  </div>
+                ) : null}
                 <ScreeningAnswersForm
                   questions={job.screeningQuestions || []}
                   values={screeningAnswers}

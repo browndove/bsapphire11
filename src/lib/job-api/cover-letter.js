@@ -1,12 +1,19 @@
 /**
- * Cover letters are file uploads only.
+ * Cover letters are file uploads when provided.
  * File URL is encoded in `cover_letter` so `additional_document_url` stays free for extras.
  */
-export async function composeCoverLetterMaterials({ file = null, uploadFn }) {
+export async function composeCoverLetterMaterials({
+  file = null,
+  uploadFn,
+  required = true,
+}) {
   if (!file) {
-    const err = new Error('Please upload a cover letter.');
-    err.status = 400;
-    throw err;
+    if (required) {
+      const err = new Error('Please upload a cover letter.');
+      err.status = 400;
+      throw err;
+    }
+    return { coverLetter: '' };
   }
 
   if (typeof uploadFn !== 'function') {

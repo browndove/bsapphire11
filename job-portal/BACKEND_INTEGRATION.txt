@@ -44,7 +44,7 @@ PUBLIC SITE
   (upload purposes: `resume`, `document`; apply supports optional `github_url`,
   `additional_link`, `additional_document_url`)
 - Per-job required/optional/hidden materials: see `job-portal/APPLICATION_FIELDS_API.md`
-  (spec only — not implemented yet)
+  (backend ready; employer job edit + apply form use `application_fields`)
 - Legacy candidate portal login remains for existing accounts only (no new registration)
 
 

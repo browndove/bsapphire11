@@ -1,3 +1,4 @@
+
 # Application Field Requirements — Backend API Spec
 
 **Audience:** backend and frontend developers configuring which apply materials are required vs optional per job.
@@ -6,7 +7,7 @@
 
 **Related docs:** `job-portal/BACKEND_INTEGRATION.txt`, `job-portal/GUEST_APPLY_API.md`, `job-portal/SCREENING_QUESTIONNAIRE_API.md`
 
-**Status:** Spec only — not implemented. Frontend currently hardcodes field rules globally.
+**Status:** Backend **ready**. Frontend job-edit + apply form wired to `application_fields`.
 
 ---
 

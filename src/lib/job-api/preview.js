@@ -1,3 +1,5 @@
+import { DEFAULT_APPLICATION_FIELDS } from './application-fields';
+
 export function isPortalPreview() {
   return process.env.NEXT_PUBLIC_JOB_PORTAL_PREVIEW === 'true';
 }
@@ -235,7 +237,10 @@ export function loadPreviewData() {
   return {
     user: PREVIEW_USER,
     categories: PREVIEW_CATEGORIES,
-    jobs: PREVIEW_JOBS.map((j) => ({ ...j })),
+    jobs: PREVIEW_JOBS.map((j) => ({
+      ...j,
+      applicationFields: j.applicationFields || { ...DEFAULT_APPLICATION_FIELDS },
+    })),
     applications: PREVIEW_APPLICATIONS.map((a) => ({ ...a })),
     dashboardStats: { ...PREVIEW_DASHBOARD },
   };

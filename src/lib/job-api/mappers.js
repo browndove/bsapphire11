@@ -1,4 +1,5 @@
 import { DEFAULT_JOB_CURRENCY, EMPLOYER_APPLICATION_STATUSES, EMPLOYER_STATUS_UPDATES, JOB_CURRENCY_SYMBOL } from './config';
+import { normalizeApplicationFields } from './application-fields';
 
 export function getPaginatedItems(res) {
   if (!res) return [];
@@ -63,6 +64,9 @@ export function mapJobFromApi(job, categoriesById = {}) {
     currency: DEFAULT_JOB_CURRENCY,
     categoryId: job.category_id || null,
     screeningQuestions: rawQuestions.map(mapScreeningQuestionFromApi).filter(Boolean),
+    applicationFields: normalizeApplicationFields(
+      job.application_fields || job.applicationFields
+    ),
     createdAt: job.created_at,
     updatedAt: job.updated_at,
   };
@@ -104,6 +108,7 @@ export function mapJobToApi(job, { isCreate = false } = {}) {
         };
       });
   }
+  body.application_fields = normalizeApplicationFields(job.applicationFields);
   return body;
 }
 
@@ -199,9 +204,13 @@ export function mapApplicationSubmitToApi({
 }) {
   const body = {
     job_id: jobId,
-    cover_letter: coverLetter,
-    resume_url: resumeUrl,
   };
+  if (coverLetter?.trim()) {
+    body.cover_letter = coverLetter;
+  }
+  if (resumeUrl?.trim()) {
+    body.resume_url = resumeUrl;
+  }
   appendOptionalApplicationFields(body, { githubUrl, additionalLink, additionalDocumentUrl });
   return appendScreeningAnswers(body, answers);
 }
@@ -222,11 +231,15 @@ export function mapGuestApplicationSubmitToApi({
     first_name: firstName.trim(),
     last_name: lastName.trim(),
     email: email.trim(),
-    cover_letter: coverLetter,
-    resume_url: resumeUrl,
   };
   if (phone?.trim()) {
     body.phone = phone.trim();
+  }
+  if (coverLetter?.trim()) {
+    body.cover_letter = coverLetter;
+  }
+  if (resumeUrl?.trim()) {
+    body.resume_url = resumeUrl;
   }
   appendOptionalApplicationFields(body, { githubUrl, additionalLink, additionalDocumentUrl });
   return appendScreeningAnswers(body, answers);

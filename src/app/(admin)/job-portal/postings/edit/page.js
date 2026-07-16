@@ -10,14 +10,17 @@ import PortalHeader, { BreadcrumbLink } from '../../components/PortalHeader';
 import PageTabs from '../../components/PageTabs';
 import StickyFormBar from '../../components/StickyFormBar';
 import ScreeningQuestionsEditor from '../../components/ScreeningQuestionsEditor';
+import ApplicationFieldsEditor from '../../components/ApplicationFieldsEditor';
 import CustomSelect from '@/components/CustomSelect';
+import AutoResizeTextarea from '@/components/AutoResizeTextarea';
 import { useConfirm } from '@/components/ConfirmProvider';
+import { DEFAULT_APPLICATION_FIELDS } from '@/lib/job-api/application-fields';
 
 const SECTIONS = [
   { id: 'details', label: 'Details' },
   { id: 'compensation', label: 'Compensation' },
   { id: 'description', label: 'Description' },
-  { id: 'application', label: 'Application form' },
+  { id: 'application', label: 'Apply materials' },
   { id: 'publish', label: 'Publish' },
 ];
 
@@ -36,6 +39,7 @@ const emptyJob = {
   currency: DEFAULT_JOB_CURRENCY,
   categoryId: '',
   screeningQuestions: [],
+  applicationFields: { ...DEFAULT_APPLICATION_FIELDS },
 };
 
 function PostingEditForm() {
@@ -61,7 +65,14 @@ function PostingEditForm() {
     if (isReady && isAuthed && id && job.id !== id) {
       setLoadingJob(true);
       loadJobById(id)
-        .then((existing) => setJob({ ...emptyJob, ...existing, screeningQuestions: existing.screeningQuestions || [] }))
+        .then((existing) =>
+          setJob({
+            ...emptyJob,
+            ...existing,
+            screeningQuestions: existing.screeningQuestions || [],
+            applicationFields: existing.applicationFields || { ...DEFAULT_APPLICATION_FIELDS },
+          })
+        )
         .catch((err) => setError(toUserMessage(err)))
         .finally(() => setLoadingJob(false));
     }
@@ -94,7 +105,12 @@ function PostingEditForm() {
     setSaving(true);
     try {
       const saved = await upsertJob(job);
-      setJob({ ...emptyJob, ...saved, screeningQuestions: saved.screeningQuestions || [] });
+      setJob({
+        ...emptyJob,
+        ...saved,
+        screeningQuestions: saved.screeningQuestions || [],
+        applicationFields: saved.applicationFields || { ...DEFAULT_APPLICATION_FIELDS },
+      });
       setToast('Saved successfully!');
       setTimeout(() => setToast(''), 3000);
       if (!id) {
@@ -256,8 +272,10 @@ function PostingEditForm() {
           <>
             <div className="ats-field">
               <label className="ats-field-label" htmlFor="field-desc">Description</label>
-              <textarea
+              <AutoResizeTextarea
                 id="field-desc"
+                minRows={8}
+                maxRows={16}
                 placeholder="Role overview shown on the public job page"
                 value={job.description}
                 onChange={(e) => updateField('description', e.target.value)}
@@ -265,8 +283,10 @@ function PostingEditForm() {
             </div>
             <div className="ats-field">
               <label className="ats-field-label" htmlFor="field-req">Requirements</label>
-              <textarea
+              <AutoResizeTextarea
                 id="field-req"
+                minRows={5}
+                maxRows={12}
                 placeholder="Skills, experience, and qualifications"
                 value={job.requirements}
                 onChange={(e) => updateField('requirements', e.target.value)}
@@ -276,10 +296,18 @@ function PostingEditForm() {
         ) : null}
 
         {section === 'application' ? (
-          <ScreeningQuestionsEditor
-            questions={job.screeningQuestions || []}
-            onChange={(screeningQuestions) => updateField('screeningQuestions', screeningQuestions)}
-          />
+          <>
+            <ApplicationFieldsEditor
+              value={job.applicationFields}
+              onChange={(applicationFields) => updateField('applicationFields', applicationFields)}
+              disabled={saving}
+            />
+            <div className="ats-panel-divider" style={{ margin: '1.5rem 0' }} />
+            <ScreeningQuestionsEditor
+              questions={job.screeningQuestions || []}
+              onChange={(screeningQuestions) => updateField('screeningQuestions', screeningQuestions)}
+            />
+          </>
         ) : null}
 
         {section === 'publish' ? (

@@ -1147,6 +1147,104 @@ button.ats-menu-item {
   background: var(--border-color);
 }
 
+.ats-inline-link-btn {
+  appearance: none;
+  border: 0;
+  padding: 0;
+  background: none;
+  color: var(--text-color);
+  font: inherit;
+  font-size: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.ats-inline-link-btn:hover {
+  color: var(--accent-sky, #3b82f6);
+}
+
+.ats-application-fields-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.ats-application-field-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.85rem 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: var(--ats-radius);
+  background: var(--portal-hover, transparent);
+}
+
+.ats-application-field-label {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-color);
+  min-width: 10rem;
+}
+
+.ats-requirement-toggle {
+  display: inline-flex;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--ats-surface, #fff);
+  flex-shrink: 0;
+}
+
+.ats-requirement-btn {
+  appearance: none;
+  border: 0;
+  margin: 0;
+  padding: 0.45rem 0.75rem;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 500;
+  cursor: pointer;
+  border-right: 1px solid var(--border-color);
+}
+
+.ats-requirement-btn:last-child {
+  border-right: 0;
+}
+
+.ats-requirement-btn:hover:not(:disabled) {
+  color: var(--text-color);
+  background: var(--portal-hover, rgba(0, 0, 0, 0.03));
+}
+
+.ats-requirement-btn.is-active {
+  color: var(--text-color);
+  background: var(--accent-sky-soft, rgba(59, 130, 246, 0.12));
+}
+
+.ats-requirement-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+@media (max-width: 700px) {
+  .ats-application-field-row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .ats-requirement-toggle {
+    width: 100%;
+  }
+
+  .ats-requirement-btn {
+    flex: 1;
+    text-align: center;
+  }
+}
+
 .ats-stage-control .ats-field-label {
   margin-bottom: 0.5rem;
 }
