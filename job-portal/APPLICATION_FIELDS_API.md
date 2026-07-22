@@ -38,7 +38,7 @@ Screening questions are already configurable per job. This spec adds the same id
 | Candidate UX | Form labels show required vs optional; hidden fields are not shown |
 | Validation | Backend rejects apply payloads that omit fields marked `required` |
 | Defaults | If config is missing, use the defaults below (matches current frontend) |
-| Resume floor | Recommend keeping `resume` required for all posted jobs; backend may allow `optional` but product should discourage it |
+| Resume floor | **Resume is always `required`** — frontend locks this; backend should reject optional/hidden resume |
 
 **Out of scope:** renaming labels per job, multiple additional documents, arbitrary custom file fields beyond the five listed below.
 

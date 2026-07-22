@@ -12,6 +12,7 @@ import ViewToggle from '../components/ViewToggle';
 import FilterRail from '../components/FilterRail';
 import PipelineBoard from '../components/PipelineBoard';
 import CandidateTable from '../components/CandidateTable';
+import ScreeningResponsesTable from '../components/ScreeningResponsesTable';
 import EmptyState from '../components/EmptyState';
 import StatusEmailModal from '../components/StatusEmailModal';
 
@@ -80,9 +81,18 @@ function ApplicationsInbox() {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const saved = sessionStorage.getItem(VIEW_KEY);
-      if (saved === 'list' || saved === 'board') setView(saved);
+      if (saved === 'list' || saved === 'board' || saved === 'responses') setView(saved);
     }
   }, []);
+
+  useEffect(() => {
+    if (view === 'responses' && selectedJob === '__all') {
+      setView('board');
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem(VIEW_KEY, 'board');
+      }
+    }
+  }, [view, selectedJob]);
 
   useEffect(() => {
     if (isReady && !isAuthed) {
@@ -157,13 +167,6 @@ function ApplicationsInbox() {
     };
   }, [isReady, isAuthed, selectedJob, selectedStage, searchQuery, screeningFilters, loadApplications]);
 
-  const handleViewChange = (next) => {
-    setView(next);
-    if (typeof window !== 'undefined') {
-      sessionStorage.setItem(VIEW_KEY, next);
-    }
-  };
-
   const visibleStages = useMemo(() => {
     if (selectedStage !== '__all') return [selectedStage];
     return PIPELINE_STATUSES;
@@ -193,8 +196,25 @@ function ApplicationsInbox() {
     setPage(0);
   }, [selectedJob, selectedStage, searchQuery, screeningFilters, view]);
 
+  const showToast = useCallback((message, variant = 'error') => {
+    setToast(message);
+    setToastVariant(variant);
+    setTimeout(() => setToast(''), variant === 'warning' || variant === 'success' ? 7000 : 4000);
+  }, []);
+
+  const handleViewChange = (next) => {
+    if (next === 'responses' && selectedJob === '__all') {
+      showToast('Select a job to view screening responses.');
+      return;
+    }
+    setView(next);
+    if (typeof window !== 'undefined') {
+      sessionStorage.setItem(VIEW_KEY, next);
+    }
+  };
+
   const paginatedApps = useMemo(() => {
-    if (view === 'board') return filteredApps;
+    if (view === 'board' || view === 'responses') return filteredApps;
     const start = page * PAGE_SIZE;
     return filteredApps.slice(start, start + PAGE_SIZE);
   }, [filteredApps, page, view]);
@@ -204,11 +224,29 @@ function ApplicationsInbox() {
   const totalPages = Math.ceil(filteredApps.length / PAGE_SIZE);
   const showPagination = view === 'list' && filteredApps.length > PAGE_SIZE;
 
-  const showToast = useCallback((message, variant = 'error') => {
-    setToast(message);
-    setToastVariant(variant);
-    setTimeout(() => setToast(''), variant === 'warning' || variant === 'success' ? 7000 : 4000);
-  }, []);
+  const responseQuestions = useMemo(() => {
+    if (selectedJobRecord?.screeningQuestions?.length) {
+      return selectedJobRecord.screeningQuestions;
+    }
+    return [];
+  }, [selectedJobRecord]);
+
+  const viewOptions = useMemo(
+    () => [
+      { id: 'board', label: 'Board' },
+      { id: 'list', label: 'List' },
+      {
+        id: 'responses',
+        label: 'Responses',
+        disabled: selectedJob === '__all',
+        title:
+          selectedJob === '__all'
+            ? 'Select a job to view screening responses'
+            : 'Spreadsheet of all screening answers',
+      },
+    ],
+    [selectedJob]
+  );
 
   const handleMove = useCallback(
     async (id, status) => {
@@ -360,7 +398,7 @@ function ApplicationsInbox() {
       <PortalHeader
         title="Candidates"
         badge={totalCount || applicationsTotal || allApplications.length}
-        action={<ViewToggle value={view} onChange={handleViewChange} />}
+        action={<ViewToggle value={view} onChange={handleViewChange} options={viewOptions} />}
       />
 
       {toast ? (
@@ -433,6 +471,20 @@ function ApplicationsInbox() {
                 setTimeout(() => setToast(''), 4000);
               }}
             />
+          ) : view === 'responses' ? (
+            responseQuestions.length || filteredApps.some((a) => Object.keys(a.answers || {}).length) ? (
+              <ScreeningResponsesTable
+                applications={filteredApps}
+                questions={responseQuestions}
+                jobId={selectedJob !== '__all' ? selectedJob : undefined}
+              />
+            ) : (
+              <EmptyState
+                icon="search"
+                title="No screening questions"
+                description="Add screening questions to this job to collect sortable responses."
+              />
+            )
           ) : (
             <>
               <CandidateTable

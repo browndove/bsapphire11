@@ -1,22 +1,25 @@
 'use client';
 
-export default function ViewToggle({ value, onChange }) {
+export default function ViewToggle({ value, onChange, options }) {
+  const tabs = options || [
+    { id: 'board', label: 'Board' },
+    { id: 'list', label: 'List' },
+  ];
+
   return (
     <div className="ats-view-toggle">
-      <button
-        type="button"
-        className={value === 'board' ? 'is-active' : ''}
-        onClick={() => onChange('board')}
-      >
-        Board
-      </button>
-      <button
-        type="button"
-        className={value === 'list' ? 'is-active' : ''}
-        onClick={() => onChange('list')}
-      >
-        List
-      </button>
+      {tabs.map((tab) => (
+        <button
+          key={tab.id}
+          type="button"
+          className={value === tab.id ? 'is-active' : ''}
+          onClick={() => onChange(tab.id)}
+          disabled={tab.disabled}
+          title={tab.title || undefined}
+        >
+          {tab.label}
+        </button>
+      ))}
     </div>
   );
 }

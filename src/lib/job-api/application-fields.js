@@ -35,7 +35,14 @@ export function normalizeApplicationFields(raw) {
     }
   }
 
+  // Resume is always required for every posting.
+  next.resume = 'required';
+
   return next;
+}
+
+export function isApplicationFieldLocked(key) {
+  return key === 'resume';
 }
 
 export function isApplicationFieldVisible(fields, key) {

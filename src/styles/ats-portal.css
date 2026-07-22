@@ -404,6 +404,11 @@
   box-shadow: inset 0 -2px 0 var(--accent-sky);
 }
 
+.ats-view-toggle button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 /* —— Stat cards —— */
 .ats-stat-grid {
   display: grid;
@@ -755,6 +760,100 @@
 .ats-table-wrap {
   overflow: auto;
   max-height: min(65vh, 600px);
+}
+
+/* —— Responses spreadsheet —— */
+.ats-responses-shell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+}
+
+.ats-responses-toolbar {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+
+.ats-responses-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.ats-responses-meta {
+  margin: 0.2rem 0 0;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+
+.ats-responses-table-shell {
+  overflow: hidden;
+}
+
+.ats-responses-table-wrap {
+  max-height: min(72vh, 760px);
+}
+
+.ats-responses-table {
+  min-width: max(100%, 720px);
+}
+
+.ats-responses-table th {
+  white-space: nowrap;
+  vertical-align: bottom;
+}
+
+.ats-responses-table td.ats-responses-answer {
+  max-width: 16rem;
+  white-space: normal;
+  word-break: break-word;
+  vertical-align: top;
+  color: var(--text-color);
+}
+
+.ats-responses-sticky {
+  position: sticky;
+  left: 0;
+  z-index: 2;
+  background: var(--ats-surface-2);
+  min-width: 14rem;
+  box-shadow: 1px 0 0 var(--border-color);
+}
+
+.ats-responses-table tbody .ats-responses-sticky {
+  background: var(--ats-surface);
+  z-index: 1;
+}
+
+.ats-responses-table tbody tr:hover .ats-responses-sticky {
+  background: var(--portal-hover);
+}
+
+.ats-sort-btn {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  margin: 0;
+  color: inherit;
+  font: inherit;
+  font-size: inherit;
+  font-weight: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  cursor: pointer;
+  text-align: left;
+  max-width: 14rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ats-sort-btn:hover {
+  color: var(--text-color);
 }
 
 /* —— Overflow menu —— */
