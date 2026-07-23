@@ -12,7 +12,7 @@ import PortalHeader, { BreadcrumbLink } from '../../components/PortalHeader';
 import Avatar from '../../components/Avatar';
 import StatusEmailModal from '../../components/StatusEmailModal';
 import CustomSelect from '@/components/CustomSelect';
-import CoverLetterMaterials from '@/components/candidate/CoverLetterMaterials';
+import CoverLetterMaterials, { FileCard } from '@/components/candidate/CoverLetterMaterials';
 import { useConfirm } from '@/components/ConfirmProvider';
 import { resolveApplicationDocuments } from '@/lib/job-api/cover-letter';
 
@@ -34,6 +34,8 @@ function ApplicationDetailView() {
     finalizeHirePipeline,
     countOtherOpenApplicants,
     moveApplication,
+    loadApplications,
+    mergeApplications,
   } = usePortal();
 
   const [app, setApp] = useState(null);
@@ -45,25 +47,91 @@ function ApplicationDetailView() {
   const [error, setError] = useState('');
   const [statusModal, setStatusModal] = useState(null);
   const [statusModalError, setStatusModalError] = useState('');
+  const [loadingApp, setLoadingApp] = useState(true);
 
   useEffect(() => {
-    if (isReady && !isAuthed) {
+    if (!isReady) return undefined;
+    if (!isAuthed) {
       router.replace('/job-portal/login');
-      return;
+      return undefined;
     }
-    if (isReady && id) {
-      const foundApp = applications.find((a) => a.id === id);
-      if (foundApp) {
-        setApp(foundApp);
-        setStage(foundApp.status || 'submitted');
-        setJob(jobs.find((j) => j.id === foundApp.jobId) || null);
-      } else {
-        router.replace('/job-portal/applications');
+    if (!id) {
+      router.replace('/job-portal/applications');
+      return undefined;
+    }
+
+    let cancelled = false;
+
+    const applyFound = (foundApp) => {
+      setApp(foundApp);
+      setStage(foundApp.status || 'submitted');
+      setJob(jobs.find((j) => j.id === foundApp.jobId) || null);
+      setLoadingApp(false);
+    };
+
+    async function resolveApplication() {
+      const cached = applications.find((a) => a.id === id);
+      if (cached) {
+        applyFound(cached);
+        return;
+      }
+
+      setLoadingApp(true);
+      try {
+        const params = { limit: 500, offset: 0 };
+        if (jobFilter) params.job_id = jobFilter;
+        let { applications: rows } = await loadApplications(params);
+        let match = (rows || []).find((a) => a.id === id);
+
+        if (!match && jobFilter) {
+          const all = await loadApplications({ limit: 500, offset: 0 });
+          match = (all.applications || []).find((a) => a.id === id);
+          rows = all.applications;
+        }
+
+        if (cancelled) return;
+
+        if (match) {
+          mergeApplications(rows || [match]);
+          applyFound(match);
+          return;
+        }
+
+        router.replace(
+          jobFilter
+            ? `/job-portal/applications?job=${encodeURIComponent(jobFilter)}`
+            : '/job-portal/applications'
+        );
+      } catch {
+        if (!cancelled) {
+          router.replace('/job-portal/applications');
+        }
+      } finally {
+        if (!cancelled) setLoadingApp(false);
       }
     }
-  }, [isReady, isAuthed, id, applications, jobs, router]);
 
-  if (!isReady || !isAuthed || !app) return null;
+    resolveApplication();
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    isReady,
+    isAuthed,
+    id,
+    jobFilter,
+    applications,
+    jobs,
+    loadApplications,
+    mergeApplications,
+    router,
+  ]);
+
+  if (!isReady || !isAuthed || loadingApp) {
+    return <div className="ats-skeleton" />;
+  }
+
+  if (!app) return null;
 
   const documents = resolveApplicationDocuments({
     coverLetter: app.coverLetter,
@@ -474,26 +542,12 @@ function ApplicationDetailView() {
             <div className="ats-material-block">
               <p className="ats-material-label">Resume</p>
               {app.resumeUrl ? (
-                <div className="ats-file-card">
-                  <div className="ats-file-card-icon" aria-hidden="true">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                      <path d="M14 2H8a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8l-6-6Z" strokeLinejoin="round" />
-                      <path d="M14 2v6h6" strokeLinejoin="round" />
-                    </svg>
-                  </div>
-                  <div className="ats-file-card-body">
-                    <strong>Resume attached</strong>
-                    <span>PDF or document on file</span>
-                  </div>
-                  <a
-                    href={app.resumeUrl}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="btn btn-primary btn-sm"
-                  >
-                    View resume
-                  </a>
-                </div>
+                <FileCard
+                  title="Resume attached"
+                  subtitle="PDF or document on file"
+                  href={app.resumeUrl}
+                  actionLabel="View resume"
+                />
               ) : (
                 <div className="ats-empty-card">No resume uploaded.</div>
               )}

@@ -311,6 +311,49 @@ export async function candidateVerify2FA(pending_token, code) {
   return data;
 }
 
+/**
+ * Turn a stored S3 key (or pass-through https URL) into a browser-openable link.
+ * Requires backend `POST /files/download-url` when `fileUrl` is a storage key.
+ */
+export async function resolveFileDownloadUrl(fileUrl) {
+  const raw = String(fileUrl || '').trim();
+  if (!raw) {
+    const err = new Error('No file to open.');
+    err.status = 400;
+    throw err;
+  }
+  if (/^https?:\/\//i.test(raw)) {
+    return raw;
+  }
+
+  const token = getAccessToken();
+  if (!token) {
+    const err = new Error('Sign in to download files.');
+    err.status = 401;
+    throw err;
+  }
+
+  const data = await parseResponse(
+    await fetch('/api/job-portal/files/download-url', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ file_url: raw }),
+    }),
+    'download'
+  );
+
+  const url = data?.download_url || data?.url;
+  if (!url) {
+    const err = new Error('File download is not available yet.');
+    err.status = 503;
+    throw err;
+  }
+  return url;
+}
+
 export async function uploadFile(file, purpose = 'document') {
   const token = getAccessToken();
   if (!token) {

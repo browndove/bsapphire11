@@ -60,6 +60,7 @@ function isTechnicalMessage(message) {
     /Unexpected token/i,
     /^error:\s*\d+/i,
     /^HTTP \d+/i,
+    /^\d{3}\s+page not found$/i,
   ];
   return technicalPatterns.some((pattern) => pattern.test(message.trim()));
 }
@@ -152,6 +153,15 @@ function messageForStatus(status, context) {
   }
   if (context === 'upload' && status === 403) {
     return 'You do not have permission to upload this type of file.';
+  }
+  if (context === 'download' && status === 404) {
+    return 'File download is not available on the server yet.';
+  }
+  if (context === 'download' && status === 503) {
+    return 'File download is temporarily unavailable. Please try again later.';
+  }
+  if (context === 'download' && status === 403) {
+    return 'You do not have permission to open this file.';
   }
   if (context === 'status-email' && status === 503) {
     return 'Email is not configured on the server. The application status was not updated.';

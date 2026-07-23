@@ -5,7 +5,9 @@ export default function ScreeningFilterChips({
   selectedFilters = {},
   onChange,
 }) {
-  const filterable = questions.filter((q) => q.filterable && q.type !== 'text' && (q.options || []).length);
+  const filterable = questions.filter(
+    (q) => q.type !== 'text' && (q.options || []).filter(Boolean).length
+  );
   if (!filterable.length) return null;
 
   const toggle = (questionId, option) => {
@@ -25,26 +27,28 @@ export default function ScreeningFilterChips({
   return (
     <div className="ats-filter-section">
       <span className="ats-field-label">Screening answers</span>
-      {filterable.map((q) => (
-        <div className="ats-screening-filter-group" key={q.id}>
-          <p className="ats-screening-filter-label">{q.label}</p>
-          <div className="ats-filter-chips">
-            {(q.options || []).map((opt) => {
-              const active = (selectedFilters[q.id] || []).includes(opt);
-              return (
-                <button
-                  key={opt}
-                  type="button"
-                  className={`ats-filter-chip ${active ? 'is-on' : ''}`}
-                  onClick={() => toggle(q.id, opt)}
-                >
-                  {opt}
-                </button>
-              );
-            })}
+      <div className="ats-screening-filters">
+        {filterable.map((q) => (
+          <div className="ats-screening-filter-group" key={q.id}>
+            <p className="ats-screening-filter-label">{q.label}</p>
+            <div className="ats-filter-chips">
+              {(q.options || []).filter(Boolean).map((opt) => {
+                const active = (selectedFilters[q.id] || []).includes(opt);
+                return (
+                  <button
+                    key={opt}
+                    type="button"
+                    className={`ats-filter-chip ${active ? 'is-on' : ''}`}
+                    onClick={() => toggle(q.id, opt)}
+                  >
+                    {opt}
+                  </button>
+                );
+              })}
+            </div>
           </div>
-        </div>
-      ))}
+        ))}
+      </div>
     </div>
   );
 }

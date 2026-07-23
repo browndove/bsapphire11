@@ -15,7 +15,11 @@ function CandidateCard({ app, jobTitle, onDragStart, onDragEnd }) {
       draggable
       onDragStart={(e) => onDragStart(e, app)}
       onDragEnd={onDragEnd}
-      onClick={() => router.push(`/job-portal/applications/detail?id=${encodeURIComponent(app.id)}`)}
+      onClick={() => {
+        const params = new URLSearchParams({ id: app.id });
+        if (app.jobId) params.set('job', app.jobId);
+        router.push(`/job-portal/applications/detail?${params.toString()}`);
+      }}
     >
       <div className="ats-candidate-card-head">
         <Avatar name={app.candidateName} size="sm" />

@@ -13,7 +13,9 @@ export default function CandidateTable({ applications, jobs, screeningQuestions,
     if (onRowClick) {
       onRowClick(app);
     } else {
-      router.push(`/job-portal/applications/detail?id=${encodeURIComponent(app.id)}`);
+      const params = new URLSearchParams({ id: app.id });
+      if (app.jobId) params.set('job', app.jobId);
+      router.push(`/job-portal/applications/detail?${params.toString()}`);
     }
   };
 

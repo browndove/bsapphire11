@@ -18,7 +18,7 @@ const EMPTY_QUESTION = {
   id: '',
   label: '',
   type: 'single',
-  filterable: false,
+  filterable: true,
   options: ['', ''],
 };
 
@@ -59,7 +59,7 @@ export default function ScreeningQuestionsEditor({ questions = [], onChange }) {
           : ['', ''];
     updateQuestion(index, {
       type,
-      filterable: type === 'text' ? false : current?.filterable,
+      filterable: type === 'text' ? false : true,
       options,
     });
   };

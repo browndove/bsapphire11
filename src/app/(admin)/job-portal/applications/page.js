@@ -4,7 +4,7 @@ import React, { useState, useEffect, Suspense, useMemo, useCallback } from 'reac
 import { useRouter, useSearchParams } from 'next/navigation';
 import { usePortal } from '../PortalContext';
 import { toUserMessage } from '@/lib/job-api/errors';
-import { getFilterableScreeningQuestions } from '@/lib/job-api/mappers';
+import { getFilterableScreeningQuestions, matchesScreeningFilters } from '@/lib/job-api/mappers';
 import { buildStatusEmailDefaults } from '@/lib/job-api/email-templates';
 import { useConfirm } from '@/components/ConfirmProvider';
 import PortalHeader from '../components/PortalHeader';
@@ -39,6 +39,7 @@ function ApplicationsInbox() {
     countOtherOpenApplicants,
     loadApplications,
     loadJobById,
+    mergeApplications,
   } = usePortal();
 
   const [selectedJob, setSelectedJob] = useState(jobParam || '__all');
@@ -49,14 +50,19 @@ function ApplicationsInbox() {
   const [page, setPage] = useState(0);
   const [toast, setToast] = useState('');
   const [toastVariant, setToastVariant] = useState('error');
-  const [serverApps, setServerApps] = useState(null);
-  const [serverTotal, setServerTotal] = useState(0);
+  const [serverAppsRaw, setServerAppsRaw] = useState(null);
   const [loadingApps, setLoadingApps] = useState(false);
   const [selectedJobDetail, setSelectedJobDetail] = useState(null);
   const [loadingJobDetail, setLoadingJobDetail] = useState(false);
   const [statusModal, setStatusModal] = useState(null);
   const [statusModalError, setStatusModalError] = useState('');
   const [statusSaving, setStatusSaving] = useState(false);
+
+  const serverApps = useMemo(() => {
+    if (!serverAppsRaw) return null;
+    if (!Object.keys(screeningFilters).length) return serverAppsRaw;
+    return serverAppsRaw.filter((app) => matchesScreeningFilters(app, screeningFilters));
+  }, [serverAppsRaw, screeningFilters]);
 
   const selectedJobRecord = useMemo(
     () => selectedJobDetail || (selectedJob !== '__all' ? jobs.find((j) => j.id === selectedJob) : null),
@@ -65,9 +71,9 @@ function ApplicationsInbox() {
 
   const jobApplications = useMemo(() => {
     if (selectedJob === '__all') return [];
-    if (serverApps) return serverApps;
+    if (serverAppsRaw) return serverAppsRaw;
     return allApplications.filter((a) => a.jobId === selectedJob);
-  }, [selectedJob, serverApps, allApplications]);
+  }, [selectedJob, serverAppsRaw, allApplications]);
 
   const filterableQuestions = useMemo(
     () => getFilterableScreeningQuestions(selectedJobRecord?.screeningQuestions, jobApplications),
@@ -134,7 +140,7 @@ function ApplicationsInbox() {
     if (!isReady || !isAuthed) return undefined;
 
     if (selectedJob === '__all') {
-      setServerApps(null);
+      setServerAppsRaw(null);
       return undefined;
     }
 
@@ -142,14 +148,16 @@ function ApplicationsInbox() {
     const timer = window.setTimeout(async () => {
       setLoadingApps(true);
       try {
+        // Never send answer_* to the API — it 400s when the question is not
+        // marked filterable on the job. Screening chips filter client-side.
         const params = { job_id: selectedJob, limit: 500, offset: 0 };
         if (selectedStage !== '__all') params.status = selectedStage;
         if (searchQuery.trim()) params.q = searchQuery.trim();
-        if (Object.keys(screeningFilters).length) params.screeningFilters = screeningFilters;
         const result = await loadApplications(params);
         if (!cancelled) {
-          setServerApps(result.applications);
-          setServerTotal(result.total);
+          const apps = result.applications || [];
+          setServerAppsRaw(apps);
+          mergeApplications(apps);
         }
       } catch (err) {
         if (!cancelled) {
@@ -165,7 +173,7 @@ function ApplicationsInbox() {
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [isReady, isAuthed, selectedJob, selectedStage, searchQuery, screeningFilters, loadApplications]);
+  }, [isReady, isAuthed, selectedJob, selectedStage, searchQuery, loadApplications, mergeApplications]);
 
   const visibleStages = useMemo(() => {
     if (selectedStage !== '__all') return [selectedStage];
@@ -219,8 +227,7 @@ function ApplicationsInbox() {
     return filteredApps.slice(start, start + PAGE_SIZE);
   }, [filteredApps, page, view]);
 
-  const totalCount =
-    selectedJob !== '__all' && serverApps ? serverTotal : filteredApps.length;
+  const totalCount = filteredApps.length;
   const totalPages = Math.ceil(filteredApps.length / PAGE_SIZE);
   const showPagination = view === 'list' && filteredApps.length > PAGE_SIZE;
 
@@ -256,8 +263,8 @@ function ApplicationsInbox() {
       if (isPreview) {
         try {
           await moveApplication(id, status);
-          if (selectedJob !== '__all' && serverApps) {
-            setServerApps((prev) =>
+          if (selectedJob !== '__all' && serverAppsRaw) {
+            setServerAppsRaw((prev) =>
               (prev || []).map((a) => (a.id === id ? { ...a, status } : a))
             );
           }
@@ -300,7 +307,7 @@ function ApplicationsInbox() {
       moveApplication,
       selectedJob,
       selectedJobRecord,
-      serverApps,
+      serverAppsRaw,
       showToast,
       confirm,
       countOtherOpenApplicants,
@@ -323,10 +330,9 @@ function ApplicationsInbox() {
               limit: 500,
               offset: 0,
             });
-            setServerApps(refreshed.applications);
-            setServerTotal(refreshed.total);
+            setServerAppsRaw(refreshed.applications);
           } catch {
-            setServerApps((prev) =>
+            setServerAppsRaw((prev) =>
               (prev || []).map((a) => {
                 if (a.id === result.application.id) return { ...a, ...result.application };
                 if (a.jobId === result.application.jobId && a.id !== result.application.id) {
@@ -366,8 +372,8 @@ function ApplicationsInbox() {
       }
 
       const { application, emailWarning } = await updateApplicationWithEmail(app.id, payload);
-      if (selectedJob !== '__all' && serverApps) {
-        setServerApps((prev) =>
+      if (selectedJob !== '__all' && serverAppsRaw) {
+        setServerAppsRaw((prev) =>
           (prev || []).map((a) => (a.id === application.id ? { ...a, ...application } : a))
         );
       }

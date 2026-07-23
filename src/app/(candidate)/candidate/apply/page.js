@@ -16,6 +16,7 @@ import {
   uploadResumePublic,
 } from '@/lib/job-api/client';
 import {
+  assignCoverLetterStorage,
   composeCoverLetterMaterials,
   normalizeOptionalUrl,
   resolveApplicationDocuments,
@@ -226,7 +227,7 @@ function CandidateApplyInner() {
               uploadFn: coverUploadFn,
               required: requireCoverLetter,
             })
-          : Promise.resolve({ coverLetter: '' }),
+          : Promise.resolve({ coverLetter: '', fileUrl: '', fileName: '' }),
         showResume && resumeFile
           ? resumeUploadFn(resumeFile)
           : Promise.resolve({ file_url: '', url: '' }),
@@ -244,13 +245,20 @@ function CandidateApplyInner() {
         return;
       }
 
+      const stored = assignCoverLetterStorage({
+        coverLetter: coverMaterials.coverLetter,
+        coverFileUrl: coverMaterials.fileUrl,
+        coverFileName: coverMaterials.fileName,
+        additionalDocumentUrl: showAdditionalDocument ? additionalDocumentUrl : '',
+      });
+
       const payload = {
         jobId: job.id,
-        coverLetter: coverMaterials.coverLetter,
+        coverLetter: stored.coverLetter,
         resumeUrl: uploaded.file_url || uploaded.url || '',
         githubUrl: showGithub ? normalizeOptionalUrl(githubUrl) : '',
         additionalLink: showAdditionalLink ? normalizeOptionalUrl(additionalLink) : '',
-        additionalDocumentUrl: showAdditionalDocument ? additionalDocumentUrl : '',
+        additionalDocumentUrl: stored.additionalDocumentUrl,
         answers: screeningAnswers,
       };
 

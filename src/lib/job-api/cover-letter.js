@@ -1,7 +1,31 @@
 /**
  * Cover letters are file uploads when provided.
  * File URL is encoded in `cover_letter` so `additional_document_url` stays free for extras.
+ * When there is no separate additional document, the file key is also stored in
+ * `additional_document_url` so employers get the same link treatment as resumes.
  */
+
+const FILE_MARKER_RE =
+  /(?:^|\n)(?:---\n)?Cover letter file:\s*(.+)\n(\S+)\s*$/i;
+
+const ATTACHED_STUB_RE = /^see attached cover letter(?:\s*:\s*(.+))?\.?$/i;
+
+export function isBrowsableFileUrl(value = '') {
+  return /^https?:\/\//i.test(String(value || '').trim());
+}
+
+export function fileNameFromStorageKey(value = '') {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  try {
+    const path = isBrowsableFileUrl(raw) ? new URL(raw).pathname : raw;
+    const segment = path.split('/').filter(Boolean).pop() || '';
+    return decodeURIComponent(segment).replace(/^[0-9a-f-]{36}_/i, '') || segment;
+  } catch {
+    return raw.split('/').filter(Boolean).pop() || '';
+  }
+}
+
 export async function composeCoverLetterMaterials({
   file = null,
   uploadFn,
@@ -13,7 +37,7 @@ export async function composeCoverLetterMaterials({
       err.status = 400;
       throw err;
     }
-    return { coverLetter: '' };
+    return { coverLetter: '', fileUrl: '', fileName: '' };
   }
 
   if (typeof uploadFn !== 'function') {
@@ -35,9 +59,40 @@ export async function composeCoverLetterMaterials({
     }
   }
 
-  const marker = `Cover letter file: ${file.name}\n${url}`;
+  const fileName = file.name || 'cover-letter';
+  const marker = `Cover letter file: ${fileName}\n${url}`;
   return {
     coverLetter: body ? `${body}\n\n---\n${marker}` : marker,
+    fileUrl: url,
+    fileName,
+  };
+}
+
+/**
+ * Decide how to persist cover letter + optional extra document.
+ * Cover-only apps use `additional_document_url` (resume-style). Dual uploads keep
+ * the cover letter marker in `cover_letter` and the extra file in the URL field.
+ */
+export function assignCoverLetterStorage({
+  coverLetter = '',
+  coverFileUrl = '',
+  coverFileName = '',
+  additionalDocumentUrl = '',
+} = {}) {
+  const extra = String(additionalDocumentUrl || '').trim();
+  const coverUrl = String(coverFileUrl || '').trim();
+
+  if (coverUrl && !extra) {
+    const name = coverFileName || fileNameFromStorageKey(coverUrl) || 'document';
+    return {
+      coverLetter: `See attached cover letter: ${name}`,
+      additionalDocumentUrl: coverUrl,
+    };
+  }
+
+  return {
+    coverLetter: coverLetter || '',
+    additionalDocumentUrl: extra,
   };
 }
 
@@ -54,17 +109,14 @@ export async function uploadOptionalDocument({ file = null, uploadFn }) {
   return url;
 }
 
-const LEGACY_FILE_MARKER_RE =
-  /(?:^|\n)(?:---\n)?Cover letter file: (.+)\n(https?:\/\/\S+)\s*$/i;
-
-/** Split typed cover letter from apps that embedded a file URL in the text. */
+/** Split typed cover letter from apps that embedded a file URL/key in the text. */
 export function parseCoverLetterMaterials(coverLetter = '') {
   const raw = String(coverLetter || '');
   if (!raw.trim()) {
     return { text: '', fileUrl: '', fileName: '' };
   }
 
-  const match = raw.match(LEGACY_FILE_MARKER_RE);
+  const match = raw.match(FILE_MARKER_RE);
   if (!match) {
     return { text: raw.trim(), fileUrl: '', fileName: '' };
   }
@@ -85,21 +137,27 @@ export function resolveApplicationDocuments({
   additionalDocumentUrl = '',
 } = {}) {
   const parsed = parseCoverLetterMaterials(coverLetter);
-  const stubText = /^see attached cover letter\.?$/i.test(parsed.text);
+  const stubMatch = ATTACHED_STUB_RE.exec(parsed.text);
+  const stubText = Boolean(stubMatch);
+  const stubFileName = stubMatch?.[1]?.trim() || '';
+  const extraUrl = String(additionalDocumentUrl || '').trim();
 
   if (parsed.fileUrl) {
+    const sameAsExtra = extraUrl && extraUrl === parsed.fileUrl;
     return {
       coverLetterUrl: parsed.fileUrl,
-      coverLetterFileName: parsed.fileName || 'PDF or document on file',
+      coverLetterFileName:
+        parsed.fileName || stubFileName || fileNameFromStorageKey(parsed.fileUrl) || 'PDF or document on file',
       coverLetterText: stubText ? '' : parsed.text,
-      additionalDocumentUrl: additionalDocumentUrl || '',
+      additionalDocumentUrl: sameAsExtra ? '' : extraUrl,
     };
   }
 
-  if (additionalDocumentUrl && (stubText || !parsed.text)) {
+  if (extraUrl && (stubText || !parsed.text)) {
     return {
-      coverLetterUrl: additionalDocumentUrl,
-      coverLetterFileName: 'PDF or document on file',
+      coverLetterUrl: extraUrl,
+      coverLetterFileName:
+        stubFileName || fileNameFromStorageKey(extraUrl) || 'PDF or document on file',
       coverLetterText: '',
       additionalDocumentUrl: '',
     };
@@ -109,7 +167,7 @@ export function resolveApplicationDocuments({
     coverLetterUrl: '',
     coverLetterFileName: '',
     coverLetterText: stubText ? '' : parsed.text,
-    additionalDocumentUrl: additionalDocumentUrl || '',
+    additionalDocumentUrl: extraUrl,
   };
 }
 

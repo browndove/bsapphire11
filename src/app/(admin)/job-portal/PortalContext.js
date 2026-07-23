@@ -345,6 +345,17 @@ export function PortalProvider({ children }) {
     return mapped;
   };
 
+  const mergeApplications = useCallback((rows = []) => {
+    if (!rows?.length) return;
+    setApplications((prev) => {
+      const byId = new Map(prev.map((a) => [a.id, a]));
+      for (const row of rows) {
+        if (row?.id) byId.set(row.id, row);
+      }
+      return Array.from(byId.values());
+    });
+  }, []);
+
   const upsertApplication = async (app) => {
     if (previewMode) {
       const mapped = { ...app };
@@ -651,6 +662,7 @@ export function PortalProvider({ children }) {
         removeJob,
         loadJobById,
         upsertApplication,
+        mergeApplications,
         updateApplicationWithEmail,
         finalizeHirePipeline,
         countOtherOpenApplicants,

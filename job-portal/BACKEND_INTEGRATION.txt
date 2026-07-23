@@ -43,6 +43,8 @@ PUBLIC SITE
 - Apply (no account): POST `/api/public/jobs/:id/applications` + POST `/api/public/files/upload-url`
   (upload purposes: `resume`, `document`; apply supports optional `github_url`,
   `additional_link`, `additional_document_url`)
+- File downloads: see `job-portal/FILES_DOWNLOAD_API.md` (`POST /files/download-url`)
+  for opening stored S3 keys from application materials
 - Per-job required/optional/hidden materials: see `job-portal/APPLICATION_FIELDS_API.md`
   (backend ready; employer job edit + apply form use `application_fields`)
 - Legacy candidate portal login remains for existing accounts only (no new registration)

@@ -304,13 +304,22 @@ export function matchesScreeningFilters(app, filters = {}) {
   const active = Object.entries(filters).filter(([, opts]) => opts?.length);
   if (!active.length) return true;
   const answers = app.answers || {};
+
+  const normalize = (value) => String(value ?? '').trim().toLowerCase();
+
   return active.every(([qid, selected]) => {
     const answer = answers[qid];
-    if (answer == null) return false;
+    if (answer == null || answer === '') return false;
+
+    const wanted = selected.map(normalize).filter(Boolean);
+    if (!wanted.length) return true;
+
     if (Array.isArray(answer)) {
-      return selected.some((opt) => answer.includes(opt));
+      const have = answer.map(normalize).filter(Boolean);
+      return wanted.some((opt) => have.includes(opt));
     }
-    return selected.includes(answer);
+
+    return wanted.includes(normalize(answer));
   });
 }
 

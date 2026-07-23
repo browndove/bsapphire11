@@ -1,6 +1,12 @@
 'use client';
 
-import { resolveApplicationDocuments } from '@/lib/job-api/cover-letter';
+import { useState } from 'react';
+import { resolveFileDownloadUrl } from '@/lib/job-api/client';
+import {
+  isBrowsableFileUrl,
+  resolveApplicationDocuments,
+} from '@/lib/job-api/cover-letter';
+import { toUserMessage } from '@/lib/job-api/errors';
 
 function FileIcon() {
   return (
@@ -12,7 +18,25 @@ function FileIcon() {
 }
 
 export function FileCard({ title, subtitle, href, actionLabel }) {
-  if (!href) return null;
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+
+  if (!href && !subtitle) return null;
+
+  const openFile = async () => {
+    if (!href || busy) return;
+    setError('');
+    setBusy(true);
+    try {
+      const url = isBrowsableFileUrl(href) ? href : await resolveFileDownloadUrl(href);
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } catch (err) {
+      setError(toUserMessage(err, 'download'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
   return (
     <div className="ats-file-card">
       <div className="ats-file-card-icon" aria-hidden="true">
@@ -21,10 +45,18 @@ export function FileCard({ title, subtitle, href, actionLabel }) {
       <div className="ats-file-card-body">
         <strong>{title}</strong>
         <span>{subtitle}</span>
+        {error ? <p className="ats-field-error">{error}</p> : null}
       </div>
-      <a href={href} target="_blank" rel="noreferrer" className="btn btn-primary btn-sm">
-        {actionLabel}
-      </a>
+      {href ? (
+        <button
+          type="button"
+          className="btn btn-primary btn-sm"
+          onClick={openFile}
+          disabled={busy}
+        >
+          {busy ? 'Opening…' : actionLabel}
+        </button>
+      ) : null}
     </div>
   );
 }
