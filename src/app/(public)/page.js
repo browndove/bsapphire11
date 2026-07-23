@@ -191,27 +191,6 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Insights Section */}
-        <section className="section" id="insights">
-          <div className="container">
-            <div className="section-header slide-up">
-              <h2 className="section-title">Insights and Blogs</h2>
-            </div>
-            <div className="grid-2 insight-grid">
-              <Link href="#" className="insight-article slide-up delay-1">
-                <h4>The Fall of Monolithic Software</h4>
-                <p>Why micro-agents represent the next architectural epoch.</p>
-                <span className="read-more">Read ↗</span>
-              </Link>
-              <Link href="#" className="insight-article slide-up delay-2">
-                <h4>Evaluating Open Weights</h4>
-                <p>A cost-benefit analysis of deploying LLaMa3 vs proprietary endpoints.</p>
-                <span className="read-more">Read ↗</span>
-              </Link>
-            </div>
-          </div>
-        </section>
-
         {/* Engage Section */}
         <section className="section" id="engage" style={{ padding: 0 }}>
           <div className="engage-demo slide-up" style={{ backgroundImage: "linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.8)), url('/request_demo_bg.png')", backgroundSize: 'cover', backgroundPosition: 'center', borderBottom: '1px solid var(--border-color)', padding: '180px 4%', textAlign: 'center' }}>

@@ -44,7 +44,6 @@ export default function Header() {
             <li><Link href="/#about" className="nav-link" onClick={closeMobileMenu}>About Us</Link></li>
             <li><Link href="/#expertise" className="nav-link" onClick={closeMobileMenu}>Expertise</Link></li>
             <li><Link href="/#solutions" className="nav-link" onClick={closeMobileMenu}>Solutions</Link></li>
-            <li><Link href="/#insights" className="nav-link" onClick={closeMobileMenu}>Insights and Blogs</Link></li>
             <li><Link href="/careers" className="nav-link" onClick={closeMobileMenu}>Careers</Link></li>
             <li className="mobile-only">
               <div className="mobile-nav-actions" style={{ display: 'flex', flexDirection: 'column', marginTop: '1rem' }}>
