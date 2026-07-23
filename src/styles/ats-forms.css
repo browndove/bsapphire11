@@ -379,6 +379,29 @@
   min-width: 0;
 }
 
+.ats-external-link-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem 0.75rem;
+  align-items: baseline;
+  margin: 0 0 0.55rem;
+  word-break: break-all;
+}
+
+.ats-external-link-label {
+  min-width: 5.5rem;
+}
+
+.ats-external-link {
+  color: var(--accent-sky-text, #2563eb);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.ats-external-link:hover {
+  color: var(--text-color);
+}
+
 .ats-form input:-webkit-autofill,
 .ats-form input:-webkit-autofill:hover,
 .ats-form input:-webkit-autofill:focus,

@@ -20,6 +20,7 @@ import {
   composeCoverLetterMaterials,
   normalizeOptionalUrl,
   resolveApplicationDocuments,
+  stripUrlProtocol,
   uploadOptionalDocument,
 } from '@/lib/job-api/cover-letter';
 import { getActiveApplicationForJob, getWithdrawnApplicationForJob } from '@/lib/job-api/candidate-routes';
@@ -523,17 +524,20 @@ function CandidateApplyInner() {
                     <label className="ats-field-label" htmlFor="github-url">
                       {applicationFieldLabel('github_url', applicationFields)}
                     </label>
-                    <input
-                      id="github-url"
-                      type="url"
-                      inputMode="url"
-                      autoComplete="url"
-                      placeholder="https://github.com/username"
-                      value={githubUrl}
-                      onChange={(e) => setGithubUrl(e.target.value)}
-                      disabled={submitting}
-                      required={requireGithub}
-                    />
+                    <div className="ats-input-prefix-wrap">
+                      <span className="ats-input-prefix" aria-hidden="true">https://</span>
+                      <input
+                        id="github-url"
+                        type="text"
+                        inputMode="url"
+                        autoComplete="url"
+                        placeholder="github.com/username"
+                        value={stripUrlProtocol(githubUrl)}
+                        onChange={(e) => setGithubUrl(stripUrlProtocol(e.target.value))}
+                        disabled={submitting}
+                        required={requireGithub}
+                      />
+                    </div>
                     {fieldErrors.github_url ? (
                       <p className="ats-field-error">{fieldErrors.github_url}</p>
                     ) : null}
@@ -544,17 +548,20 @@ function CandidateApplyInner() {
                     <label className="ats-field-label" htmlFor="additional-link">
                       {applicationFieldLabel('additional_link', applicationFields)}
                     </label>
-                    <input
-                      id="additional-link"
-                      type="url"
-                      inputMode="url"
-                      autoComplete="url"
-                      placeholder="https://…"
-                      value={additionalLink}
-                      onChange={(e) => setAdditionalLink(e.target.value)}
-                      disabled={submitting}
-                      required={requireAdditionalLink}
-                    />
+                    <div className="ats-input-prefix-wrap">
+                      <span className="ats-input-prefix" aria-hidden="true">https://</span>
+                      <input
+                        id="additional-link"
+                        type="text"
+                        inputMode="url"
+                        autoComplete="url"
+                        placeholder="portfolio.site"
+                        value={stripUrlProtocol(additionalLink)}
+                        onChange={(e) => setAdditionalLink(stripUrlProtocol(e.target.value))}
+                        disabled={submitting}
+                        required={requireAdditionalLink}
+                      />
+                    </div>
                     {fieldErrors.additional_link ? (
                       <p className="ats-field-error">{fieldErrors.additional_link}</p>
                     ) : null}

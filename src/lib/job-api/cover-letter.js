@@ -175,5 +175,14 @@ export function normalizeOptionalUrl(value) {
   const trimmed = String(value || '').trim();
   if (!trimmed) return '';
   if (/^https?:\/\//i.test(trimmed)) return trimmed;
+  if (trimmed.startsWith('//')) return `https:${trimmed}`;
   return `https://${trimmed}`;
+}
+
+/** Value shown in a field that already displays an https:// prefix. */
+export function stripUrlProtocol(value = '') {
+  return String(value || '')
+    .trim()
+    .replace(/^https?:\/\//i, '')
+    .replace(/^\/\//, '');
 }

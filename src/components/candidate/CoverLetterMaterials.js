@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { resolveFileDownloadUrl } from '@/lib/job-api/client';
 import {
   isBrowsableFileUrl,
+  normalizeOptionalUrl,
   resolveApplicationDocuments,
 } from '@/lib/job-api/cover-letter';
 import { toUserMessage } from '@/lib/job-api/errors';
@@ -62,14 +63,14 @@ export function FileCard({ title, subtitle, href, actionLabel }) {
 }
 
 function LinkRow({ label, href }) {
-  if (!href) return null;
+  const url = normalizeOptionalUrl(href);
+  if (!url) return null;
+  const display = url.replace(/^https?:\/\//i, '');
   return (
-    <p style={{ margin: '0 0 0.5rem', wordBreak: 'break-all' }}>
-      <span className="ats-table-sub" style={{ display: 'inline-block', minWidth: '5.5rem' }}>
-        {label}
-      </span>{' '}
-      <a href={href} target="_blank" rel="noreferrer">
-        {href}
+    <p className="ats-external-link-row">
+      <span className="ats-table-sub ats-external-link-label">{label}</span>
+      <a href={url} target="_blank" rel="noreferrer" className="ats-external-link">
+        {display}
       </a>
     </p>
   );
