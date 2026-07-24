@@ -36,6 +36,7 @@ export default function StatusEmailModal({
   const isInterview = targetStatus === 'interview';
   const statusLabel = PortalStages.labels[targetStatus] || targetStatus;
   const canSubmit = Boolean(emailSubject.trim() && emailBody.trim());
+  const interviewMinLocal = toDatetimeLocalValue(new Date().toISOString());
 
   useEffect(() => {
     if (!open || !initialFields) return;
@@ -174,6 +175,7 @@ export default function StatusEmailModal({
                   id="status-email-interview-at"
                   type="datetime-local"
                   required
+                  min={interviewMinLocal}
                   value={interviewAtLocal}
                   onChange={(e) => setInterviewAtLocal(e.target.value)}
                   disabled={submitting}
