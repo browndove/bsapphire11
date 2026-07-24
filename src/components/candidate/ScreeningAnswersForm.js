@@ -10,12 +10,14 @@ const TYPE_LABELS = {
   single: 'Single choice',
   multi: 'Multiple choice',
   text: 'Short text',
+  number: 'Number',
 };
 
 const TYPE_HINTS = {
   single: 'Select one option',
   multi: 'Select all that apply',
   text: 'Write your answer below',
+  number: 'Enter a number',
 };
 
 export default function ScreeningAnswersForm({
@@ -91,6 +93,18 @@ export default function ScreeningAnswersForm({
                     value={values[q.id] || ''}
                     onChange={(e) => setValue(q.id, e.target.value)}
                     placeholder="Type your answer here…"
+                    aria-describedby={err ? `screening-error-${q.id}` : undefined}
+                  />
+                ) : q.type === 'number' ? (
+                  <input
+                    className="ats-answer-number"
+                    type="number"
+                    inputMode="decimal"
+                    required
+                    disabled={disabled}
+                    value={values[q.id] ?? ''}
+                    onChange={(e) => setValue(q.id, e.target.value)}
+                    placeholder="0"
                     aria-describedby={err ? `screening-error-${q.id}` : undefined}
                   />
                 ) : q.type === 'multi' ? (

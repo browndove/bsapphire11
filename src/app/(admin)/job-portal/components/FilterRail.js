@@ -17,6 +17,11 @@ export default function FilterRail({
   screeningQuestions,
   screeningFilters,
   onScreeningFiltersChange,
+  numericFilters = {},
+  onNumericFiltersChange,
+  answerSortBy = '',
+  answerSortDir = 'desc',
+  onAnswerSortChange,
   screeningFiltersLoading = false,
   onClear,
 }) {
@@ -84,7 +89,12 @@ export default function FilterRail({
             <ScreeningFilterChips
               questions={screeningQuestions}
               selectedFilters={screeningFilters}
-              onChange={onScreeningFiltersChange}
+              onChoiceFiltersChange={onScreeningFiltersChange}
+              numericFilters={numericFilters}
+              onNumericFiltersChange={onNumericFiltersChange}
+              sortBy={answerSortBy}
+              sortDir={answerSortDir}
+              onSortChange={onAnswerSortChange}
             />
           ) : (
             <div className="ats-filter-section">
@@ -93,8 +103,8 @@ export default function FilterRail({
                 <p className="ats-filter-hint">Loading screening filters…</p>
               ) : (
                 <p className="ats-filter-hint">
-                  No screening filters yet. Add choice questions on the job posting and enable
-                  recruiter filters, or wait for candidates to submit answers.
+                  No screening filters yet. Add choice or number questions on the job posting and
+                  enable recruiter filters, or wait for candidates to submit answers.
                 </p>
               )}
             </div>

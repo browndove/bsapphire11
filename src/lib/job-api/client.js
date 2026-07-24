@@ -209,12 +209,28 @@ export async function fetchEmployerApplications(params = {}) {
   if (params.q) qs.set('q', params.q);
   if (params.limit != null) qs.set('limit', String(params.limit));
   if (params.offset != null) qs.set('offset', String(params.offset));
+  if (params.sort_by) qs.set('sort_by', String(params.sort_by));
+  if (params.sort_dir) qs.set('sort_dir', String(params.sort_dir));
 
   const screeningFilters = params.screeningFilters || {};
   for (const [qid, opts] of Object.entries(screeningFilters)) {
     if (!Array.isArray(opts)) continue;
     for (const opt of opts) {
       if (opt != null && opt !== '') qs.append(`answer_${qid}`, String(opt));
+    }
+  }
+
+  const numericFilters = params.numericFilters || {};
+  for (const [qid, range] of Object.entries(numericFilters)) {
+    if (!range || typeof range !== 'object') continue;
+    if (range.exact !== '' && range.exact != null && range.exact !== undefined) {
+      qs.set(`answer_${qid}`, String(range.exact));
+    }
+    if (range.min !== '' && range.min != null && range.min !== undefined) {
+      qs.set(`answer_min_${qid}`, String(range.min));
+    }
+    if (range.max !== '' && range.max != null && range.max !== undefined) {
+      qs.set(`answer_max_${qid}`, String(range.max));
     }
   }
 

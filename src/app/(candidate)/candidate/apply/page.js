@@ -36,6 +36,7 @@ import {
   mapApplicationSubmitToApi,
   mapGuestApplicationSubmitToApi,
   mapPublicJobFromApi,
+  normalizeScreeningAnswersForApi,
   PortalStages,
   formatAnswerValue,
 } from '@/lib/job-api/mappers';
@@ -46,6 +47,7 @@ import {
   normalizeApplicationFields,
 } from '@/lib/job-api/application-fields';
 import { getFieldErrors, toUserMessage } from '@/lib/job-api/errors';
+import JobBody from '@/components/JobBody';
 import { formatRelativeTime } from '@/lib/job-api/format';
 import PortalHeader, { BreadcrumbLink } from '@/app/(admin)/job-portal/components/PortalHeader';
 
@@ -56,7 +58,18 @@ function validateScreeningAnswers(questions, answers) {
       if (!Array.isArray(value) || !value.length) {
         return `Please answer: ${q.label}`;
       }
-    } else if (!value || !String(value).trim()) {
+      continue;
+    }
+    if (q.type === 'number') {
+      if (value === '' || value == null) {
+        return `Please answer: ${q.label}`;
+      }
+      if (!Number.isFinite(Number(value))) {
+        return `Enter a valid number for: ${q.label}`;
+      }
+      continue;
+    }
+    if (!value || !String(value).trim()) {
       return `Please answer: ${q.label}`;
     }
   }
@@ -260,7 +273,7 @@ function CandidateApplyInner() {
         githubUrl: showGithub ? normalizeOptionalUrl(githubUrl) : '',
         additionalLink: showAdditionalLink ? normalizeOptionalUrl(additionalLink) : '',
         additionalDocumentUrl: stored.additionalDocumentUrl,
-        answers: screeningAnswers,
+        answers: normalizeScreeningAnswersForApi(job.screeningQuestions || [], screeningAnswers),
       };
 
       if (isAuthed) {
@@ -347,12 +360,12 @@ function CandidateApplyInner() {
               </div>
             ) : null}
             {job.description ? (
-              <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.7, color: 'var(--text-muted)' }}>{job.description}</div>
+              <JobBody text={job.description} format={job.descriptionFormat || 'markdown'} />
             ) : null}
             {job.requirements ? (
               <>
                 <h3 className="ats-panel-title" style={{ marginTop: '1.5rem' }}>Requirements</h3>
-                <div style={{ whiteSpace: 'pre-wrap', lineHeight: 1.7, color: 'var(--text-muted)' }}>{job.requirements}</div>
+                <JobBody text={job.requirements} format={job.requirementsFormat || 'markdown'} />
               </>
             ) : null}
           </section>

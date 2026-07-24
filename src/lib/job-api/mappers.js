@@ -34,13 +34,18 @@ export const PortalStages = {
 
 export function mapScreeningQuestionFromApi(q) {
   if (!q) return null;
+  const type = ['single', 'multi', 'text', 'number'].includes(q.type) ? q.type : 'single';
   return {
     id: q.id || q.question_id || `sq_${Math.random().toString(36).slice(2, 10)}`,
     label: q.label || q.text || '',
-    type: q.type || 'single',
-    filterable: !!(q.filterable ?? q.is_filterable),
+    type,
+    filterable: type === 'text' ? false : !!(q.filterable ?? q.is_filterable),
     options: Array.isArray(q.options) ? q.options : [],
   };
+}
+
+export function normalizeJobTextFormat(value) {
+  return value === 'plain' ? 'plain' : 'markdown';
 }
 
 export function mapJobFromApi(job, categoriesById = {}) {
@@ -56,6 +61,12 @@ export function mapJobFromApi(job, categoriesById = {}) {
     publishedAt: job.published_at || job.updated_at || null,
     description: job.description || '',
     requirements: job.requirements || '',
+    descriptionFormat: normalizeJobTextFormat(
+      job.description_format || job.descriptionFormat
+    ),
+    requirementsFormat: normalizeJobTextFormat(
+      job.requirements_format || job.requirementsFormat
+    ),
     remoteType: job.remote_type || 'remote',
     employmentType: job.employment_type || 'full_time',
     salaryMin: job.salary_min ?? null,
@@ -81,7 +92,9 @@ export function mapJobToApi(job, { isCreate = false } = {}) {
   const body = {
     title: job.title,
     description: job.description,
+    description_format: normalizeJobTextFormat(job.descriptionFormat),
     requirements: job.requirements || '',
+    requirements_format: normalizeJobTextFormat(job.requirementsFormat),
     location: job.location || '',
     remote_type: job.remoteType || 'remote',
     employment_type: job.employmentType || 'full_time',
@@ -95,15 +108,16 @@ export function mapJobToApi(job, { isCreate = false } = {}) {
     body.screening_questions = job.screeningQuestions
       .filter((q) => q.label?.trim())
       .map((q) => {
-        const cleanOptions =
-          q.type === 'text'
-            ? []
-            : (q.options || []).map((o) => o.trim()).filter(Boolean);
+        const type = ['single', 'multi', 'text', 'number'].includes(q.type) ? q.type : 'single';
+        const isChoice = type === 'single' || type === 'multi';
+        const cleanOptions = isChoice
+          ? (q.options || []).map((o) => o.trim()).filter(Boolean)
+          : [];
         return {
           id: q.id,
           label: q.label.trim(),
-          type: q.type || 'single',
-          filterable: !!(q.filterable && q.type !== 'text' && cleanOptions.length),
+          type,
+          filterable: !!(q.filterable && type !== 'text' && (type === 'number' || cleanOptions.length)),
           options: cleanOptions,
         };
       });
@@ -183,14 +197,43 @@ function appendScreeningAnswers(body, answers = {}) {
   for (const [id, value] of Object.entries(answers)) {
     if (Array.isArray(value)) {
       if (value.length) cleanAnswers[id] = value;
+    } else if (typeof value === 'number' && Number.isFinite(value)) {
+      cleanAnswers[id] = value;
     } else if (value != null && String(value).trim()) {
-      cleanAnswers[id] = String(value).trim();
+      const trimmed = String(value).trim();
+      const asNumber = Number(trimmed);
+      cleanAnswers[id] =
+        trimmed !== '' && Number.isFinite(asNumber) && /^-?\d+(\.\d+)?$/.test(trimmed)
+          ? asNumber
+          : trimmed;
     }
   }
   if (Object.keys(cleanAnswers).length) {
     body.answers = cleanAnswers;
   }
   return body;
+}
+
+/** Normalize apply-form answers (especially number fields) before API submit. */
+export function normalizeScreeningAnswersForApi(questions = [], answers = {}) {
+  const out = {};
+  for (const q of questions || []) {
+    const value = answers[q.id];
+    if (q.type === 'multi') {
+      if (Array.isArray(value) && value.length) out[q.id] = value;
+      continue;
+    }
+    if (q.type === 'number') {
+      if (value === '' || value == null) continue;
+      const n = Number(value);
+      if (Number.isFinite(n)) out[q.id] = n;
+      continue;
+    }
+    if (value != null && String(value).trim()) {
+      out[q.id] = String(value).trim();
+    }
+  }
+  return out;
 }
 
 export function mapApplicationSubmitToApi({
@@ -252,7 +295,7 @@ export function deriveScreeningFiltersFromApplications(applications, jobQuestion
   for (const app of applications || []) {
     for (const [qid, value] of Object.entries(app.answers || {})) {
       const meta = byId[qid];
-      if (meta?.type === 'text') continue;
+      if (meta?.type === 'text' || meta?.type === 'number') continue;
 
       if (!buckets.has(qid)) {
         buckets.set(qid, {
@@ -282,52 +325,78 @@ export function deriveScreeningFiltersFromApplications(applications, jobQuestion
 
 export function getFilterableScreeningQuestions(jobQuestions = [], applications = []) {
   const questions = jobQuestions || [];
-  const filterable = questions.filter(
-    (q) => q.filterable && q.type !== 'text' && (q.options || []).length
-  );
+  const filterable = questions.filter((q) => {
+    if (!q.filterable || q.type === 'text') return false;
+    if (q.type === 'number') return true;
+    return (q.options || []).filter(Boolean).length > 0;
+  });
   if (filterable.length) return filterable;
 
-  const choiceQuestions = questions.filter(
-    (q) => q.type !== 'text' && (q.options || []).length
-  );
-  if (choiceQuestions.length) return choiceQuestions;
+  const fallback = questions.filter((q) => {
+    if (q.type === 'text') return false;
+    if (q.type === 'number') return true;
+    return (q.options || []).filter(Boolean).length > 0;
+  });
+  if (fallback.length) return fallback;
 
   return deriveScreeningFiltersFromApplications(applications, questions);
 }
 
 export function formatAnswerValue(value) {
   if (Array.isArray(value)) return value.join(', ');
+  if (typeof value === 'number' && Number.isFinite(value)) return String(value);
   return value != null ? String(value) : '';
 }
 
-export function matchesScreeningFilters(app, filters = {}) {
-  const active = Object.entries(filters).filter(([, opts]) => opts?.length);
-  if (!active.length) return true;
+export function matchesScreeningFilters(app, filters = {}, numericFilters = {}) {
   const answers = app.answers || {};
-
   const normalize = (value) => String(value ?? '').trim().toLowerCase();
 
-  return active.every(([qid, selected]) => {
-    const answer = answers[qid];
-    if (answer == null || answer === '') return false;
+  const choiceOk = Object.entries(filters)
+    .filter(([, opts]) => opts?.length)
+    .every(([qid, selected]) => {
+      const answer = answers[qid];
+      if (answer == null || answer === '') return false;
+      const wanted = selected.map(normalize).filter(Boolean);
+      if (!wanted.length) return true;
+      if (Array.isArray(answer)) {
+        const have = answer.map(normalize).filter(Boolean);
+        return wanted.some((opt) => have.includes(opt));
+      }
+      return wanted.includes(normalize(answer));
+    });
+  if (!choiceOk) return false;
 
-    const wanted = selected.map(normalize).filter(Boolean);
-    if (!wanted.length) return true;
-
-    if (Array.isArray(answer)) {
-      const have = answer.map(normalize).filter(Boolean);
-      return wanted.some((opt) => have.includes(opt));
+  return Object.entries(numericFilters || {}).every(([qid, range]) => {
+    if (!range || (range.min === '' && range.max === '' && (range.exact === '' || range.exact == null))) {
+      return true;
     }
-
-    return wanted.includes(normalize(answer));
+    const n = Number(answers[qid]);
+    if (!Number.isFinite(n)) return false;
+    if (range.exact !== '' && range.exact != null && Number.isFinite(Number(range.exact))) {
+      return n === Number(range.exact);
+    }
+    if (range.min !== '' && range.min != null && Number.isFinite(Number(range.min)) && n < Number(range.min)) {
+      return false;
+    }
+    if (range.max !== '' && range.max != null && Number.isFinite(Number(range.max)) && n > Number(range.max)) {
+      return false;
+    }
+    return true;
   });
 }
 
-export function buildScreeningFilterParams(jobId, screeningFilters = {}) {
+export function buildScreeningFilterParams(jobId, screeningFilters = {}, numericFilters = {}) {
   const params = { job_id: jobId };
   for (const [qid, opts] of Object.entries(screeningFilters)) {
     if (!opts?.length) continue;
     params[`answer_${qid}`] = opts;
+  }
+  for (const [qid, range] of Object.entries(numericFilters || {})) {
+    if (!range) continue;
+    if (range.exact !== '' && range.exact != null) params[`answer_${qid}`] = range.exact;
+    if (range.min !== '' && range.min != null) params[`answer_min_${qid}`] = range.min;
+    if (range.max !== '' && range.max != null) params[`answer_max_${qid}`] = range.max;
   }
   return params;
 }

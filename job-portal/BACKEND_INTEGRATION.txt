@@ -47,6 +47,8 @@ PUBLIC SITE
   for opening stored S3 keys from application materials
 - Per-job required/optional/hidden materials: see `job-portal/APPLICATION_FIELDS_API.md`
   (backend ready; employer job edit + apply form use `application_fields`)
+- Job description/requirements Markdown: see `job-portal/JOB_MARKDOWN_API.md`
+  (`description_format` / `requirements_format`; rendered via `JobBody`)
 - Legacy candidate portal login remains for existing accounts only (no new registration)
 
 

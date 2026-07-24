@@ -158,11 +158,33 @@ export function PortalProvider({ children }) {
           return name.includes(q) || email.includes(q) || phone.includes(q);
         });
       }
-      if (params.screeningFilters) {
-        rows = rows.filter((a) => matchesScreeningFilters(a, params.screeningFilters));
+      if (params.screeningFilters || params.numericFilters) {
+        rows = rows.filter((a) =>
+          matchesScreeningFilters(a, params.screeningFilters || {}, params.numericFilters || {})
+        );
+      }
+      if (params.sort_by && String(params.sort_by).startsWith('answer_')) {
+        const qid = String(params.sort_by).slice('answer_'.length);
+        const dir = params.sort_dir === 'asc' ? 1 : -1;
+        rows = [...rows].sort((a, b) => {
+          const av = Number(a.answers?.[qid]);
+          const bv = Number(b.answers?.[qid]);
+          const aMissing = !Number.isFinite(av);
+          const bMissing = !Number.isFinite(bv);
+          if (aMissing && bMissing) return 0;
+          if (aMissing) return 1;
+          if (bMissing) return -1;
+          if (av !== bv) return (av - bv) * dir;
+          return 0;
+        });
       }
       const mapped = rows.map((a) => mapApplicationFromApi(a));
-      return { applications: mapped, total: mapped.length, appliedFilters: params.screeningFilters || {} };
+      return {
+        applications: mapped,
+        total: mapped.length,
+        appliedFilters: params.screeningFilters || {},
+        appliedNumericFilters: params.numericFilters || {},
+      };
     }
 
     const appsRes = await fetchEmployerApplications(params);

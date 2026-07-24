@@ -23,8 +23,13 @@ function candidateDisplayName(app) {
   );
 }
 
-function answerSortValue(app, questionId) {
-  return String(formatAnswerValue(app.answers?.[questionId]) || '')
+function answerSortValue(app, question, questionId) {
+  const raw = app.answers?.[questionId];
+  if (question?.type === 'number' || typeof raw === 'number') {
+    const n = Number(raw);
+    return Number.isFinite(n) ? n : null;
+  }
+  return String(formatAnswerValue(raw) || '')
     .trim()
     .toLowerCase();
 }
@@ -33,6 +38,15 @@ function compareValues(a, b) {
   if (a < b) return -1;
   if (a > b) return 1;
   return 0;
+}
+
+function compareNullable(a, b, dir) {
+  const aMissing = a == null || a === '';
+  const bMissing = b == null || b === '';
+  if (aMissing && bMissing) return 0;
+  if (aMissing) return 1;
+  if (bMissing) return -1;
+  return compareValues(a, b) * dir;
 }
 
 export default function ScreeningResponsesTable({
@@ -64,6 +78,7 @@ export default function ScreeningResponsesTable({
   const sortedApps = useMemo(() => {
     const rows = [...applications];
     const dir = sortDir === 'asc' ? 1 : -1;
+    const questionById = Object.fromEntries(columns.map((q) => [q.id, q]));
 
     rows.sort((left, right) => {
       let cmp = 0;
@@ -71,23 +86,28 @@ export default function ScreeningResponsesTable({
         cmp = compareValues(
           candidateDisplayName(left).toLowerCase(),
           candidateDisplayName(right).toLowerCase()
-        );
+        ) * dir;
       } else if (sortKey === 'stage') {
-        cmp = compareValues(left.status || '', right.status || '');
+        cmp = compareValues(left.status || '', right.status || '') * dir;
       } else if (sortKey === 'submittedAt') {
         const a = left.submittedAt ? new Date(left.submittedAt).getTime() : 0;
         const b = right.submittedAt ? new Date(right.submittedAt).getTime() : 0;
-        cmp = a - b;
+        cmp = (a - b) * dir;
       } else if (sortKey.startsWith('q:')) {
         const qid = sortKey.slice(2);
-        cmp = compareValues(answerSortValue(left, qid), answerSortValue(right, qid));
+        const question = questionById[qid];
+        cmp = compareNullable(
+          answerSortValue(left, question, qid),
+          answerSortValue(right, question, qid),
+          dir
+        );
       }
-      if (cmp !== 0) return cmp * dir;
+      if (cmp !== 0) return cmp;
       return compareValues(candidateDisplayName(left), candidateDisplayName(right));
     });
 
     return rows;
-  }, [applications, sortKey, sortDir]);
+  }, [applications, sortKey, sortDir, columns]);
 
   const toggleSort = (key) => {
     if (sortKey === key) {

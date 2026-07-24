@@ -46,6 +46,9 @@ function ApplicationsInbox() {
   const [selectedStage, setSelectedStage] = useState('__all');
   const [searchQuery, setSearchQuery] = useState('');
   const [screeningFilters, setScreeningFilters] = useState({});
+  const [numericFilters, setNumericFilters] = useState({});
+  const [answerSortBy, setAnswerSortBy] = useState('');
+  const [answerSortDir, setAnswerSortDir] = useState('desc');
   const [view, setView] = useState('board');
   const [page, setPage] = useState(0);
   const [toast, setToast] = useState('');
@@ -58,11 +61,40 @@ function ApplicationsInbox() {
   const [statusModalError, setStatusModalError] = useState('');
   const [statusSaving, setStatusSaving] = useState(false);
 
+  const hasScreeningClientFilters =
+    Object.keys(screeningFilters).length > 0 || Object.keys(numericFilters).length > 0;
+
   const serverApps = useMemo(() => {
     if (!serverAppsRaw) return null;
-    if (!Object.keys(screeningFilters).length) return serverAppsRaw;
-    return serverAppsRaw.filter((app) => matchesScreeningFilters(app, screeningFilters));
-  }, [serverAppsRaw, screeningFilters]);
+    let rows = serverAppsRaw;
+    if (hasScreeningClientFilters) {
+      rows = rows.filter((app) => matchesScreeningFilters(app, screeningFilters, numericFilters));
+    }
+    if (answerSortBy) {
+      const dir = answerSortDir === 'asc' ? 1 : -1;
+      rows = [...rows].sort((a, b) => {
+        const av = Number(a.answers?.[answerSortBy]);
+        const bv = Number(b.answers?.[answerSortBy]);
+        const aMissing = !Number.isFinite(av);
+        const bMissing = !Number.isFinite(bv);
+        if (aMissing && bMissing) return 0;
+        if (aMissing) return 1;
+        if (bMissing) return -1;
+        if (av !== bv) return (av - bv) * dir;
+        const aTime = a.submittedAt ? new Date(a.submittedAt).getTime() : 0;
+        const bTime = b.submittedAt ? new Date(b.submittedAt).getTime() : 0;
+        return bTime - aTime;
+      });
+    }
+    return rows;
+  }, [
+    serverAppsRaw,
+    screeningFilters,
+    numericFilters,
+    hasScreeningClientFilters,
+    answerSortBy,
+    answerSortDir,
+  ]);
 
   const selectedJobRecord = useMemo(
     () => selectedJobDetail || (selectedJob !== '__all' ? jobs.find((j) => j.id === selectedJob) : null),
@@ -108,7 +140,45 @@ function ApplicationsInbox() {
 
   useEffect(() => {
     setScreeningFilters({});
+    setNumericFilters({});
+    setAnswerSortBy('');
+    setAnswerSortDir('desc');
   }, [selectedJob]);
+
+  const officialFilterableIds = useMemo(() => {
+    const qs = selectedJobRecord?.screeningQuestions || [];
+    return new Set(
+      qs.filter((q) => q.filterable && q.type !== 'text').map((q) => q.id)
+    );
+  }, [selectedJobRecord]);
+
+  const apiChoiceFilters = useMemo(() => {
+    const out = {};
+    for (const [qid, opts] of Object.entries(screeningFilters)) {
+      if (officialFilterableIds.has(qid) && opts?.length) out[qid] = opts;
+    }
+    return out;
+  }, [screeningFilters, officialFilterableIds]);
+
+  const apiNumericFilters = useMemo(() => {
+    const out = {};
+    for (const [qid, range] of Object.entries(numericFilters)) {
+      if (!officialFilterableIds.has(qid) || !range) continue;
+      const active =
+        (range.min !== '' && range.min != null) ||
+        (range.max !== '' && range.max != null) ||
+        (range.exact !== '' && range.exact != null);
+      if (active) out[qid] = range;
+    }
+    return out;
+  }, [numericFilters, officialFilterableIds]);
+
+  const apiSortBy = useMemo(() => {
+    if (!answerSortBy || !officialFilterableIds.has(answerSortBy)) return '';
+    const q = (selectedJobRecord?.screeningQuestions || []).find((item) => item.id === answerSortBy);
+    if (!q || q.type === 'multi') return '';
+    return `answer_${answerSortBy}`;
+  }, [answerSortBy, officialFilterableIds, selectedJobRecord]);
 
   useEffect(() => {
     if (!isReady || !isAuthed || selectedJob === '__all') {
@@ -148,11 +218,19 @@ function ApplicationsInbox() {
     const timer = window.setTimeout(async () => {
       setLoadingApps(true);
       try {
-        // Never send answer_* to the API — it 400s when the question is not
-        // marked filterable on the job. Screening chips filter client-side.
         const params = { job_id: selectedJob, limit: 500, offset: 0 };
         if (selectedStage !== '__all') params.status = selectedStage;
         if (searchQuery.trim()) params.q = searchQuery.trim();
+        if (Object.keys(apiChoiceFilters).length) {
+          params.screeningFilters = apiChoiceFilters;
+        }
+        if (Object.keys(apiNumericFilters).length) {
+          params.numericFilters = apiNumericFilters;
+        }
+        if (apiSortBy) {
+          params.sort_by = apiSortBy;
+          params.sort_dir = answerSortDir || 'desc';
+        }
         const result = await loadApplications(params);
         if (!cancelled) {
           const apps = result.applications || [];
@@ -167,13 +245,25 @@ function ApplicationsInbox() {
       } finally {
         if (!cancelled) setLoadingApps(false);
       }
-    }, searchQuery ? 300 : 0);
+    }, searchQuery || Object.keys(apiChoiceFilters).length || Object.keys(apiNumericFilters).length ? 300 : 0);
 
     return () => {
       cancelled = true;
       window.clearTimeout(timer);
     };
-  }, [isReady, isAuthed, selectedJob, selectedStage, searchQuery, loadApplications, mergeApplications]);
+  }, [
+    isReady,
+    isAuthed,
+    selectedJob,
+    selectedStage,
+    searchQuery,
+    apiChoiceFilters,
+    apiNumericFilters,
+    apiSortBy,
+    answerSortDir,
+    loadApplications,
+    mergeApplications,
+  ]);
 
   const visibleStages = useMemo(() => {
     if (selectedStage !== '__all') return [selectedStage];
@@ -202,7 +292,7 @@ function ApplicationsInbox() {
 
   useEffect(() => {
     setPage(0);
-  }, [selectedJob, selectedStage, searchQuery, screeningFilters, view]);
+  }, [selectedJob, selectedStage, searchQuery, screeningFilters, numericFilters, answerSortBy, answerSortDir, view]);
 
   const showToast = useCallback((message, variant = 'error') => {
     setToast(message);
@@ -395,6 +485,9 @@ function ApplicationsInbox() {
     setSelectedStage('__all');
     setSearchQuery('');
     setScreeningFilters({});
+    setNumericFilters({});
+    setAnswerSortBy('');
+    setAnswerSortDir('desc');
   };
 
   if (!isReady || !isAuthed) return null;
@@ -453,6 +546,14 @@ function ApplicationsInbox() {
           screeningQuestions={filterableQuestions}
           screeningFilters={screeningFilters}
           onScreeningFiltersChange={setScreeningFilters}
+          numericFilters={numericFilters}
+          onNumericFiltersChange={setNumericFilters}
+          answerSortBy={answerSortBy}
+          answerSortDir={answerSortDir}
+          onAnswerSortChange={({ sortBy, sortDir }) => {
+            setAnswerSortBy(sortBy || '');
+            setAnswerSortDir(sortDir || 'desc');
+          }}
           screeningFiltersLoading={loadingJobDetail}
           onClear={clearFilters}
         />

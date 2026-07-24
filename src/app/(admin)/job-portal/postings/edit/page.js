@@ -12,7 +12,7 @@ import StickyFormBar from '../../components/StickyFormBar';
 import ScreeningQuestionsEditor from '../../components/ScreeningQuestionsEditor';
 import ApplicationFieldsEditor from '../../components/ApplicationFieldsEditor';
 import CustomSelect from '@/components/CustomSelect';
-import AutoResizeTextarea from '@/components/AutoResizeTextarea';
+import JobRichTextEditor from '@/components/JobRichTextEditor';
 import { useConfirm } from '@/components/ConfirmProvider';
 import { DEFAULT_APPLICATION_FIELDS } from '@/lib/job-api/application-fields';
 
@@ -32,6 +32,8 @@ const emptyJob = {
   status: 'draft',
   description: '',
   requirements: '',
+  descriptionFormat: 'markdown',
+  requirementsFormat: 'markdown',
   remoteType: 'remote',
   employmentType: 'full_time',
   salaryMin: '',
@@ -272,25 +274,44 @@ function PostingEditForm() {
           <>
             <div className="ats-field">
               <label className="ats-field-label" htmlFor="field-desc">Description</label>
-              <AutoResizeTextarea
+              <JobRichTextEditor
                 id="field-desc"
-                minRows={8}
-                maxRows={16}
-                placeholder="Role overview shown on the public job page"
                 value={job.description}
-                onChange={(e) => updateField('description', e.target.value)}
+                disabled={saving}
+                minHeight="14rem"
+                placeholder="About the role, responsibilities, and what success looks like…"
+                onChange={(description) =>
+                  setJob((prev) => ({
+                    ...prev,
+                    description,
+                    descriptionFormat: 'markdown',
+                  }))
+                }
               />
+              <p className="ats-field-hint">
+                Use the toolbar to format headings, bold text, lists, and links. Formatting is saved
+                with the job.
+              </p>
             </div>
             <div className="ats-field">
               <label className="ats-field-label" htmlFor="field-req">Requirements</label>
-              <AutoResizeTextarea
+              <JobRichTextEditor
                 id="field-req"
-                minRows={5}
-                maxRows={12}
-                placeholder="Skills, experience, and qualifications"
                 value={job.requirements}
-                onChange={(e) => updateField('requirements', e.target.value)}
+                disabled={saving}
+                minHeight="10rem"
+                placeholder="Skills, experience, and qualifications…"
+                onChange={(requirements) =>
+                  setJob((prev) => ({
+                    ...prev,
+                    requirements,
+                    requirementsFormat: 'markdown',
+                  }))
+                }
               />
+              <p className="ats-field-hint">
+                Same formatting tools as description. Candidates see this on the job page.
+              </p>
             </div>
           </>
         ) : null}

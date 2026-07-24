@@ -7,8 +7,16 @@ import { useConfirm } from '@/components/ConfirmProvider';
 const ANSWER_TYPE_OPTIONS = [
   { value: 'single', label: 'Single choice' },
   { value: 'multi', label: 'Multiple choice' },
+  { value: 'number', label: 'Number' },
   { value: 'text', label: 'Short text' },
 ];
+
+const TYPE_LABELS = {
+  single: 'Single choice',
+  multi: 'Multiple choice',
+  number: 'Number',
+  text: 'Short text',
+};
 
 function newQuestionId() {
   return `sq_${Math.random().toString(36).slice(2, 10)}`;
@@ -21,6 +29,10 @@ const EMPTY_QUESTION = {
   filterable: true,
   options: ['', ''],
 };
+
+function isChoiceType(type) {
+  return type === 'single' || type === 'multi';
+}
 
 export default function ScreeningQuestionsEditor({ questions = [], onChange }) {
   const confirm = useConfirm();
@@ -51,12 +63,11 @@ export default function ScreeningQuestionsEditor({ questions = [], onChange }) {
 
   const handleTypeChange = (index, type) => {
     const current = questions[index];
-    const options =
-      type === 'text'
-        ? []
-        : (current?.options || []).length >= 2
-          ? current.options
-          : ['', ''];
+    const options = isChoiceType(type)
+      ? (current?.options || []).length >= 2
+        ? current.options
+        : ['', '']
+      : [];
     updateQuestion(index, {
       type,
       filterable: type === 'text' ? false : true,
@@ -85,7 +96,10 @@ export default function ScreeningQuestionsEditor({ questions = [], onChange }) {
       <div className="ats-screening-editor-head">
         <div>
           <h3>Screening questionnaire</h3>
-          <p>Questions appear on the apply form. Choice answers can power recruiter filters.</p>
+          <p>
+            Questions appear on the apply form. Choice and number answers can power recruiter
+            filters and sorting.
+          </p>
         </div>
         {questions.length ? (
           <span className="ats-screening-count">{questions.length} question{questions.length === 1 ? '' : 's'}</span>
@@ -106,7 +120,7 @@ export default function ScreeningQuestionsEditor({ questions = [], onChange }) {
                   <span className="ats-question-number">{index + 1}</span>
                   <div>
                     <strong>Question {index + 1}</strong>
-                    <span>{q.type === 'text' ? 'Short text' : q.type === 'multi' ? 'Multiple choice' : 'Single choice'}</span>
+                    <span>{TYPE_LABELS[q.type] || 'Question'}</span>
                   </div>
                 </div>
                 <button
@@ -124,7 +138,11 @@ export default function ScreeningQuestionsEditor({ questions = [], onChange }) {
                   <input
                     id={`q-label-${index}`}
                     type="text"
-                    placeholder="e.g. How many years of backend experience do you have?"
+                    placeholder={
+                      q.type === 'number'
+                        ? 'e.g. How many years of backend experience do you have?'
+                        : 'e.g. Which production stacks have you used?'
+                    }
                     value={q.label}
                     onChange={(e) => updateQuestion(index, { label: e.target.value })}
                   />
@@ -149,7 +167,11 @@ export default function ScreeningQuestionsEditor({ questions = [], onChange }) {
                       />
                       <span className="ats-filter-toggle-copy">
                         <strong>Recruiter filter</strong>
-                        <span>Let hiring teams filter candidates by this answer</span>
+                        <span>
+                          {q.type === 'number'
+                            ? 'Filter by range and sort by this number'
+                            : 'Let hiring teams filter candidates by this answer'}
+                        </span>
                       </span>
                     </div>
                   ) : (
@@ -163,7 +185,7 @@ export default function ScreeningQuestionsEditor({ questions = [], onChange }) {
                   )}
                 </div>
 
-                {q.type !== 'text' ? (
+                {isChoiceType(q.type) ? (
                   <div className="ats-options-panel">
                     <div className="ats-options-panel-head">
                       <span className="ats-field-label">Answer options</span>
@@ -206,6 +228,13 @@ export default function ScreeningQuestionsEditor({ questions = [], onChange }) {
                       Add option
                     </button>
                   </div>
+                ) : null}
+
+                {q.type === 'number' ? (
+                  <p className="ats-field-hint">
+                    Candidates enter a number. Prefer this for years of experience so you can
+                    filter ranges and sort.
+                  </p>
                 ) : null}
               </div>
             </article>

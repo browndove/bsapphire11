@@ -27,6 +27,8 @@ export const PREVIEW_JOBS = [
     publishedAt: daysAgo(30),
     description: 'Build scalable APIs and platform services for our product suite.',
     requirements: '5+ years backend experience, Go or Node.js, distributed systems.',
+    descriptionFormat: 'markdown',
+    requirementsFormat: 'markdown',
     remoteType: 'remote',
     employmentType: 'full_time',
     salaryMin: 80000,
@@ -39,9 +41,9 @@ export const PREVIEW_JOBS = [
       {
         id: 'sq_years',
         label: 'Years of backend experience',
-        type: 'single',
+        type: 'number',
         filterable: true,
-        options: ['0–2', '3–5', '6–10', '10+'],
+        options: [],
       },
       {
         id: 'sq_stack',
@@ -124,7 +126,7 @@ export const PREVIEW_APPLICATIONS = [
     githubUrl: 'https://github.com/amaosei',
     additionalLink: 'https://amaosei.dev',
     additionalDocumentUrl: '',
-    answers: { sq_years: '6–10', sq_stack: ['Go', 'Node.js'] },
+    answers: { sq_years: 8, sq_stack: ['Go', 'Node.js'] },
   },
   {
     id: 'preview-app-2',
@@ -141,7 +143,7 @@ export const PREVIEW_APPLICATIONS = [
     githubUrl: 'https://github.com/kwesimensah',
     additionalLink: '',
     additionalDocumentUrl: 'https://example.com/cover-kwesi.pdf',
-    answers: { sq_years: '3–5', sq_stack: ['Go', 'Python'] },
+    answers: { sq_years: 4, sq_stack: ['Go', 'Python'] },
   },
   {
     id: 'preview-app-3',
@@ -184,7 +186,7 @@ export const PREVIEW_APPLICATIONS = [
     status: 'hired',
     coverLetter: 'Previously scaled payment systems at a fintech startup.',
     resumeUrl: 'https://example.com/resume-priya.pdf',
-    answers: { sq_years: '10+', sq_stack: ['Node.js', 'Java'] },
+    answers: { sq_years: 12, sq_stack: ['Node.js', 'Java'] },
   },
   {
     id: 'preview-app-6',
@@ -211,7 +213,7 @@ export const PREVIEW_APPLICATIONS = [
     status: 'submitted',
     coverLetter: 'Full-stack engineer transitioning to backend platform roles.',
     resumeUrl: 'https://example.com/resume-elena.pdf',
-    answers: { sq_years: '0–2', sq_stack: ['Python'] },
+    answers: { sq_years: 1, sq_stack: ['Python'] },
   },
   {
     id: 'preview-app-8',
