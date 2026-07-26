@@ -14,7 +14,7 @@ import StatusEmailModal from '../../components/StatusEmailModal';
 import CustomSelect from '@/components/CustomSelect';
 import CoverLetterMaterials, { FileCard } from '@/components/candidate/CoverLetterMaterials';
 import { useConfirm } from '@/components/ConfirmProvider';
-import { resolveApplicationDocuments } from '@/lib/job-api/cover-letter';
+import { fileNameFromStorageKey, resolveApplicationDocuments } from '@/lib/job-api/cover-letter';
 
 function ApplicationDetailView() {
   const router = useRouter();
@@ -544,7 +544,7 @@ function ApplicationDetailView() {
               {app.resumeUrl ? (
                 <FileCard
                   title="Resume attached"
-                  subtitle="PDF or document on file"
+                  fileName={fileNameFromStorageKey(app.resumeUrl)}
                   href={app.resumeUrl}
                   actionLabel="View resume"
                 />

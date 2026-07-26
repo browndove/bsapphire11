@@ -1,11 +1,12 @@
 'use client';
 
 import { useState } from 'react';
-import { resolveFileDownloadUrl } from '@/lib/job-api/client';
+import { openFileWithOriginalName } from '@/lib/job-api/client';
 import {
-  isBrowsableFileUrl,
+  fileNameFromStorageKey,
   normalizeOptionalUrl,
   resolveApplicationDocuments,
+  sanitizeDownloadFileName,
 } from '@/lib/job-api/cover-letter';
 import { toUserMessage } from '@/lib/job-api/errors';
 
@@ -18,19 +19,47 @@ function FileIcon() {
   );
 }
 
-export function FileCard({ title, subtitle, href, actionLabel }) {
+function resolveDisplayName(fileName, href, fallback = 'PDF or document on file') {
+  return (
+    sanitizeDownloadFileName(fileName || '', '') ||
+    fileNameFromStorageKey(href) ||
+    fallback
+  );
+}
+
+export function FileCard({ title, subtitle, href, fileName, actionLabel }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
-  if (!href && !subtitle) return null;
+  const displayName = resolveDisplayName(fileName, href, subtitle || 'PDF or document on file');
+
+  if (!href && !displayName) return null;
 
   const openFile = async () => {
     if (!href || busy) return;
     setError('');
     setBusy(true);
     try {
-      const url = isBrowsableFileUrl(href) ? href : await resolveFileDownloadUrl(href);
-      window.open(url, '_blank', 'noopener,noreferrer');
+      await openFileWithOriginalName(href, {
+        filename: displayName,
+        disposition: 'inline',
+      });
+    } catch (err) {
+      setError(toUserMessage(err, 'download'));
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const downloadFile = async () => {
+    if (!href || busy) return;
+    setError('');
+    setBusy(true);
+    try {
+      await openFileWithOriginalName(href, {
+        filename: displayName,
+        disposition: 'attachment',
+      });
     } catch (err) {
       setError(toUserMessage(err, 'download'));
     } finally {
@@ -45,18 +74,28 @@ export function FileCard({ title, subtitle, href, actionLabel }) {
       </div>
       <div className="ats-file-card-body">
         <strong>{title}</strong>
-        <span>{subtitle}</span>
+        <span>{displayName}</span>
         {error ? <p className="ats-field-error">{error}</p> : null}
       </div>
       {href ? (
-        <button
-          type="button"
-          className="btn btn-primary btn-sm"
-          onClick={openFile}
-          disabled={busy}
-        >
-          {busy ? 'Opening…' : actionLabel}
-        </button>
+        <div className="ats-file-card-actions">
+          <button
+            type="button"
+            className="btn btn-primary btn-sm"
+            onClick={openFile}
+            disabled={busy}
+          >
+            {busy ? 'Opening…' : actionLabel || 'View'}
+          </button>
+          <button
+            type="button"
+            className="btn btn-outline btn-sm"
+            onClick={downloadFile}
+            disabled={busy}
+          >
+            Download
+          </button>
+        </div>
       ) : null}
     </div>
   );
@@ -104,7 +143,7 @@ export default function CoverLetterMaterials({
     return (
       <FileCard
         title="Additional document attached"
-        subtitle="PDF or document on file"
+        fileName={fileNameFromStorageKey(docs.additionalDocumentUrl)}
         href={docs.additionalDocumentUrl}
         actionLabel="View document"
       />
@@ -120,7 +159,7 @@ export default function CoverLetterMaterials({
       {docs.coverLetterUrl ? (
         <FileCard
           title="Cover letter attached"
-          subtitle={docs.coverLetterFileName}
+          fileName={docs.coverLetterFileName}
           href={docs.coverLetterUrl}
           actionLabel="View cover letter"
         />

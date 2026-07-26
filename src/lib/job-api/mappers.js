@@ -78,6 +78,12 @@ export function mapJobFromApi(job, categoriesById = {}) {
     applicationFields: normalizeApplicationFields(
       job.application_fields || job.applicationFields
     ),
+    applicationCount:
+      job.applications_count ??
+      job.application_count ??
+      job.applicant_count ??
+      job.applicants_count ??
+      null,
     createdAt: job.created_at,
     updatedAt: job.updated_at,
   };
@@ -151,7 +157,7 @@ export function mapApplicationFromApi(app) {
 
   return {
     id: app.id,
-    jobId: app.job_id || app.jobId,
+    jobId: app.job_id || app.jobId || app.job?.id || '',
     jobTitle: app.job?.title || app.job_title || '',
     submittedAt: app.created_at || app.submitted_at || app.submittedAt,
     candidateName: name,

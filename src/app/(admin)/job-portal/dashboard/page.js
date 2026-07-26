@@ -17,6 +17,7 @@ export default function Dashboard() {
     isAuthed,
     jobs,
     applications,
+    applicationsTotal,
     PIPELINE_STATUSES,
     PortalStages,
     loading,
@@ -25,6 +26,7 @@ export default function Dashboard() {
     newThisWeek,
     inInterview,
     getApplicantCount,
+    refreshCounts,
   } = usePortal();
 
   useEffect(() => {
@@ -32,6 +34,12 @@ export default function Dashboard() {
       router.replace('/job-portal/login');
     }
   }, [isReady, isAuthed, router]);
+
+  useEffect(() => {
+    if (isReady && isAuthed) {
+      refreshCounts?.();
+    }
+  }, [isReady, isAuthed, refreshCounts]);
 
   const pubJobs = useMemo(
     () => jobs.filter((j) => j.status === 'published'),
@@ -57,7 +65,11 @@ export default function Dashboard() {
 
   if (!isReady || !isAuthed) return null;
 
-  const totalApps = dashboardStats?.total_applications ?? applications.length;
+  const totalApps = Math.max(
+    Number(dashboardStats?.total_applications) || 0,
+    Number(applicationsTotal) || 0,
+    applications.length
+  );
   const openJobs = dashboardStats?.open_jobs ?? pubJobs.length;
 
   return (

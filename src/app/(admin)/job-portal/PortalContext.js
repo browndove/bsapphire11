@@ -84,8 +84,10 @@ export function PortalProvider({ children }) {
   const applicationsByJobId = useMemo(() => {
     const map = {};
     applications.forEach((app) => {
-      if (!map[app.jobId]) map[app.jobId] = [];
-      map[app.jobId].push(app);
+      const jobId = app.jobId || app.job_id || '';
+      if (!jobId) return;
+      if (!map[jobId]) map[jobId] = [];
+      map[jobId].push(app);
     });
     return map;
   }, [applications]);
@@ -100,8 +102,16 @@ export function PortalProvider({ children }) {
   }, [applications]);
 
   const getApplicantCount = useCallback(
-    (jobId) => (applicationsByJobId[jobId] || []).length,
-    [applicationsByJobId]
+    (jobId) => {
+      const fromApps = (applicationsByJobId[jobId] || []).length;
+      const job = jobs.find((j) => j.id === jobId);
+      const fromJob =
+        job?.applicationCount != null && Number.isFinite(Number(job.applicationCount))
+          ? Number(job.applicationCount)
+          : 0;
+      return Math.max(fromApps, fromJob);
+    },
+    [applicationsByJobId, jobs]
   );
 
   const refreshData = useCallback(async () => {
@@ -124,7 +134,7 @@ export function PortalProvider({ children }) {
       const byId = Object.fromEntries(catList.map((c) => [c.id, c]));
       const jobRows = getPaginatedItems(jobsRes);
       const appRows = getPaginatedItems(appsRes);
-      const mappedApps = (appRows || []).map(mapApplicationFromApi);
+      const mappedApps = (appRows || []).map(mapApplicationFromApi).filter(Boolean);
 
       setCategories(catList);
       setDashboardStats(dashRes);
@@ -138,6 +148,29 @@ export function PortalProvider({ children }) {
       setLoading(false);
     }
   }, [previewMode, applyPreviewData]);
+
+  /** Quiet refresh so applicant counts update after people apply (no full-page skeleton). */
+  const refreshCounts = useCallback(async () => {
+    if (previewMode || !getAccessToken()) return;
+    try {
+      const [dashRes, jobsRes, appsRes] = await Promise.all([
+        fetchDashboard().catch(() => null),
+        fetchEmployerJobs({ limit: 200, offset: 0 }),
+        fetchEmployerApplications({ limit: 500, offset: 0 }),
+      ]);
+      const catById = Object.fromEntries(categories.map((c) => [c.id, c]));
+      const jobRows = getPaginatedItems(jobsRes);
+      const appRows = getPaginatedItems(appsRes);
+      const mappedApps = (appRows || []).map(mapApplicationFromApi).filter(Boolean);
+
+      if (dashRes) setDashboardStats(dashRes);
+      setJobs(jobRows.map((job) => mapJobFromApi(job, catById)));
+      setApplications(mappedApps);
+      setApplicationsTotal(getPaginatedTotal(appsRes, appRows));
+    } catch {
+      // Keep existing counts if a background refresh fails.
+    }
+  }, [previewMode, categories]);
 
   const loadApplications = useCallback(async (params = {}) => {
     if (previewMode) {
@@ -258,6 +291,32 @@ export function PortalProvider({ children }) {
     };
   }, [refreshData, previewMode, applyPreviewData]);
 
+  // Re-fetch applications when the employer returns to the tab so applicant counts update.
+  useEffect(() => {
+    if (!isReady || !isAuthed || previewMode) return undefined;
+
+    let timer = null;
+    const schedule = () => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => {
+        refreshCounts();
+      }, 400);
+    };
+
+    const onFocus = () => schedule();
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') schedule();
+    };
+
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      window.clearTimeout(timer);
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [isReady, isAuthed, previewMode, refreshCounts]);
+
   const beginLogin = async (email, password) => {
     setError(null);
     return loginStep1(email, password);
@@ -374,7 +433,9 @@ export function PortalProvider({ children }) {
       for (const row of rows) {
         if (row?.id) byId.set(row.id, row);
       }
-      return Array.from(byId.values());
+      const next = Array.from(byId.values());
+      setApplicationsTotal((total) => Math.max(total || 0, next.length));
+      return next;
     });
   }, []);
 
@@ -690,6 +751,7 @@ export function PortalProvider({ children }) {
         countOtherOpenApplicants,
         moveApplication,
         refreshData,
+        refreshCounts,
         loadApplications,
         PIPELINE_STATUSES,
         STATUS_UPDATE_OPTIONS,

@@ -1638,6 +1638,14 @@ button.ats-menu-item {
 .ats-file-card-body span {
   font-size: 0.78rem;
   color: var(--text-muted);
+  word-break: break-word;
+}
+
+.ats-file-card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  flex-shrink: 0;
 }
 
 .ats-answer-grid {
@@ -1687,8 +1695,12 @@ button.ats-menu-item {
     flex-wrap: wrap;
   }
 
-  .ats-file-card .btn {
+  .ats-file-card-actions {
     width: 100%;
+  }
+
+  .ats-file-card .btn {
+    flex: 1;
     justify-content: center;
   }
 }

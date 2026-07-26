@@ -18,6 +18,7 @@ import {
 import {
   assignCoverLetterStorage,
   composeCoverLetterMaterials,
+  fileNameFromStorageKey,
   normalizeOptionalUrl,
   resolveApplicationDocuments,
   stripUrlProtocol,
@@ -26,7 +27,7 @@ import {
 import { getActiveApplicationForJob, getWithdrawnApplicationForJob } from '@/lib/job-api/candidate-routes';
 import ResumeFilePicker from '@/components/candidate/ResumeFilePicker';
 import MediaFilePicker from '@/components/candidate/MediaFilePicker';
-import CoverLetterMaterials from '@/components/candidate/CoverLetterMaterials';
+import CoverLetterMaterials, { FileCard } from '@/components/candidate/CoverLetterMaterials';
 import ScreeningAnswersForm from '@/components/candidate/ScreeningAnswersForm';
 import ApplyContactFields from '@/components/candidate/ApplyContactFields';
 import {
@@ -422,26 +423,12 @@ function CandidateApplyInner() {
                 <div className="ats-material-block">
                   <p className="ats-material-label">Resume</p>
                   {activeApplication.resumeUrl ? (
-                    <div className="ats-file-card">
-                      <div className="ats-file-card-icon" aria-hidden="true">
-                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-                          <path d="M14 2H8a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2V8l-6-6Z" strokeLinejoin="round" />
-                          <path d="M14 2v6h6" strokeLinejoin="round" />
-                        </svg>
-                      </div>
-                      <div className="ats-file-card-body">
-                        <strong>Resume attached</strong>
-                        <span>PDF or document on file</span>
-                      </div>
-                      <a
-                        href={activeApplication.resumeUrl}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="btn btn-primary btn-sm"
-                      >
-                        View resume
-                      </a>
-                    </div>
+                    <FileCard
+                      title="Resume attached"
+                      fileName={fileNameFromStorageKey(activeApplication.resumeUrl)}
+                      href={activeApplication.resumeUrl}
+                      actionLabel="View resume"
+                    />
                   ) : (
                     <div className="ats-empty-card">No resume uploaded.</div>
                   )}

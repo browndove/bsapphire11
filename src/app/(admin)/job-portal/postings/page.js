@@ -18,7 +18,14 @@ const TABS = [
 
 export default function Postings() {
   const router = useRouter();
-  const { isReady, isAuthed, jobs, getApplicantCount, loading } = usePortal();
+  const {
+    isReady,
+    isAuthed,
+    jobs,
+    getApplicantCount,
+    loading,
+    refreshCounts,
+  } = usePortal();
   const [activeTab, setActiveTab] = useState('all');
   const [search, setSearch] = useState('');
 
@@ -27,6 +34,12 @@ export default function Postings() {
       router.replace('/job-portal/login');
     }
   }, [isReady, isAuthed, router]);
+
+  useEffect(() => {
+    if (isReady && isAuthed) {
+      refreshCounts?.();
+    }
+  }, [isReady, isAuthed, refreshCounts]);
 
   const tabCounts = useMemo(() => {
     const counts = { all: jobs.length, published: 0, draft: 0, closed: 0 };

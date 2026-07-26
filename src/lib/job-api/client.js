@@ -331,14 +331,14 @@ export async function candidateVerify2FA(pending_token, code) {
  * Turn a stored S3 key (or pass-through https URL) into a browser-openable link.
  * Requires backend `POST /files/download-url` when `fileUrl` is a storage key.
  */
-export async function resolveFileDownloadUrl(fileUrl) {
+export async function resolveFileDownloadUrl(fileUrl, { filename } = {}) {
   const raw = String(fileUrl || '').trim();
   if (!raw) {
     const err = new Error('No file to open.');
     err.status = 400;
     throw err;
   }
-  if (/^https?:\/\//i.test(raw)) {
+  if (/^https?:\/\//i.test(raw) && !filename) {
     return raw;
   }
 
@@ -356,7 +356,15 @@ export async function resolveFileDownloadUrl(fileUrl) {
         Authorization: `Bearer ${token}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ file_url: raw }),
+      body: JSON.stringify({
+        file_url: raw,
+        ...(filename
+          ? {
+              filename,
+              response_content_disposition: `inline; filename="${String(filename).replace(/"/g, '')}"`,
+            }
+          : {}),
+      }),
     }),
     'download'
   );
@@ -368,6 +376,68 @@ export async function resolveFileDownloadUrl(fileUrl) {
     throw err;
   }
   return url;
+}
+
+/**
+ * Open or download a file using the candidate's original upload filename.
+ * Uses a short-lived BFF ticket so the browser receives Content-Disposition
+ * with the original name (works for View and Save/Download).
+ */
+export async function openFileWithOriginalName(fileUrl, {
+  filename = '',
+  disposition = 'inline',
+} = {}) {
+  const raw = String(fileUrl || '').trim();
+  if (!raw) {
+    const err = new Error('No file to open.');
+    err.status = 400;
+    throw err;
+  }
+
+  const token = getAccessToken();
+  if (!token) {
+    const err = new Error('Sign in to download files.');
+    err.status = 401;
+    throw err;
+  }
+
+  const data = await parseResponse(
+    await fetch('/api/job-portal/files/content', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        file_url: raw,
+        filename: filename || undefined,
+        disposition: disposition === 'attachment' ? 'attachment' : 'inline',
+      }),
+    }),
+    'download'
+  );
+
+  const ticket = data?.ticket;
+  if (!ticket) {
+    const err = new Error('File download is not available yet.');
+    err.status = 503;
+    throw err;
+  }
+
+  const openUrl = `/api/job-portal/files/content?ticket=${encodeURIComponent(ticket)}`;
+  const opened = window.open(openUrl, '_blank', 'noopener,noreferrer');
+  if (!opened) {
+    // Popup blocked — navigate via temporary link (still carries Content-Disposition).
+    const a = document.createElement('a');
+    a.href = openUrl;
+    a.target = '_blank';
+    a.rel = 'noopener noreferrer';
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+  }
+
+  return data?.filename || filename || 'document';
 }
 
 export async function uploadFile(file, purpose = 'document') {

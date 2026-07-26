@@ -5,7 +5,9 @@ import { useRouter } from 'next/navigation';
 import { useCandidate } from '../CandidateContext';
 import PortalHeader from '@/app/(admin)/job-portal/components/PortalHeader';
 import ResumeFilePicker from '@/components/candidate/ResumeFilePicker';
+import { FileCard } from '@/components/candidate/CoverLetterMaterials';
 import { uploadResume } from '@/lib/job-api/client';
+import { fileNameFromStorageKey } from '@/lib/job-api/cover-letter';
 import { toUserMessage } from '@/lib/job-api/errors';
 
 export default function CandidateProfile() {
@@ -104,9 +106,14 @@ export default function CandidateProfile() {
           <div className="ats-field">
             <label className="ats-field-label" htmlFor="c-resume">Resume</label>
             {resumeUrl && !resumeFile ? (
-              <p className="ats-field-hint" style={{ marginBottom: '0.75rem' }}>
-                <a href={resumeUrl} target="_blank" rel="noreferrer">View current resume</a>
-              </p>
+              <div style={{ marginBottom: '0.75rem' }}>
+                <FileCard
+                  title="Current resume"
+                  fileName={fileNameFromStorageKey(resumeUrl)}
+                  href={resumeUrl}
+                  actionLabel="View resume"
+                />
+              </div>
             ) : null}
             <ResumeFilePicker
               id="c-resume"

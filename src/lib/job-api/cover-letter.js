@@ -14,15 +14,37 @@ export function isBrowsableFileUrl(value = '') {
   return /^https?:\/\//i.test(String(value || '').trim());
 }
 
+/** Strip path junk so a name is safe for Content-Disposition / <a download>. */
+export function sanitizeDownloadFileName(value = '', fallback = 'document') {
+  const raw = String(value || '')
+    .trim()
+    .replace(/\\/g, '/')
+    .split('/')
+    .filter(Boolean)
+    .pop();
+  const cleaned = String(raw || '')
+    .replace(/[\u0000-\u001f\u007f]/g, '')
+    .replace(/["<>|?*]/g, '_')
+    .trim();
+  return cleaned || fallback;
+}
+
+/**
+ * Recover the candidate's original upload name from a storage key or HTTPS URL.
+ * Keys are typically `{uuid}_{originalName}` (see upload flow).
+ */
 export function fileNameFromStorageKey(value = '') {
   const raw = String(value || '').trim();
   if (!raw) return '';
   try {
-    const path = isBrowsableFileUrl(raw) ? new URL(raw).pathname : raw;
+    const path = isBrowsableFileUrl(raw) ? new URL(raw).pathname : raw.split('?')[0];
     const segment = path.split('/').filter(Boolean).pop() || '';
-    return decodeURIComponent(segment).replace(/^[0-9a-f-]{36}_/i, '') || segment;
+    const decoded = decodeURIComponent(segment);
+    const withoutUuid = decoded.replace(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}_/i, '');
+    return sanitizeDownloadFileName(withoutUuid || decoded, decoded || 'document');
   } catch {
-    return raw.split('/').filter(Boolean).pop() || '';
+    const segment = raw.split('/').filter(Boolean).pop() || '';
+    return sanitizeDownloadFileName(segment, 'document');
   }
 }
 
