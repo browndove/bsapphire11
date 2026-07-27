@@ -88,7 +88,7 @@ export default function Home() {
           <div className="container">
             <div className="section-header slide-up">
               <h2 className="section-title">Expertise</h2>
-              <p className="section-desc" style={{ fontSize: '1.4rem', color: '#ffffff', marginTop: '0.8rem', maxWidth: '100%', lineHeight: '1.5' }}>Transformative capabilities built strictly for scale, innovation, unprecedented privacy, and high-margin impact.</p>
+              <p className="section-desc" style={{ fontSize: '1.4rem', color: 'var(--text-muted)', marginTop: '0.8rem', maxWidth: '100%', lineHeight: '1.5' }}>Transformative capabilities built strictly for scale, innovation, unprecedented privacy, and high-margin impact.</p>
             </div>
 
             <div className="expertise-list">
@@ -195,8 +195,8 @@ export default function Home() {
         <section className="section" id="engage" style={{ padding: 0 }}>
           <div className="engage-demo slide-up" style={{ backgroundImage: "linear-gradient(rgba(0,0,0,0.6), rgba(0,0,0,0.8)), url('/request_demo_bg.png')", backgroundSize: 'cover', backgroundPosition: 'center', borderBottom: '1px solid var(--border-color)', padding: '180px 4%', textAlign: 'center' }}>
             <div className="container" style={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-              <h2 className="engage-title" style={{ fontSize: 'clamp(3rem, 6vw, 4.5rem)', marginBottom: '1rem', color: 'var(--text-color)' }}>Ready to explore our solutions?</h2>
-              <p className="engage-desc" style={{ fontSize: '1.2rem', marginBottom: '3rem', maxWidth: '600px', marginLeft: 'auto', marginRight: 'auto', color: 'var(--text-color)' }}>Schedule a custom architecture review with our systems team.</p>
+              <h2 className="engage-title" style={{ fontSize: 'clamp(3rem, 6vw, 4.5rem)', marginBottom: '1rem', color: '#ffffff' }}>Ready to explore our solutions?</h2>
+              <p className="engage-desc" style={{ fontSize: '1.2rem', marginBottom: '3rem', maxWidth: '600px', marginLeft: 'auto', marginRight: 'auto', color: 'rgba(255, 255, 255, 0.92)' }}>Schedule a custom architecture review with our systems team.</p>
               <Link href="/demo" className="btn btn-primary btn-oval pulse-btn" style={{ padding: '18px 45px', fontSize: '1.1rem' }}>Request a Demo</Link>
             </div>
           </div>

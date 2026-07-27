@@ -25,7 +25,7 @@ export default function GlobeViz() {
       const oceanCanvas = document.createElement('canvas');
       oceanCanvas.width = 2; oceanCanvas.height = 2;
       const oceanCtx = oceanCanvas.getContext('2d');
-      oceanCtx.fillStyle = '#1a1a1a';
+      oceanCtx.fillStyle = '#e8ecf0';
       oceanCtx.fillRect(0, 0, 2, 2);
 
       const myGlobe = Globe()(globeRef.current)
@@ -34,16 +34,16 @@ export default function GlobeViz() {
         .width(220)
         .height(220)
         .showAtmosphere(true)
-        .atmosphereColor('#444444')
+        .atmosphereColor('#0f52ba')
         .atmosphereAltitude(0.12)
         .ringsData(locations)
-        .ringColor(() => '#00f2fe')
+        .ringColor(() => '#0f52ba')
         .ringAltitude(0.015)
         .ringMaxRadius(4)
         .ringPropagationSpeed(2)
         .ringRepeatPeriod(800)
         .pointsData(locations)
-        .pointColor(() => '#ffffff')
+        .pointColor(() => '#0f52ba')
         .pointAltitude(0.015)
         .pointRadius(0.5);
 
@@ -52,9 +52,9 @@ export default function GlobeViz() {
         .then(countries => {
           myGlobe.polygonsData(countries.features)
                  .polygonAltitude(0.01)
-                 .polygonCapColor(() => '#888888')
-                 .polygonSideColor(() => '#666666')
-                 .polygonStrokeColor(() => '#333333');
+                 .polygonCapColor(() => '#c5cdd6')
+                 .polygonSideColor(() => '#a8b0b9')
+                 .polygonStrokeColor(() => '#8b95a1');
         });
 
       myGlobe.controls().autoRotate = true;

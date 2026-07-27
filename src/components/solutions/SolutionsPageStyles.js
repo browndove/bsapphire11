@@ -72,7 +72,7 @@ export default function SolutionsPageStyles() {
         }
         .sub-product {
           margin-top: 3rem;
-          background: rgba(5, 5, 5, 0.5);
+          background: var(--surface-elevated, rgba(0, 0, 0, 0.03));
           padding: 2rem;
           border-left: 2px solid var(--text-color);
         }

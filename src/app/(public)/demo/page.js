@@ -194,7 +194,7 @@ export default function Demo() {
             color: var(--bg-color);
         }
         .carousel-btn {
-            background: rgba(0,0,0,0.8);
+            background: rgba(255, 255, 255, 0.92);
             border: 1px solid var(--border-color);
             color: var(--text-color);
             width: 45px;

@@ -248,8 +248,8 @@ select:-webkit-autofill:focus {
 .login-card input:-webkit-autofill,
 .login-card input:-webkit-autofill:hover,
 .login-card input:-webkit-autofill:focus {
-  -webkit-box-shadow: 0 0 0 1000px #030303 inset;
-  box-shadow: 0 0 0 1000px #030303 inset;
+  -webkit-box-shadow: 0 0 0 1000px var(--bg-color) inset;
+  box-shadow: 0 0 0 1000px var(--bg-color) inset;
 }
 
 textarea {
@@ -327,7 +327,7 @@ select option {
 /* —— Demo / login form box —— */
 .demo-form-box,
 .login-card {
-  background: #030303;
+  background: var(--surface-elevated, var(--bg-color));
   padding: 3rem;
   border: 1px solid var(--border-color);
 }
@@ -348,7 +348,7 @@ select option {
 .login-brand svg {
   display: block;
   flex-shrink: 0;
-  color: #ededed;
+  color: var(--text-color);
 }
 
 .login-brand span {
@@ -371,7 +371,7 @@ select option {
 .filter-btn,
 .filter-chip {
   background: transparent;
-  border: 1px solid #444;
+  border: 1px solid var(--border-color);
   color: var(--text-muted);
   padding: 0.5rem 1.2rem;
   border-radius: 20px;
@@ -384,8 +384,8 @@ select option {
 
 .filter-btn:hover,
 .filter-chip:hover {
-  border-color: #777;
-  color: #ccc;
+  border-color: var(--text-muted);
+  color: var(--text-color);
 }
 
 .filter-btn.active,
@@ -433,7 +433,7 @@ table.data th {
   text-transform: uppercase;
   letter-spacing: 0.07em;
   color: var(--text-muted);
-  background: #050505;
+  background: var(--surface-muted, var(--surface-elevated, #f3f4f6));
 }
 
 table.data tbody tr:last-child td {
@@ -447,7 +447,7 @@ table.data tbody tr,
 }
 
 table.data tbody tr:hover td {
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(0, 0, 0, 0.03);
 }
 
 .table-actions {
@@ -532,7 +532,7 @@ table.data tbody tr:hover td {
 .question-block {
   padding: 1.25rem;
   margin-bottom: 1rem;
-  background: #030303;
+  background: var(--surface-elevated, var(--surface-muted, #f8f9fa));
 }
 
 .q-block-head {

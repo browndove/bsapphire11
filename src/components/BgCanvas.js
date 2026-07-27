@@ -53,7 +53,7 @@ export default function BgCanvas() {
         if (p.y < 0) p.y = height;
         if (p.y > height) p.y = 0;
 
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.12)';
+        ctx.fillStyle = 'rgba(15, 82, 186, 0.18)';
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
         ctx.fill();
@@ -67,8 +67,8 @@ export default function BgCanvas() {
           if (dist < 180) {
             ctx.beginPath();
             ctx.lineWidth = 0.5;
-            let alpha = 0.08 - dist / 2200;
-            ctx.strokeStyle = `rgba(255, 255, 255, ${Math.max(alpha, 0.02)})`;
+            let alpha = 0.06 - dist / 2800;
+            ctx.strokeStyle = `rgba(15, 82, 186, ${Math.max(alpha, 0.015)})`;
 
             if (i % 8 === 0 && j % 8 === 0) {
               ctx.strokeStyle = `rgba(15, 82, 186, ${Math.max(alpha * 2, 0.03)})`;

@@ -7,17 +7,21 @@ html {
     scroll-behavior: smooth;
     overflow-x: hidden;
 }
-/* BLVCK SAPPHIRE Identity - Strict Mono */
+/* BLVCK SAPPHIRE Identity - Light mode */
 :root {
-    --bg-color: #000000;
-    --text-color: #ffffff;
-    --text-muted: #888888;
-    --border-color: #222222;
-    --border-hover: #ffffff;
-    --sapphire-hint: rgba(15, 82, 186, 0.4);
+    --bg-color: #ffffff;
+    --text-color: #0a0a0a;
+    --text-muted: #5c5c5c;
+    --border-color: #e5e5e5;
+    --border-hover: #0a0a0a;
+    --sapphire-hint: rgba(15, 82, 186, 0.14);
+    --surface-elevated: #f8f9fa;
+    --surface-muted: #f3f4f6;
+    --accent-light: rgba(15, 82, 186, 0.1);
     
     --transition-snappy: 0.3s cubic-bezier(0.25, 1, 0.5, 1);
     --transition-smooth: 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+    color-scheme: light;
 }
 
 /* Resets & Base */
@@ -92,7 +96,7 @@ a {
 }
 
 .alt-bg {
-    background: linear-gradient(180deg, #050505 0%, #000000 100%);
+    background: linear-gradient(180deg, var(--surface-muted) 0%, var(--bg-color) 100%);
 }
 
 .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 4rem; }
@@ -150,7 +154,7 @@ a {
     top: 0; left: 0; right: 0;
     z-index: 1000;
     padding: 25px 0;
-    background: rgba(0, 0, 0, 0.8);
+    background: rgba(255, 255, 255, 0.88);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
     border-bottom: 1px solid transparent;
@@ -221,7 +225,7 @@ a {
     height: 100%;
     z-index: 0;
     pointer-events: none;
-    opacity: 0.28;
+    opacity: 0.35;
 }
 
 .hero-content {
@@ -343,7 +347,7 @@ input, textarea {
 input:focus, textarea:focus {
     outline: none;
     border-bottom-color: var(--text-color);
-    background: rgba(255,255,255,0.02);
+    background: rgba(0, 0, 0, 0.02);
 }
 
 input:-webkit-autofill,
@@ -450,7 +454,7 @@ textarea:-webkit-autofill:focus {
         background-color: var(--bg-color);
         padding: 2rem;
         border-bottom: 1px solid var(--border-color);
-        box-shadow: 0 10px 30px rgba(0,0,0,0.8);
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
     }
     .nav.active {
         display: block;
@@ -460,7 +464,7 @@ textarea:-webkit-autofill:focus {
         gap: 1.5rem;
     }
     .header.scrolled .nav {
-        background-color: rgba(5, 5, 5, 0.98);
+        background-color: rgba(255, 255, 255, 0.98);
         backdrop-filter: blur(10px);
     }
     .header-actions .btn-outline { display: none; }
@@ -544,7 +548,7 @@ textarea:-webkit-autofill:focus {
     box-shadow: inset 0 0 20px var(--sapphire-hint);
 }
 .industry-overlay h3 {
-    color: var(--text-color);
+    color: #ffffff;
     font-size: 2rem;
     letter-spacing: 0.05em;
     text-transform: uppercase;
@@ -554,7 +558,7 @@ textarea:-webkit-autofill:focus {
     margin: 0;
 }
 .industry-card:hover .industry-overlay h3 {
-    border-bottom-color: var(--text-color);
+    border-bottom-color: #ffffff;
     transform: scale(1.05);
 }
 
@@ -601,14 +605,14 @@ textarea:-webkit-autofill:focus {
     position: relative;
     border: 1px solid var(--border-color);
     overflow: hidden;
-    background-color: #050505;
+    background-color: var(--surface-muted);
 }
 
 .expertise-visual::after {
     content: '';
     position: absolute;
     inset: 0;
-    box-shadow: inset 0 0 50px rgba(0,0,0,0.8);
+    box-shadow: inset 0 0 50px rgba(0, 0, 0, 0.12);
     pointer-events: none;
     z-index: 5;
 }
@@ -695,9 +699,9 @@ textarea:-webkit-autofill:focus {
 }
 
 @keyframes pulseGlow {
-    0% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0.4); }
-    70% { box-shadow: 0 0 0 15px rgba(255, 255, 255, 0); }
-    100% { box-shadow: 0 0 0 0 rgba(255, 255, 255, 0); }
+    0% { box-shadow: 0 0 0 0 rgba(15, 82, 186, 0.35); }
+    70% { box-shadow: 0 0 0 15px rgba(15, 82, 186, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(15, 82, 186, 0); }
 }
 
 /* Engage Section */
@@ -826,7 +830,7 @@ textarea:-webkit-autofill:focus {
 
 /* Demo Form Box */
 .demo-form-box {
-    background: #030303;
+    background: var(--surface-elevated);
     padding: 3rem;
     border: 1px solid var(--border-color);
     position: sticky;
@@ -904,15 +908,15 @@ select:focus {
     border: 1px solid var(--border-color);
     position: relative;
     background:
-      linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0) 100%),
-      #0a0a0a;
+      linear-gradient(180deg, rgba(255, 255, 255, 0.6) 0%, rgba(255, 255, 255, 0) 100%),
+      var(--surface-muted);
 }
 
 .hero-video-wrapper.is-loading {
     background:
-      linear-gradient(rgba(0, 0, 0, 0.35), rgba(0, 0, 0, 0.35)),
+      linear-gradient(rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0.5)),
       url('/request_demo_bg.png') center / cover no-repeat,
-      #0a0a0a;
+      var(--surface-muted);
 }
 
 .hero-video-wrapper.is-loading .hero-video {
@@ -1029,14 +1033,14 @@ select:focus {
     flex-wrap: wrap;
     gap: 1rem;
     margin-bottom: 3rem;
-    border-bottom: 1px solid #333;
+    border-bottom: 1px solid var(--border-color);
     padding-bottom: 1.5rem;
 }
 
 .filter-btn {
     background: transparent;
-    border: 1px solid #444;
-    color: #999;
+    border: 1px solid var(--border-color);
+    color: var(--text-muted);
     padding: 0.5rem 1.2rem;
     border-radius: 20px;
     font-size: 0.9rem;
@@ -1046,14 +1050,14 @@ select:focus {
 }
 
 .filter-btn:hover {
-    border-color: #777;
-    color: #ccc;
+    border-color: var(--text-muted);
+    color: var(--text-color);
 }
 
 .filter-btn.active {
-    background: #fff;
-    color: #000;
-    border-color: #fff;
+    background: var(--text-color);
+    color: var(--bg-color);
+    border-color: var(--text-color);
 }
 
 .job-list {
@@ -1066,22 +1070,22 @@ select:focus {
     justify-content: space-between;
     align-items: center;
     padding: 1.5rem 0;
-    border-bottom: 1px solid #222;
+    border-bottom: 1px solid var(--border-color);
     text-decoration: none;
     color: inherit;
     transition: all 0.3s ease;
 }
 
 .job-tray:hover {
-    background: rgba(255,255,255,0.03);
+    background: rgba(0, 0, 0, 0.03);
     padding-left: 1rem;
     padding-right: 1rem;
-    border-bottom-color: #555;
+    border-bottom-color: var(--text-muted);
 }
 
 .job-tray:hover .job-tray-arrow {
     transform: translateX(10px);
-    color: #fff;
+    color: var(--text-color);
 }
 
 .job-tray-info {
@@ -1094,24 +1098,24 @@ select:focus {
     font-size: 0.75rem;
     text-transform: uppercase;
     letter-spacing: 1px;
-    color: #888;
+    color: var(--text-muted);
 }
 
 .job-title-text {
     font-size: 1.5rem;
     font-weight: 500;
     margin: 0;
-    color: #fff;
+    color: var(--text-color);
 }
 
 .job-location {
     font-size: 0.9rem;
-    color: #aaa;
+    color: var(--text-muted);
 }
 
 .job-tray-arrow {
     font-size: 1.5rem;
-    color: #666;
+    color: var(--text-muted);
     transition: all 0.3s ease;
 }
 
@@ -1128,11 +1132,11 @@ select:focus {
     left: 20px;
     right: 20px;
     max-width: 600px;
-    background-color: #0d0d0d;
+    background-color: var(--bg-color);
     border: 1px solid var(--border-color);
     padding: 24px;
     z-index: 9999;
-    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8);
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.12);
     display: none;
     flex-direction: column;
     gap: 16px;
@@ -1146,7 +1150,7 @@ select:focus {
     opacity: 1;
 }
 .cookie-text p {
-    color: #ccc;
+    color: var(--text-muted);
     font-size: 0.95rem;
     line-height: 1.5;
     margin-bottom: 0;
@@ -1172,7 +1176,7 @@ select:focus {
 
 .expertise-content .card-icon {
     margin-bottom: -0.2rem;
-    color: #666666; /* Much darker background contrast for legibility */
+    color: var(--text-muted);
 }
 
 
@@ -1191,7 +1195,7 @@ select:focus {
     justify-content: center;
     font-size: 1.5rem;
     cursor: pointer;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.12);
     border: 1px solid var(--border-color);
     opacity: 0;
     pointer-events: none;
@@ -1206,7 +1210,7 @@ select:focus {
 }
 .scroll-top:hover {
     background: var(--accent-light);
-    color: #000;
+    color: var(--text-color);
 }
 
 
@@ -1261,7 +1265,7 @@ select:focus {
 
 .partner-img {
     max-height: 55px;
-    filter: brightness(0) invert(1);
+    filter: grayscale(1) opacity(0.75);
     opacity: 1;
 }
 
