@@ -1,24 +1,40 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
+import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
+
+function scrollToId(id) {
+  const el = document.getElementById(id);
+  if (el) {
+    el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    return true;
+  }
+  return false;
+}
 
 export default function Header() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const pathname = usePathname();
+  const router = useRouter();
 
   useEffect(() => {
     const handleScroll = () => {
-      if (window.scrollY > 80) {
-        setScrolled(true);
-      } else {
-        setScrolled(false);
-      }
+      setScrolled(window.scrollY > 80);
     };
     window.addEventListener('scroll', handleScroll);
     handleScroll();
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
+
+  useEffect(() => {
+    const hash = window.location.hash?.slice(1);
+    if (hash) {
+      const timer = setTimeout(() => scrollToId(hash), 120);
+      return () => clearTimeout(timer);
+    }
+  }, [pathname]);
 
   const toggleMobileMenu = () => {
     setMobileMenuOpen(!mobileMenuOpen);
@@ -27,6 +43,23 @@ export default function Header() {
   const closeMobileMenu = () => {
     setMobileMenuOpen(false);
   };
+
+  const handleNavClick = useCallback((e) => {
+    const href = e.currentTarget.getAttribute('href') || '';
+    const [path, hash] = href.split('#');
+    if (!hash) return;
+
+    closeMobileMenu();
+
+    const isHomePath = !path || path === '/';
+    const onHome = pathname === '/';
+
+    if (isHomePath && onHome) {
+      e.preventDefault();
+      window.history.pushState(null, '', `#${hash}`);
+      scrollToId(hash);
+    }
+  }, [pathname]);
 
   return (
     <header className={`header ${scrolled ? 'scrolled' : ''}`}>
@@ -41,20 +74,20 @@ export default function Header() {
         </Link>
         <nav className={`nav ${mobileMenuOpen ? 'active' : ''}`}>
           <ul className="nav-list">
-            <li><Link href="/#about" className="nav-link" onClick={closeMobileMenu}>About Us</Link></li>
-            <li><Link href="/#expertise" className="nav-link" onClick={closeMobileMenu}>Expertise</Link></li>
-            <li><Link href="/#solutions" className="nav-link" onClick={closeMobileMenu}>Solutions</Link></li>
+            <li><Link href="/#about" className="nav-link" onClick={handleNavClick}>About Us</Link></li>
+            <li><Link href="/#expertise" className="nav-link" onClick={handleNavClick}>Expertise</Link></li>
+            <li><Link href="/#solutions" className="nav-link" onClick={handleNavClick}>Solutions</Link></li>
             <li><Link href="/careers" className="nav-link" onClick={closeMobileMenu}>Careers</Link></li>
             <li className="mobile-only">
               <div className="mobile-nav-actions" style={{ display: 'flex', flexDirection: 'column', marginTop: '1rem' }}>
-                <Link href="/#contact" className="btn btn-outline" style={{ display: 'block', marginBottom: '0.5rem', width: '100%', borderRadius: 0, textAlign: 'center' }} onClick={closeMobileMenu}>Contact</Link>
+                <Link href="/#contact" className="btn btn-outline" style={{ display: 'block', marginBottom: '0.5rem', width: '100%', borderRadius: 0, textAlign: 'center' }} onClick={handleNavClick}>Contact</Link>
                 <Link href="/demo" className="btn btn-primary" style={{ width: '100%', borderRadius: 0, textAlign: 'center' }} onClick={closeMobileMenu}>Request a Demo</Link>
               </div>
             </li>
           </ul>
         </nav>
         <div className="header-actions">
-          <Link href="/#contact" className="btn btn-outline">Contact</Link>
+          <Link href="/#contact" className="btn btn-outline" onClick={handleNavClick}>Contact</Link>
           <Link href="/demo" className="btn btn-primary">Request a Demo</Link>
           <button className={`mobile-menu-btn ${mobileMenuOpen ? 'active' : ''}`} aria-label="Toggle Menu" onClick={toggleMobileMenu}>
             <span></span>

@@ -22,12 +22,14 @@ export default function BgCanvas() {
     let height;
     let particles = [];
     let animationFrameId;
+    let paused = false;
 
     function init() {
-      width = canvas.width = window.innerWidth;
-      height = canvas.height = window.innerHeight;
+      const parent = canvas.parentElement;
+      width = canvas.width = parent ? parent.clientWidth : window.innerWidth;
+      height = canvas.height = parent ? parent.clientHeight : window.innerHeight;
       particles = [];
-      const pCount = Math.floor((width * height) / 18000);
+      const pCount = Math.min(Math.floor((width * height) / 18000), 80);
 
       for (let i = 0; i < pCount; i++) {
         particles.push({
@@ -41,6 +43,7 @@ export default function BgCanvas() {
     }
 
     function animate() {
+      if (paused) return;
       ctx.clearRect(0, 0, width, height);
 
       for (let i = 0; i < particles.length; i++) {
@@ -83,11 +86,23 @@ export default function BgCanvas() {
       animationFrameId = window.requestAnimationFrame(animate);
     }
 
+    function onVisChange() {
+      if (document.hidden) {
+        paused = true;
+        window.cancelAnimationFrame(animationFrameId);
+      } else {
+        paused = false;
+        animationFrameId = window.requestAnimationFrame(animate);
+      }
+    }
+
+    document.addEventListener('visibilitychange', onVisChange);
     window.addEventListener('resize', init);
     init();
     animate();
 
     return () => {
+      document.removeEventListener('visibilitychange', onVisChange);
       window.removeEventListener('resize', init);
       window.cancelAnimationFrame(animationFrameId);
     };

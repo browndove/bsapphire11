@@ -36,8 +36,8 @@ export const metadata = {
 
 export default function RootLayout({ children }) {
   return (
-    <html lang="en">
-      <body className={`${inter.variable} ${spaceGrotesk.variable}`}>
+    <html lang="en" style={{ backgroundColor: '#ffffff' }}>
+      <body className={`${inter.variable} ${spaceGrotesk.variable}`} style={{ backgroundColor: '#ffffff' }}>
         <div className="site-content">
           <Header />
           {children}

@@ -61,16 +61,6 @@ export default function CandidateTable({ applications, jobs, screeningQuestions,
                       <Avatar name={displayName} size="sm" />
                       <div>
                         <strong>{displayName}</strong>
-                        {app.email ? (
-                          <div className="ats-table-sub">
-                            <a
-                              href={`mailto:${app.email}`}
-                              onClick={(e) => e.stopPropagation()}
-                            >
-                              {app.email}
-                            </a>
-                          </div>
-                        ) : null}
                       </div>
                     </div>
                   </td>

@@ -1,15 +1,11 @@
 import Link from 'next/link';
 import Image from 'next/image';
-import BgCanvas from '@/components/BgCanvas';
 import HeroVideo from '@/components/HeroVideo';
 import TypewriterCode from '@/components/TypewriterCode';
 
 export default function Home() {
   return (
     <>
-      {/* Background Canvas for Hero Particle/Grid effect */}
-      <BgCanvas />
-
       <main>
         {/* Hero Section */}
         <section className="hero" id="home">
