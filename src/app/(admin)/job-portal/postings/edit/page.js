@@ -86,22 +86,48 @@ function PostingEditForm() {
     setJob((prev) => ({ ...prev, [field]: value }));
   };
 
-  const handleSave = async () => {
+  const sectionIndex = SECTIONS.findIndex((s) => s.id === section);
+  const isLastSection = sectionIndex >= SECTIONS.length - 1;
+
+  const goToNextSection = () => {
+    if (sectionIndex < SECTIONS.length - 1) {
+      setSection(SECTIONS[sectionIndex + 1].id);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+  };
+
+  const validateCurrentSection = () => {
+    if (section === 'details' && !job.title?.trim()) {
+      setError('Job title is required.');
+      return false;
+    }
+    if (section === 'description' && !job.description?.trim()) {
+      setError('Description is required before you can continue.');
+      return false;
+    }
+    if (section === 'publish' && !id && job.status === 'closed') {
+      setError('Save the job as draft or published first. You can close it after it exists.');
+      return false;
+    }
+    return true;
+  };
+
+  const handleSave = async ({ advance = false } = {}) => {
     setError('');
     if (!job.title?.trim()) {
       setError('Job title is required.');
       setSection('details');
-      return;
+      return false;
     }
     if (!job.description?.trim()) {
       setError('Description is required before you can save or publish.');
       setSection('description');
-      return;
+      return false;
     }
     if (!id && job.status === 'closed') {
       setError('Save the job as draft or published first. You can close it after it exists.');
       setSection('publish');
-      return;
+      return false;
     }
 
     setSaving(true);
@@ -113,16 +139,32 @@ function PostingEditForm() {
         screeningQuestions: saved.screeningQuestions || [],
         applicationFields: saved.applicationFields || { ...DEFAULT_APPLICATION_FIELDS },
       });
-      setToast('Saved successfully!');
+      setToast(advance ? 'Saved — continuing…' : 'Saved successfully!');
       setTimeout(() => setToast(''), 3000);
       if (!id) {
         router.replace(`/job-portal/postings/edit?id=${encodeURIComponent(saved.id)}`);
       }
+      if (advance) goToNextSection();
+      return true;
     } catch (err) {
       setError(toUserMessage(err));
+      return false;
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleContinue = async () => {
+    setError('');
+    if (!validateCurrentSection()) return;
+
+    // Persist when we already have enough for the API; otherwise just move forward.
+    const canPersist = Boolean(job.title?.trim() && job.description?.trim());
+    if (canPersist) {
+      await handleSave({ advance: true });
+      return;
+    }
+    goToNextSection();
   };
 
   const handleDelete = async () => {
@@ -354,7 +396,9 @@ function PostingEditForm() {
         status={job.status}
         saving={saving}
         deleting={deleting}
-        onSave={handleSave}
+        onSave={() => handleSave()}
+        onContinue={handleContinue}
+        isLastStep={isLastSection}
         onDelete={id ? handleDelete : undefined}
         cancelHref="/job-portal/postings"
         toast={toast}

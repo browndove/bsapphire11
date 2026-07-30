@@ -86,6 +86,25 @@ export function applyEmailPlaceholders(text, context) {
   });
 }
 
+/** Bracket/mustache fill-ins that still need editing before send. */
+export function findUnresolvedEmailPlaceholders(...texts) {
+  const found = new Set();
+  for (const text of texts) {
+    const value = String(text || '');
+    for (const match of value.match(/\{\{\w+\}\}/g) || []) {
+      found.add(match);
+    }
+    for (const match of value.match(/\[[^\[\]]+\]/g) || []) {
+      const inner = match.slice(1, -1).trim();
+      // Ignore empty / numeric markers; keep instructional fill-ins like [Add details].
+      if (inner && /[a-zA-Z]/.test(inner)) {
+        found.add(match);
+      }
+    }
+  }
+  return [...found];
+}
+
 export function buildEmailContext(application, job, companyName, interviewAt) {
   const firstName =
     application.firstName ||
@@ -177,6 +196,13 @@ export function buildStatusEmailPatch({
     throw new Error('Email subject and body are required before updating status.');
   }
 
+  const unresolvedMain = findUnresolvedEmailPlaceholders(bodyText);
+  if (unresolvedMain.length) {
+    throw new Error(
+      `Replace placeholder text before sending: ${unresolvedMain.join(', ')}`
+    );
+  }
+
   const body = {
     status,
     email_subject: subject,
@@ -195,6 +221,12 @@ export function buildStatusEmailPatch({
     }
     if (!reminderSubject || !reminderBody) {
       throw new Error('Reminder email subject and body are required for interviews.');
+    }
+    const unresolvedReminder = findUnresolvedEmailPlaceholders(reminderBody);
+    if (unresolvedReminder.length) {
+      throw new Error(
+        `Replace placeholder text in the reminder before sending: ${unresolvedReminder.join(', ')}`
+      );
     }
     body.interview_at = interviewAt;
     body.reminder_email_subject = reminderSubject;

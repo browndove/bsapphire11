@@ -6,6 +6,7 @@ import { formatDateTime } from '@/lib/job-api/format';
 import {
   buildStatusEmailPatch,
   datetimeLocalToIso,
+  findUnresolvedEmailPlaceholders,
   toDatetimeLocalValue,
 } from '@/lib/job-api/email-templates';
 
@@ -35,7 +36,19 @@ export default function StatusEmailModal({
 
   const isInterview = targetStatus === 'interview';
   const statusLabel = PortalStages.labels[targetStatus] || targetStatus;
-  const canSubmit = Boolean(emailSubject.trim() && emailBody.trim());
+  const unresolvedPlaceholders = findUnresolvedEmailPlaceholders(
+    emailBody,
+    isInterview ? reminderBody : ''
+  );
+  const canSubmit = Boolean(
+    emailSubject.trim() &&
+      emailBody.trim() &&
+      unresolvedPlaceholders.length === 0 &&
+      (!isInterview ||
+        (interviewAtLocal &&
+          reminderSubject.trim() &&
+          reminderBody.trim()))
+  );
   const interviewMinLocal = toDatetimeLocalValue(new Date().toISOString());
 
   useEffect(() => {
@@ -71,6 +84,17 @@ export default function StatusEmailModal({
 
     if (!emailSubject.trim() || !emailBody.trim()) {
       setLocalError('Email subject and body are required.');
+      return;
+    }
+
+    const unresolved = findUnresolvedEmailPlaceholders(
+      emailBody,
+      isInterview ? reminderBody : ''
+    );
+    if (unresolved.length) {
+      setLocalError(
+        `Replace placeholder text before sending: ${unresolved.join(', ')}`
+      );
       return;
     }
 
@@ -161,7 +185,15 @@ export default function StatusEmailModal({
               onChange={(e) => setEmailBody(e.target.value)}
               disabled={submitting}
             />
-            <p className="ats-field-hint">Plain text. Edit before sending.</p>
+            <p className="ats-field-hint">
+              Plain text. Replace any bracketed placeholders (for example{' '}
+              <code>[Add details]</code>) before sending.
+            </p>
+            {unresolvedPlaceholders.length ? (
+              <p className="ats-field-hint" style={{ color: 'var(--danger, #b42318)' }}>
+                Still needs editing: {unresolvedPlaceholders.join(', ')}
+              </p>
+            ) : null}
           </div>
 
           {isInterview ? (

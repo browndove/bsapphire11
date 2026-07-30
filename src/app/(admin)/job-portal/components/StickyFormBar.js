@@ -7,11 +7,21 @@ export default function StickyFormBar({
   saving,
   deleting = false,
   onSave,
+  onContinue,
+  continueLabel = 'Save & continue',
+  isLastStep = true,
   onDelete,
   cancelHref,
   toast,
   error,
 }) {
+  const primaryLabel = saving
+    ? 'Saving…'
+    : isLastStep
+      ? 'Save job'
+      : continueLabel;
+  const primaryAction = isLastStep ? onSave : onContinue;
+
   return (
     <div className="ats-sticky-bar">
       <div>
@@ -31,8 +41,23 @@ export default function StickyFormBar({
           </button>
         ) : null}
         <Link href={cancelHref} className="btn btn-outline">Cancel</Link>
-        <button type="button" className="btn btn-primary" onClick={onSave} disabled={saving || deleting}>
-          {saving ? 'Saving…' : 'Save job'}
+        {!isLastStep ? (
+          <button
+            type="button"
+            className="btn btn-outline"
+            onClick={onSave}
+            disabled={saving || deleting}
+          >
+            {saving ? 'Saving…' : 'Save job'}
+          </button>
+        ) : null}
+        <button
+          type="button"
+          className="btn btn-primary"
+          onClick={primaryAction}
+          disabled={saving || deleting}
+        >
+          {primaryLabel}
         </button>
       </div>
     </div>
