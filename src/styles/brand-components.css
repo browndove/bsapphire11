@@ -228,6 +228,41 @@ select:focus {
   background: rgba(255, 255, 255, 0.02);
 }
 
+.password-input {
+  position: relative;
+  display: block;
+  width: 100%;
+}
+
+.password-input input {
+  width: 100%;
+  padding-right: 4.25rem;
+}
+
+.password-input-toggle {
+  position: absolute;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-family: var(--font-body);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  padding: 0.35rem 0.15rem;
+  line-height: 1;
+}
+
+.password-input-toggle:hover,
+.password-input-toggle:focus-visible {
+  color: var(--text-color);
+  outline: none;
+}
+
 input:-webkit-autofill,
 input:-webkit-autofill:hover,
 input:-webkit-autofill:focus,

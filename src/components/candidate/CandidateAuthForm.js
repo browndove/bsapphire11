@@ -8,6 +8,7 @@ import {
 } from '@/lib/job-api/client';
 import { toUserMessage } from '@/lib/job-api/errors';
 import CandidateFlowSteps from './CandidateFlowSteps';
+import PasswordInput from '@/components/PasswordInput';
 
 function QrCode({ value }) {
   if (!value) return null;
@@ -167,9 +168,8 @@ export default function CandidateAuthForm({
             </div>
             <div className="ats-field">
               <label className="ats-field-label" htmlFor="auth-pw">Password</label>
-              <input
+              <PasswordInput
                 id="auth-pw"
-                type="password"
                 required
                 autoComplete={authMode === 'register' ? 'new-password' : 'current-password'}
                 value={password}

@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation';
 import { usePortal } from '../PortalContext';
 import { toUserMessage } from '@/lib/job-api/errors';
 import BrandMark from '@/components/BrandMark';
+import PasswordInput from '@/components/PasswordInput';
 
 function QrCode({ value }) {
   if (!value) return null;
@@ -108,8 +109,7 @@ export default function Login() {
                 onChange={(e) => setEmail(e.target.value)}
               />
               <label className="field" htmlFor="pw">Password</label>
-              <input
-                type="password"
+              <PasswordInput
                 id="pw"
                 name="password"
                 autoComplete="current-password"
