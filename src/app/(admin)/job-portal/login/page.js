@@ -95,7 +95,7 @@ export default function Login() {
         {step === 'credentials' ? (
           <>
             <p className="hint">
-              Sign in with your employer account. Two-factor authentication is required for every login.
+              Sign in with your employer account. We&apos;ll email you a one-time code to verify each login.
             </p>
             <form id="portal-login-form" onSubmit={handleCredentials}>
               <label className="field" htmlFor="email">Email</label>
@@ -125,14 +125,14 @@ export default function Login() {
         ) : (
           <>
             <p className="hint">
-              {setupRequired
+              {setupRequired && (otpauthUrl || otpSecret)
                 ? 'Scan the QR code in your authenticator app, then enter the 6-digit code to finish setup.'
-                : 'Enter the 6-digit code from your authenticator app.'}
+                : 'Enter the 6-digit code we sent to your email.'}
             </p>
             {pendingExpiresAt ? (
               <p className="field-hint">Challenge expires at {new Date(pendingExpiresAt).toLocaleString()}</p>
             ) : null}
-            {setupRequired ? (
+            {setupRequired && (otpauthUrl || otpSecret) ? (
               <div>
                 <QrCode value={otpauthUrl} />
                 {otpSecret ? (
@@ -143,7 +143,11 @@ export default function Login() {
               </div>
             ) : null}
             <form onSubmit={handleVerify}>
-              <label className="field" htmlFor="code">Authentication code</label>
+              <label className="field" htmlFor="code">
+                {setupRequired && (otpauthUrl || otpSecret)
+                  ? 'Authenticator code'
+                  : 'Email verification code'}
+              </label>
               <input
                 type="text"
                 id="code"

@@ -2,7 +2,7 @@
 
 const STEPS = [
   { id: 1, label: 'Create account' },
-  { id: 2, label: 'Set up 2FA' },
+  { id: 2, label: 'Verify email' },
   { id: 3, label: 'Apply & track' },
 ];
 

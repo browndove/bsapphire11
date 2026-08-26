@@ -187,11 +187,11 @@ export default function CandidateAuthForm({
       ) : (
         <>
           <p className="hint" style={{ marginBottom: 0 }}>
-            {setupRequired
+            {setupRequired && (otpauthUrl || otpSecret)
               ? 'Scan the QR code in your authenticator app, then enter the 6-digit code to finish setup.'
-              : 'Enter the 6-digit code from your authenticator app.'}
+              : 'Enter the 6-digit code we sent to your email.'}
           </p>
-          {setupRequired ? (
+          {setupRequired && (otpauthUrl || otpSecret) ? (
             <div>
               <QrCode value={otpauthUrl} />
               {otpSecret ? <p className="ats-field-hint">Manual entry secret: <code>{otpSecret}</code></p> : null}
@@ -199,7 +199,11 @@ export default function CandidateAuthForm({
           ) : null}
           <form onSubmit={handleVerify}>
             <div className="ats-field">
-              <label className="ats-field-label" htmlFor="auth-code">Authentication code</label>
+              <label className="ats-field-label" htmlFor="auth-code">
+                {setupRequired && (otpauthUrl || otpSecret)
+                  ? 'Authenticator code'
+                  : 'Email verification code'}
+              </label>
               <input
                 id="auth-code"
                 type="text"
