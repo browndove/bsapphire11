@@ -1143,6 +1143,18 @@ button.ats-menu-item {
   margin-bottom: 0.75rem;
 }
 
+.ats-dashboard-filters {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  max-width: 22rem;
+  margin: 0 0 1.25rem;
+}
+
+.ats-dashboard-filters .custom-select {
+  width: 100%;
+}
+
 .ats-panel-title {
   font-size: 0.95rem;
   font-weight: 500;
