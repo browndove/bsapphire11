@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import {
   clearAuthSession,
   getAccessToken,
@@ -63,6 +63,9 @@ export function PortalProvider({ children }) {
   const [dashboardStats, setDashboardStats] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const categoriesRef = useRef([]);
+  const lastCountsRefreshAt = useRef(0);
+  categoriesRef.current = categories;
   const previewMode = isPortalPreview();
 
   const applyPreviewData = useCallback(() => {
@@ -141,6 +144,7 @@ export function PortalProvider({ children }) {
       setJobs(jobRows.map((job) => mapJobFromApi(job, byId)));
       setApplications(mappedApps);
       setApplicationsTotal(getPaginatedTotal(appsRes, appRows));
+      lastCountsRefreshAt.current = Date.now();
     } catch (err) {
       setError(toUserMessage(err));
       throw err;
@@ -150,15 +154,21 @@ export function PortalProvider({ children }) {
   }, [previewMode, applyPreviewData]);
 
   /** Quiet refresh so applicant counts update after people apply (no full-page skeleton). */
-  const refreshCounts = useCallback(async () => {
+  const refreshCounts = useCallback(async ({ force = false } = {}) => {
     if (previewMode || !getAccessToken()) return;
+
+    const now = Date.now();
+    // Avoid rapid re-fetches (focus churn / remounts) that rewrite state and flicker the UI.
+    if (!force && now - lastCountsRefreshAt.current < 15000) return;
+    lastCountsRefreshAt.current = now;
+
     try {
       const [dashRes, jobsRes, appsRes] = await Promise.all([
         fetchDashboard().catch(() => null),
         fetchEmployerJobs({ limit: 200, offset: 0 }),
         fetchEmployerApplications({ limit: 500, offset: 0 }),
       ]);
-      const catById = Object.fromEntries(categories.map((c) => [c.id, c]));
+      const catById = Object.fromEntries(categoriesRef.current.map((c) => [c.id, c]));
       const jobRows = getPaginatedItems(jobsRes);
       const appRows = getPaginatedItems(appsRes);
       const mappedApps = (appRows || []).map(mapApplicationFromApi).filter(Boolean);
@@ -170,7 +180,7 @@ export function PortalProvider({ children }) {
     } catch {
       // Keep existing counts if a background refresh fails.
     }
-  }, [previewMode, categories]);
+  }, [previewMode]);
 
   const loadApplications = useCallback(async (params = {}) => {
     if (previewMode) {
@@ -300,7 +310,7 @@ export function PortalProvider({ children }) {
       window.clearTimeout(timer);
       timer = window.setTimeout(() => {
         refreshCounts();
-      }, 400);
+      }, 800);
     };
 
     const onFocus = () => schedule();

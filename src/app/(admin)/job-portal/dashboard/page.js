@@ -32,7 +32,6 @@ export default function Dashboard() {
     error,
     dashboardStats,
     getApplicantCount,
-    refreshCounts,
   } = usePortal();
 
   const [selectedJob, setSelectedJob] = useState('__all');
@@ -42,12 +41,6 @@ export default function Dashboard() {
       router.replace('/job-portal/login');
     }
   }, [isReady, isAuthed, router]);
-
-  useEffect(() => {
-    if (isReady && isAuthed) {
-      refreshCounts?.();
-    }
-  }, [isReady, isAuthed, refreshCounts]);
 
   const pubJobs = useMemo(
     () => jobs.filter((j) => j.status === 'published'),
@@ -127,22 +120,25 @@ export default function Dashboard() {
 
   return (
     <>
-      <PortalHeader title="Dashboard" />
+      <PortalHeader
+        title="Dashboard"
+        action={
+          <div className="ats-dashboard-filters ats-form">
+            <label className="ats-field-label" htmlFor="dashboard-job-filter">
+              Filter by job
+            </label>
+            <CustomSelect
+              id="dashboard-job-filter"
+              value={selectedJob}
+              onChange={setSelectedJob}
+              options={jobOptions}
+              placeholder="All jobs"
+            />
+          </div>
+        }
+      />
 
       {error ? <div className="ats-toast is-error">{error}</div> : null}
-
-      <div className="ats-dashboard-filters ats-form">
-        <label className="ats-field-label" htmlFor="dashboard-job-filter">
-          Job
-        </label>
-        <CustomSelect
-          id="dashboard-job-filter"
-          value={selectedJob}
-          onChange={setSelectedJob}
-          options={jobOptions}
-          placeholder="All jobs"
-        />
-      </div>
 
       {loading ? (
         <div className="ats-stat-grid is-loading">
