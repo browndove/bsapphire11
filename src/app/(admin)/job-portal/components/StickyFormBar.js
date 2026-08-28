@@ -8,6 +8,7 @@ export default function StickyFormBar({
   deleting = false,
   onSave,
   onContinue,
+  onPreview,
   continueLabel = 'Save & continue',
   isLastStep = true,
   onDelete,
@@ -30,6 +31,16 @@ export default function StickyFormBar({
         {error ? <span className="login-error is-visible" style={{ marginLeft: '1rem', display: 'inline' }}>{error}</span> : null}
       </div>
       <div className="ats-sticky-bar-actions">
+        {onPreview ? (
+          <button
+            type="button"
+            className="btn btn-outline"
+            onClick={onPreview}
+            disabled={saving || deleting}
+          >
+            Preview
+          </button>
+        ) : null}
         {onDelete ? (
           <button
             type="button"

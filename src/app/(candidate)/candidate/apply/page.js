@@ -104,6 +104,8 @@ function CandidateApplyInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const jobId = searchParams.get('jobId');
+  const previewKey = searchParams.get('preview');
+  const previewMode = Boolean(previewKey);
   const { isReady, isAuthed, applications, refreshApplications } = useCandidate();
 
   const [job, setJob] = useState(null);
@@ -127,7 +129,7 @@ function CandidateApplyInner() {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    if (!jobId) {
+    if (!jobId && !previewKey) {
       setLoading(false);
       setError('No role selected.');
       return;
@@ -138,6 +140,12 @@ function CandidateApplyInner() {
       setLoading(true);
       setError('');
       try {
+        if (previewKey) {
+          const previewJob = JSON.parse(localStorage.getItem(previewKey) || 'null');
+          if (!previewJob) throw new Error('Preview data is no longer available.');
+          if (!cancelled) setJob(previewJob);
+          return;
+        }
         const data = await fetchPublicJob(jobId);
         if (!cancelled) setJob(mapPublicJobFromApi(data));
       } catch (err) {
@@ -150,7 +158,7 @@ function CandidateApplyInner() {
     return () => {
       cancelled = true;
     };
-  }, [jobId]);
+  }, [jobId, previewKey]);
 
   const activeApplication =
     isReady && isAuthed ? getActiveApplicationForJob(applications, jobId) : null;
@@ -207,6 +215,7 @@ function CandidateApplyInner() {
 
   const handleApply = async (e) => {
     e.preventDefault();
+    if (previewMode) return;
     if (!job) return;
 
     if (!isAuthed && (!firstName.trim() || !lastName.trim() || !email.trim())) {
@@ -341,90 +350,110 @@ function CandidateApplyInner() {
     : null;
 
   const compensation = job ? formatSalaryRange(job) : '';
+  const previewEditorHref = job?.id
+    ? `/job-portal/postings/edit?id=${encodeURIComponent(job.id)}`
+    : '/job-portal/postings/edit';
 
   return (
-    <>
-      <PortalHeader
-        breadcrumb={
-          <>
-            <BreadcrumbLink href="/careers">Careers</BreadcrumbLink>
-            <span aria-hidden="true"> / </span>
-            <span>Apply</span>
-          </>
-        }
-        title={job?.title || 'Apply for role'}
-        action={
-          <Link href="/careers" className="btn btn-outline btn-sm">
-            Back to roles
+    <div className={`candidate-apply-page${previewMode ? ' candidate-apply-page--preview' : ''}`}>
+      {previewMode ? (
+        <div className="ats-preview-toolbar" role="status">
+          <span className="ats-preview-toolbar-label">Job posting preview</span>
+          <Link href={previewEditorHref} className="btn btn-outline btn-sm">
+            Back to editor
           </Link>
-        }
-      />
-
-      {loading ? (
-        <div className="ats-skeleton" />
-      ) : error || !job ? (
-        <div className="ats-panel">
-          <p className="hint">{error || 'Role not found.'}</p>
-          <Link href="/careers" className="btn btn-outline btn-sm">Browse open roles</Link>
         </div>
-      ) : (
-        <div className="ats-detail-grid ats-detail-grid--role-wide">
-          <section className="ats-panel">
-            <div className="ats-panel-head">
-              <h2 className="ats-panel-title">Role details</h2>
-            </div>
-            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1rem' }}>
-              {job.department ? <span className="tag">{job.department}</span> : null}
-              <span className="tag">{formatEmploymentType(job.employmentType)}</span>
-              <span className="tag">{formatRemoteType(job.remoteType)}</span>
-              <span className="tag">{job.location || 'Location flexible'}</span>
-            </div>
-            {job.description ? (
-              <JobBody text={job.description} format={job.descriptionFormat || 'markdown'} />
-            ) : null}
-            {job.requirements ? (
-              <>
-                <h3 className="ats-panel-title" style={{ marginTop: '1.5rem' }}>Requirements</h3>
-                <JobBody text={job.requirements} format={job.requirementsFormat || 'markdown'} />
-              </>
-            ) : null}
-            {compensation ? (
-              <div className="ats-material-block" style={{ marginTop: '1.5rem' }}>
-                <p className="ats-material-label">Compensation</p>
-                <p style={{ margin: 0, fontSize: '1.05rem', color: 'var(--text-color)' }}>
-                  {compensation}
-                  <span className="ats-table-sub" style={{ marginLeft: '0.5rem' }}>
-                    Ghana Cedis (GHS)
-                  </span>
-                </p>
-              </div>
-            ) : null}
-          </section>
+      ) : null}
 
-          <section className="ats-panel">
-            <div className="ats-panel-head">
-              <h2 className="ats-panel-title">Your application</h2>
-            </div>
+      <PortalHeader
+          breadcrumb={
+            <>
+              <BreadcrumbLink href="/careers">Careers</BreadcrumbLink>
+              <span aria-hidden="true"> / </span>
+              <span>Apply</span>
+            </>
+          }
+          title={job?.title || 'Apply for role'}
+          action={
+            previewMode ? null : (
+              <Link href="/careers" className="btn btn-outline btn-sm">
+                Back to roles
+              </Link>
+            )
+          }
+        />
 
-            {emailApplication ? (
-              <div className="ats-email-application">
-                <p className="hint">
-                  To apply for this role, email your cover letter and CV directly to{' '}
-                  <strong>{EMAIL_APPLICATION_ADDRESS}</strong>.
-                </p>
-                <a
-                  className="btn btn-primary"
-                  href={emailApplicationHref(job)}
-                >
-                  Apply by email
-                </a>
-                <p className="ats-field-hint" style={{ marginTop: '0.75rem' }}>
-                  Your email app will open with the subject and message prepared. Please attach
-                  your cover letter and CV before sending.
-                </p>
+        {loading ? (
+          <div className="ats-skeleton" />
+        ) : error || !job ? (
+          <div className="ats-panel">
+            <p className="hint">{error || 'Role not found.'}</p>
+            <Link href={previewMode ? previewEditorHref : '/careers'} className="btn btn-outline btn-sm">
+              {previewMode ? 'Back to editor' : 'Browse open roles'}
+            </Link>
+          </div>
+        ) : (
+          <div className="ats-detail-grid ats-detail-grid--role-wide">
+            <section className="ats-panel">
+              <div className="ats-panel-head">
+                <h2 className="ats-panel-title">Role details</h2>
               </div>
-            ) : activeApplication ? (
-              <div>
+              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', marginBottom: '1rem' }}>
+                {job.department ? <span className="tag">{job.department}</span> : null}
+                <span className="tag">{formatEmploymentType(job.employmentType)}</span>
+                <span className="tag">{formatRemoteType(job.remoteType)}</span>
+                <span className="tag">{job.location || 'Location flexible'}</span>
+              </div>
+              {job.description ? (
+                <JobBody text={job.description} format={job.descriptionFormat || 'markdown'} />
+              ) : null}
+              {job.requirements ? (
+                <>
+                  <h3 className="ats-panel-title" style={{ marginTop: '1.5rem' }}>Requirements</h3>
+                  <JobBody text={job.requirements} format={job.requirementsFormat || 'markdown'} />
+                </>
+              ) : null}
+              {compensation ? (
+                <div className="ats-material-block" style={{ marginTop: '1.5rem' }}>
+                  <p className="ats-material-label">Compensation</p>
+                  <p style={{ margin: 0, fontSize: '1.05rem', color: 'var(--text-color)' }}>
+                    {compensation}
+                    <span className="ats-table-sub" style={{ marginLeft: '0.5rem' }}>
+                      Ghana Cedis (GHS)
+                    </span>
+                  </p>
+                </div>
+              ) : null}
+            </section>
+
+            <section className="ats-panel">
+              <div className="ats-panel-head">
+                <h2 className="ats-panel-title">Your application</h2>
+              </div>
+
+              {emailApplication ? (
+                <div className="ats-email-application">
+                  <p className="hint">
+                    To apply for this role, email your cover letter and CV directly to{' '}
+                    <strong>{EMAIL_APPLICATION_ADDRESS}</strong>.
+                  </p>
+                  <a
+                    className="btn btn-primary"
+                    href={previewMode ? undefined : emailApplicationHref(job)}
+                    aria-disabled={previewMode}
+                    onClick={(event) => {
+                      if (previewMode) event.preventDefault();
+                    }}
+                  >
+                    {previewMode ? 'Preview only' : 'Apply by email'}
+                  </a>
+                  <p className="ats-field-hint" style={{ marginTop: '0.75rem' }}>
+                    Your email app will open with the subject and message prepared. Please attach
+                    your cover letter and CV before sending.
+                  </p>
+                </div>
+              ) : activeApplication ? (
+                <div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
                   <span className={`tag ${activeStatusClass}`}>{activeStatusLabel}</span>
                   {activeApplication.submittedAt ? (
@@ -498,9 +527,9 @@ function CandidateApplyInner() {
                 <Link href="/candidate/applications" className="btn btn-outline btn-sm" style={{ marginTop: '1rem' }}>
                   All my applications
                 </Link>
-              </div>
-            ) : (
-              <form className="ats-form ats-form--compact" onSubmit={handleApply}>
+                </div>
+              ) : (
+                <form className="ats-form ats-form--compact" onSubmit={handleApply}>
                 {!isAuthed ? (
                   <ApplyContactFields
                     firstName={firstName}
@@ -511,7 +540,7 @@ function CandidateApplyInner() {
                     onLastNameChange={setLastName}
                     onEmailChange={setEmail}
                     onPhoneChange={setPhone}
-                    disabled={submitting}
+                    disabled={submitting || previewMode}
                     errors={fieldErrors}
                   />
                 ) : null}
@@ -533,7 +562,7 @@ function CandidateApplyInner() {
                       value={coverLetterFile}
                       onChange={handleCoverLetterFileChange}
                       error={coverLetterError}
-                      disabled={submitting}
+                      disabled={submitting || previewMode}
                     />
                   </div>
                 ) : null}
@@ -547,7 +576,7 @@ function CandidateApplyInner() {
                       value={resumeFile}
                       onChange={handleResumeChange}
                       error={resumeError}
-                      disabled={submitting}
+                      disabled={submitting || previewMode}
                     />
                   </div>
                 ) : null}
@@ -562,7 +591,7 @@ function CandidateApplyInner() {
                       value={additionalDocumentFile}
                       onChange={handleAdditionalDocumentChange}
                       error={additionalDocumentError || fieldErrors.additional_document_url}
-                      disabled={submitting}
+                      disabled={submitting || previewMode}
                     />
                   </div>
                 ) : null}
@@ -581,7 +610,7 @@ function CandidateApplyInner() {
                         placeholder="github.com/username"
                         value={stripUrlProtocol(githubUrl)}
                         onChange={(e) => setGithubUrl(stripUrlProtocol(e.target.value))}
-                        disabled={submitting}
+                        disabled={submitting || previewMode}
                         required={requireGithub}
                       />
                     </div>
@@ -605,7 +634,7 @@ function CandidateApplyInner() {
                         placeholder="portfolio.site"
                         value={stripUrlProtocol(additionalLink)}
                         onChange={(e) => setAdditionalLink(stripUrlProtocol(e.target.value))}
-                        disabled={submitting}
+                        disabled={submitting || previewMode}
                         required={requireAdditionalLink}
                       />
                     </div>
@@ -619,18 +648,18 @@ function CandidateApplyInner() {
                   values={screeningAnswers}
                   onChange={setScreeningAnswers}
                   errors={fieldErrors}
-                  disabled={submitting}
+                  disabled={submitting || previewMode}
                 />
                 {applyError ? <div className="ats-toast is-error">{applyError}</div> : null}
-                <button type="submit" className="btn btn-primary" disabled={submitting}>
-                  {submitting ? 'Submitting…' : 'Submit application'}
+                <button type="submit" className="btn btn-primary" disabled={submitting || previewMode}>
+                  {previewMode ? 'Preview only' : submitting ? 'Submitting…' : 'Submit application'}
                 </button>
-              </form>
-            )}
-          </section>
-        </div>
-      )}
-    </>
+                </form>
+              )}
+            </section>
+          </div>
+        )}
+    </div>
   );
 }
 

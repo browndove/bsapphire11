@@ -1127,12 +1127,44 @@ button.ats-menu-item {
 /* Apply page: give role description more horizontal room */
 .ats-detail-grid--role-wide {
   grid-template-columns: minmax(0, 1.9fr) minmax(340px, 1fr);
+  align-items: start;
+}
+
+.candidate-apply-page--preview {
+  min-height: calc(100vh - 5.5rem);
+}
+
+.ats-preview-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--accent-sky-border);
+  border-radius: var(--ats-radius-sm);
+  background: var(--accent-sky-soft);
+}
+
+.ats-preview-toolbar-label {
+  color: var(--accent-sky-text);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
 }
 
 @media (max-width: 900px) {
   .ats-detail-grid,
   .ats-detail-grid--role-wide {
     grid-template-columns: 1fr;
+  }
+}
+
+@media (min-width: 901px) {
+  .ats-detail-grid--role-wide > .ats-panel:last-child {
+    position: sticky;
+    top: 1.5rem;
   }
 }
 
@@ -1473,12 +1505,54 @@ button.ats-menu-item {
 
 .ats-rte-toolbar {
   display: flex;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;
   align-items: center;
-  gap: 0.25rem;
-  padding: 0.45rem 0.55rem;
+  gap: 0;
+  min-height: 4.35rem;
+  padding: 0.35rem 0.45rem;
   border-bottom: 1px solid var(--border-color);
-  background: var(--portal-inset-bg-strong, rgba(0, 0, 0, 0.03));
+  background: var(--portal-inset-bg-strong, #f3f4f6);
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.ats-rte-group {
+  position: relative;
+  display: flex;
+  align-items: stretch;
+  justify-content: center;
+  gap: 0.1rem;
+  flex: 0 0 auto;
+  min-height: 3.65rem;
+  padding: 0 0.45rem 0.85rem;
+  border-right: 1px solid var(--border-color);
+}
+
+.ats-rte-group-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.1rem;
+}
+
+.ats-rte-group-label {
+  position: absolute;
+  right: 0.45rem;
+  bottom: 0.25rem;
+  left: 0.45rem;
+  color: var(--portal-text-secondary, var(--text-muted));
+  font-size: 0.6rem;
+  line-height: 1;
+  text-align: center;
+  user-select: none;
+}
+
+.ats-rte-group:first-child {
+  padding-left: 0.1rem;
+}
+
+.ats-rte-group:last-child {
+  border-right: none;
+  padding-right: 0.1rem;
 }
 
 .ats-rte-btn {
@@ -1487,12 +1561,18 @@ button.ats-menu-item {
   background: transparent;
   color: var(--text-color);
   border-radius: 6px;
-  min-height: 1.9rem;
-  padding: 0.2rem 0.55rem;
+  width: 2.05rem;
+  height: 2.05rem;
+  min-height: 2.05rem;
+  padding: 0.2rem;
   font: inherit;
-  font-size: 0.78rem;
+  font-size: 0.95rem;
+  font-weight: 500;
   line-height: 1;
   cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .ats-rte-btn:hover:not(:disabled) {
@@ -1518,8 +1598,100 @@ button.ats-menu-item {
   background: var(--border-color);
 }
 
+.ats-rte-select {
+  width: 8.5rem;
+  height: 2.05rem;
+  min-height: 2.05rem;
+  padding: 0.2rem 1.8rem 0.2rem 0.55rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--portal-input-bg, #fff);
+  color: var(--text-color);
+  font: inherit;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.ats-rte-style-tile {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 4.7rem;
+  height: 2.25rem;
+  padding: 0.25rem;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background: var(--portal-input-bg, #fff);
+  color: var(--text-color);
+  font: inherit;
+  font-size: 0.68rem;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.ats-rte-style-tile:hover:not(:disabled),
+.ats-rte-style-tile.is-active {
+  border-color: var(--accent-sky-border, rgba(56, 132, 255, 0.35));
+  background: var(--accent-sky-soft, rgba(56, 132, 255, 0.12));
+}
+
+.ats-rte-style-tile:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.ats-rte-select:focus-visible {
+  outline: 2px solid var(--accent-sky-border, rgba(56, 132, 255, 0.35));
+  outline-offset: 1px;
+}
+
+.ats-rte-select:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 .ats-rte-shell {
+  position: relative;
   padding: 0.75rem 0.95rem 1rem;
+}
+
+.ats-rte-context-menu {
+  position: fixed;
+  z-index: 300;
+  display: flex;
+  flex-direction: column;
+  min-width: 12rem;
+  padding: 0.35rem;
+  border: 1px solid var(--portal-elevated-border, var(--border-color));
+  border-radius: 8px;
+  background: var(--portal-elevated, #fff);
+  box-shadow: 0 12px 30px rgba(15, 23, 42, 0.18);
+}
+
+.ats-rte-context-item {
+  width: 100%;
+  min-height: 2rem;
+  padding: 0.4rem 0.65rem;
+  border: none;
+  border-radius: 5px;
+  background: transparent;
+  color: var(--text-color);
+  font: inherit;
+  font-size: 0.8rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.ats-rte-context-item:hover,
+.ats-rte-context-item:focus-visible {
+  background: var(--portal-hover, rgba(15, 82, 186, 0.08));
+  outline: none;
+}
+
+.ats-rte-context-divider {
+  height: 1px;
+  margin: 0.25rem 0.35rem;
+  background: var(--border-color);
 }
 
 .ats-rte-shell--loading {
@@ -2008,6 +2180,11 @@ button.ats-menu-item {
 }
 
 @media (max-width: 600px) {
+  .ats-preview-toolbar {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
   .ats-stat-grid {
     grid-template-columns: 1fr;
   }

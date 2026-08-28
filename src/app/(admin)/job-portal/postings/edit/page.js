@@ -44,6 +44,19 @@ const emptyJob = {
   applicationFields: { ...DEFAULT_APPLICATION_FIELDS },
 };
 
+function normalizeSingleJobCopy(job) {
+  const description = String(job.description || '').trim();
+  const requirements = String(job.requirements || '').trim();
+  if (!requirements) return job;
+
+  return {
+    ...job,
+    description: [description, '## Requirements', requirements].filter(Boolean).join('\n\n'),
+    requirements: '',
+    requirementsFormat: 'markdown',
+  };
+}
+
 function PostingEditForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -68,12 +81,12 @@ function PostingEditForm() {
       setLoadingJob(true);
       loadJobById(id)
         .then((existing) =>
-          setJob({
+          setJob(normalizeSingleJobCopy({
             ...emptyJob,
             ...existing,
             screeningQuestions: existing.screeningQuestions || [],
             applicationFields: existing.applicationFields || { ...DEFAULT_APPLICATION_FIELDS },
-          })
+          }))
         )
         .catch((err) => setError(toUserMessage(err)))
         .finally(() => setLoadingJob(false));
@@ -188,6 +201,14 @@ function PostingEditForm() {
     } finally {
       setDeleting(false);
     }
+  };
+
+  const handlePreview = () => {
+    const key = `job-preview-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+    localStorage.setItem(key, JSON.stringify(job));
+    const previewUrl = `/candidate/apply?preview=${encodeURIComponent(key)}`;
+    const previewWindow = window.open(previewUrl, '_blank');
+    if (!previewWindow) router.push(previewUrl);
   };
 
   return (
@@ -313,49 +334,29 @@ function PostingEditForm() {
         ) : null}
 
         {section === 'description' ? (
-          <>
-            <div className="ats-field">
-              <label className="ats-field-label" htmlFor="field-desc">Description</label>
-              <JobRichTextEditor
-                id="field-desc"
-                value={job.description}
-                disabled={saving}
-                minHeight="14rem"
-                placeholder="About the role, responsibilities, and what success looks like…"
-                onChange={(description) =>
-                  setJob((prev) => ({
-                    ...prev,
-                    description,
-                    descriptionFormat: 'markdown',
-                  }))
-                }
-              />
-              <p className="ats-field-hint">
-                Use the toolbar to format headings, bold text, lists, and links. Formatting is saved
-                with the job.
-              </p>
-            </div>
-            <div className="ats-field">
-              <label className="ats-field-label" htmlFor="field-req">Requirements</label>
-              <JobRichTextEditor
-                id="field-req"
-                value={job.requirements}
-                disabled={saving}
-                minHeight="10rem"
-                placeholder="Skills, experience, and qualifications…"
-                onChange={(requirements) =>
-                  setJob((prev) => ({
-                    ...prev,
-                    requirements,
-                    requirementsFormat: 'markdown',
-                  }))
-                }
-              />
-              <p className="ats-field-hint">
-                Same formatting tools as description. Candidates see this on the job page.
-              </p>
-            </div>
-          </>
+          <div className="ats-field">
+            <label className="ats-field-label" htmlFor="field-desc">Job posting</label>
+            <JobRichTextEditor
+              id="field-desc"
+              value={job.description}
+              disabled={saving}
+              minHeight="28rem"
+              placeholder="Write the full job posting, including responsibilities, requirements, and benefits…"
+              onChange={(description) =>
+                setJob((prev) => ({
+                  ...prev,
+                  description,
+                  descriptionFormat: 'markdown',
+                  requirements: '',
+                  requirementsFormat: 'markdown',
+                }))
+              }
+            />
+            <p className="ats-field-hint">
+              Use one continuous editor for the role overview, responsibilities, requirements, and benefits.
+              Formatting is saved with the job.
+            </p>
+          </div>
         ) : null}
 
         {section === 'application' ? (
@@ -399,6 +400,7 @@ function PostingEditForm() {
         onSave={() => handleSave()}
         onContinue={handleContinue}
         isLastStep={isLastSection}
+        onPreview={handlePreview}
         onDelete={id ? handleDelete : undefined}
         cancelHref="/job-portal/postings"
         toast={toast}
