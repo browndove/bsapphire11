@@ -1,9 +1,12 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { Extension } from '@tiptap/core';
 import { EditorContent, useEditor } from '@tiptap/react';
 import StarterKit from '@tiptap/starter-kit';
+import Heading from '@tiptap/extension-heading';
 import Placeholder from '@tiptap/extension-placeholder';
+import Paragraph from '@tiptap/extension-paragraph';
 import TextAlign from '@tiptap/extension-text-align';
 import { Markdown } from '@tiptap/markdown';
 import {
@@ -31,6 +34,73 @@ import {
   Superscript,
   Undo2,
 } from 'lucide-react';
+
+const ALIGNMENT_VALUES = new Set(['left', 'center', 'right', 'justify']);
+
+const AlignedParagraph = Paragraph.extend({
+  renderMarkdown: (node, helpers) => {
+    const content = Array.isArray(node?.content) ? node.content : [];
+    if (!content.length) return '';
+
+    const rendered = helpers.renderChildren(content);
+    const alignment = node.attrs?.textAlign;
+    if (!ALIGNMENT_VALUES.has(alignment) || alignment === 'left') return rendered;
+
+    return `<!-- job-align:${alignment} -->\n\n${rendered}`;
+  },
+});
+
+const AlignedHeading = Heading.extend({
+  renderMarkdown: (node, helpers) => {
+    if (!node?.content) return '';
+
+    const level = Number(node.attrs?.level) || 1;
+    const rendered = `#`.repeat(level) + ` ${helpers.renderChildren(node.content)}`;
+    const alignment = node.attrs?.textAlign;
+    if (!ALIGNMENT_VALUES.has(alignment) || alignment === 'left') return rendered;
+
+    return `<!-- job-align:${alignment} -->\n\n${rendered}`;
+  },
+});
+
+const AlignmentMarkdown = Extension.create({
+  name: 'jobAlignmentMarkdown',
+
+  markdownTokenizer: {
+    name: 'jobAlignment',
+    level: 'block',
+    start: (source) => source.search(/<!--\s*job-align:/i),
+    tokenize: (source, _tokens, lexer) => {
+      const marker = source.match(/^[ \t]*<!--\s*job-align:(left|center|right|justify)\s*-->\s*\n+/i);
+      if (!marker) return undefined;
+
+      const children = lexer.blockTokens(source.slice(marker[0].length));
+      const child = children[0];
+      if (!child?.raw) return undefined;
+
+      return {
+        type: 'jobAlignment',
+        raw: marker[0] + child.raw,
+        alignment: marker[1].toLowerCase(),
+        tokens: [child],
+      };
+    },
+  },
+
+  parseMarkdown: (token, helpers) => {
+    const children = helpers.parseChildren(token.tokens || []);
+    return children.map((child) => {
+      if (!['paragraph', 'heading'].includes(child.type)) return child;
+      return {
+        ...child,
+        attrs: {
+          ...(child.attrs || {}),
+          textAlign: token.alignment,
+        },
+      };
+    });
+  },
+});
 
 function ToolbarButton({ active, disabled, onClick, children, icon: Icon, title }) {
   return (
@@ -129,7 +199,8 @@ export default function JobRichTextEditor({
     editable: !disabled,
     extensions: [
       StarterKit.configure({
-        heading: { levels: [1, 2, 3] },
+        heading: false,
+        paragraph: false,
         code: true,
         codeBlock: false,
         link: {
@@ -140,7 +211,10 @@ export default function JobRichTextEditor({
           },
         },
       }),
+      AlignedHeading.configure({ levels: [1, 2, 3] }),
+      AlignedParagraph,
       TextAlign.configure({ types: ['heading', 'paragraph'] }),
+      AlignmentMarkdown,
       Placeholder.configure({ placeholder }),
       Markdown,
     ],
@@ -226,16 +300,18 @@ export default function JobRichTextEditor({
 
   const copySelection = async () => {
     const text = selectedText();
-    if (!text) return;
+    if (!text) return false;
     try {
       await navigator.clipboard.writeText(text);
+      return true;
     } catch {
       // Clipboard permissions are optional; the browser menu remains available.
+      return false;
     }
   };
 
   const cutSelection = async () => {
-    await copySelection();
+    if (!(await copySelection())) return;
     editor.chain().focus().deleteSelection().run();
   };
 

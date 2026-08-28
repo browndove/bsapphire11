@@ -1752,6 +1752,11 @@ button.ats-menu-item {
   margin: 0 0 0.85em;
 }
 
+.ats-job-body--markdown .ats-job-align--left { text-align: left; }
+.ats-job-body--markdown .ats-job-align--center { text-align: center; }
+.ats-job-body--markdown .ats-job-align--right { text-align: right; }
+.ats-job-body--markdown .ats-job-align--justify { text-align: justify; }
+
 .ats-job-body--markdown ul,
 .ats-job-body--markdown ol {
   margin: 0 0 0.85em;

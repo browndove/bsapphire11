@@ -53,6 +53,7 @@ function normalizeSingleJobCopy(job) {
     ...job,
     description: [description, '## Requirements', requirements].filter(Boolean).join('\n\n'),
     requirements: '',
+    descriptionFormat: 'markdown',
     requirementsFormat: 'markdown',
   };
 }
@@ -205,10 +206,19 @@ function PostingEditForm() {
 
   const handlePreview = () => {
     const key = `job-preview-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-    localStorage.setItem(key, JSON.stringify(job));
     const previewUrl = `/candidate/apply?preview=${encodeURIComponent(key)}`;
-    const previewWindow = window.open(previewUrl, '_blank');
-    if (!previewWindow) router.push(previewUrl);
+    try {
+      localStorage.setItem(key, JSON.stringify(job));
+    } catch {
+      setError('Preview could not be prepared. Please try again.');
+      return;
+    }
+
+    const previewWindow = window.open(previewUrl, '_blank', 'noopener,noreferrer');
+    if (!previewWindow) {
+      localStorage.removeItem(key);
+      setError('Preview could not open. Please allow pop-ups for this site and try again.');
+    }
   };
 
   return (

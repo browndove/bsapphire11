@@ -49,6 +49,16 @@ export function CandidateProvider({ children }) {
     let cancelled = false;
 
     async function bootstrap() {
+      const isPreview = typeof window !== 'undefined'
+        && new URLSearchParams(window.location.search).has('preview');
+      if (isPreview) {
+        if (!cancelled) {
+          setIsAuthed(false);
+          setIsReady(true);
+        }
+        return;
+      }
+
       const token = getAccessToken();
       if (!token) {
         if (!cancelled) {
