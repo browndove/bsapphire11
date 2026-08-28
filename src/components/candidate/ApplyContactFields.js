@@ -54,6 +54,8 @@ export default function ApplyContactFields({
             type="email"
             required
             autoComplete="email"
+            pattern="[^\s@]+@[^\s@]+\.[^\s@]{2,}"
+            title="Enter a valid email address, such as name@example.com."
             disabled={disabled}
             value={email}
             onChange={(e) => onEmailChange(e.target.value)}

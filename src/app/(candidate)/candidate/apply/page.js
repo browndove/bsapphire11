@@ -71,6 +71,10 @@ Kind regards,`;
   return `mailto:${EMAIL_APPLICATION_ADDRESS}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
 }
 
+function isValidEmail(value) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(value || '').trim());
+}
+
 function validateScreeningAnswers(questions, answers) {
   for (const q of questions) {
     const value = answers[q.id];
@@ -207,6 +211,12 @@ function CandidateApplyInner() {
 
     if (!isAuthed && (!firstName.trim() || !lastName.trim() || !email.trim())) {
       setApplyError('Please enter your name and email.');
+      return;
+    }
+
+    if (!isAuthed && !isValidEmail(email)) {
+      setFieldErrors({ email: 'Enter a valid email address, such as name@example.com.' });
+      setApplyError('Please enter a valid email address.');
       return;
     }
 
