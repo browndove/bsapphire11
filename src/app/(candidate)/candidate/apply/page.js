@@ -52,6 +52,25 @@ import JobBody from '@/components/JobBody';
 import { formatRelativeTime } from '@/lib/job-api/format';
 import PortalHeader, { BreadcrumbLink } from '@/app/(admin)/job-portal/components/PortalHeader';
 
+const EMAIL_APPLICATION_JOB_TITLE = 'field implementation assistant';
+const EMAIL_APPLICATION_ADDRESS = 'info@blvcksapphire.com';
+
+function isEmailApplicationJob(job) {
+  return job?.title?.trim().toLowerCase() === EMAIL_APPLICATION_JOB_TITLE;
+}
+
+function emailApplicationHref(job) {
+  const subject = `Application — ${job.title}`;
+  const body = `Hello BLVCK Sapphire team,
+
+I would like to apply for the ${job.title} position.
+
+I have attached my cover letter and CV for your consideration.
+
+Kind regards,`;
+  return `mailto:${EMAIL_APPLICATION_ADDRESS}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+}
+
 function validateScreeningAnswers(questions, answers) {
   for (const q of questions) {
     const value = answers[q.id];
@@ -170,6 +189,7 @@ function CandidateApplyInner() {
   };
 
   const applicationFields = normalizeApplicationFields(job?.applicationFields);
+  const emailApplication = isEmailApplicationJob(job);
   const showCoverLetter = isApplicationFieldVisible(applicationFields, 'cover_letter');
   const showResume = isApplicationFieldVisible(applicationFields, 'resume');
   const showAdditionalDocument = isApplicationFieldVisible(applicationFields, 'additional_document');
@@ -349,17 +369,6 @@ function CandidateApplyInner() {
               <span className="tag">{formatRemoteType(job.remoteType)}</span>
               <span className="tag">{job.location || 'Location flexible'}</span>
             </div>
-            {compensation ? (
-              <div className="ats-material-block" style={{ marginBottom: '1.25rem' }}>
-                <p className="ats-material-label">Compensation</p>
-                <p style={{ margin: 0, fontSize: '1.05rem', color: 'var(--text-color)' }}>
-                  {compensation}
-                  <span className="ats-table-sub" style={{ marginLeft: '0.5rem' }}>
-                    Ghana Cedis (GHS)
-                  </span>
-                </p>
-              </div>
-            ) : null}
             {job.description ? (
               <JobBody text={job.description} format={job.descriptionFormat || 'markdown'} />
             ) : null}
@@ -369,6 +378,17 @@ function CandidateApplyInner() {
                 <JobBody text={job.requirements} format={job.requirementsFormat || 'markdown'} />
               </>
             ) : null}
+            {compensation ? (
+              <div className="ats-material-block" style={{ marginTop: '1.5rem' }}>
+                <p className="ats-material-label">Compensation</p>
+                <p style={{ margin: 0, fontSize: '1.05rem', color: 'var(--text-color)' }}>
+                  {compensation}
+                  <span className="ats-table-sub" style={{ marginLeft: '0.5rem' }}>
+                    Ghana Cedis (GHS)
+                  </span>
+                </p>
+              </div>
+            ) : null}
           </section>
 
           <section className="ats-panel">
@@ -376,7 +396,24 @@ function CandidateApplyInner() {
               <h2 className="ats-panel-title">Your application</h2>
             </div>
 
-            {activeApplication ? (
+            {emailApplication ? (
+              <div className="ats-email-application">
+                <p className="hint">
+                  To apply for this role, email your cover letter and CV directly to{' '}
+                  <strong>{EMAIL_APPLICATION_ADDRESS}</strong>.
+                </p>
+                <a
+                  className="btn btn-primary"
+                  href={emailApplicationHref(job)}
+                >
+                  Apply by email
+                </a>
+                <p className="ats-field-hint" style={{ marginTop: '0.75rem' }}>
+                  Your email app will open with the subject and message prepared. Please attach
+                  your cover letter and CV before sending.
+                </p>
+              </div>
+            ) : activeApplication ? (
               <div>
                 <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem', marginBottom: '1rem' }}>
                   <span className={`tag ${activeStatusClass}`}>{activeStatusLabel}</span>

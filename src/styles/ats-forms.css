@@ -113,6 +113,10 @@
   grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
+.ats-field--full-row {
+  grid-column: 1 / -1;
+}
+
 .ats-field {
   display: flex;
   flex-direction: column;
@@ -318,6 +322,10 @@
   transition: border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease;
   appearance: none;
   -webkit-appearance: none;
+}
+
+.ats-table-cell-name .ats-table-sub {
+  overflow-wrap: anywhere;
 }
 
 .ats-form textarea {

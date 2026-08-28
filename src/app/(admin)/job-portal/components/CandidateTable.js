@@ -61,6 +61,7 @@ export default function CandidateTable({ applications, jobs, screeningQuestions,
                       <Avatar name={displayName} size="sm" />
                       <div>
                         <strong>{displayName}</strong>
+                        {email ? <div className="ats-table-sub">{email}</div> : null}
                       </div>
                     </div>
                   </td>

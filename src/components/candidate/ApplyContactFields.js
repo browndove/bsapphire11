@@ -47,7 +47,7 @@ export default function ApplyContactFields({
       </div>
 
       <div className="ats-form-grid cols-2">
-        <div className="ats-field">
+        <div className="ats-field ats-field--full-row">
           <label className="ats-field-label" htmlFor="apply-email">Email</label>
           <input
             id="apply-email"

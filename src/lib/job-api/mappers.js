@@ -418,6 +418,8 @@ export function mapPublicJobFromApi(job, categoriesById = {}) {
 }
 
 export function formatEmploymentType(value) {
+  const labels = { temporary: 'Temporary Full time' };
+  if (labels[value]) return labels[value];
   return String(value || '')
     .replace(/_/g, ' ')
     .replace(/\b\w/g, (c) => c.toUpperCase());
