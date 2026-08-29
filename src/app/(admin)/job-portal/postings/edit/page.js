@@ -214,11 +214,13 @@ function PostingEditForm() {
       return;
     }
 
-    const previewWindow = window.open(previewUrl, '_blank', 'noopener,noreferrer');
+    const previewWindow = window.open(previewUrl, '_blank');
     if (!previewWindow) {
       localStorage.removeItem(key);
       setError('Preview could not open. Please allow pop-ups for this site and try again.');
+      return;
     }
+    previewWindow.opener = null;
   };
 
   return (
