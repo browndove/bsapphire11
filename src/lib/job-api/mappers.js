@@ -1,5 +1,6 @@
 import { DEFAULT_JOB_CURRENCY, EMPLOYER_APPLICATION_STATUSES, EMPLOYER_STATUS_UPDATES, JOB_CURRENCY_SYMBOL } from './config';
 import { normalizeApplicationFields } from './application-fields';
+import { normalizeOptionalUrlList } from './cover-letter';
 
 export function getPaginatedItems(res) {
   if (!res) return [];
@@ -174,7 +175,7 @@ export function mapApplicationFromApi(app) {
     coverLetter: app.cover_letter || '',
     resumeUrl: app.resume_url || '',
     githubUrl: app.github_url || '',
-    additionalLink: app.additional_link || '',
+    additionalLinks: normalizeOptionalUrlList(app.additional_link ?? app.additional_links),
     additionalDocumentUrl: app.additional_document_url || '',
     answers: app.answers ?? {},
     source: app.source || 'Website',
@@ -183,14 +184,15 @@ export function mapApplicationFromApi(app) {
 
 function appendOptionalApplicationFields(body, {
   githubUrl,
-  additionalLink,
+  additionalLinks,
   additionalDocumentUrl,
 }) {
   if (githubUrl?.trim()) {
     body.github_url = githubUrl.trim();
   }
-  if (additionalLink?.trim()) {
-    body.additional_link = additionalLink.trim();
+  const links = normalizeOptionalUrlList(additionalLinks);
+  if (links.length) {
+    body.additional_link = links;
   }
   if (additionalDocumentUrl?.trim()) {
     body.additional_document_url = additionalDocumentUrl.trim();
@@ -247,7 +249,7 @@ export function mapApplicationSubmitToApi({
   coverLetter,
   resumeUrl,
   githubUrl,
-  additionalLink,
+  additionalLinks,
   additionalDocumentUrl,
   answers = {},
 }) {
@@ -260,7 +262,7 @@ export function mapApplicationSubmitToApi({
   if (resumeUrl?.trim()) {
     body.resume_url = resumeUrl;
   }
-  appendOptionalApplicationFields(body, { githubUrl, additionalLink, additionalDocumentUrl });
+  appendOptionalApplicationFields(body, { githubUrl, additionalLinks, additionalDocumentUrl });
   return appendScreeningAnswers(body, answers);
 }
 
@@ -272,7 +274,7 @@ export function mapGuestApplicationSubmitToApi({
   coverLetter,
   resumeUrl,
   githubUrl,
-  additionalLink,
+  additionalLinks,
   additionalDocumentUrl,
   answers = {},
 }) {
@@ -290,7 +292,7 @@ export function mapGuestApplicationSubmitToApi({
   if (resumeUrl?.trim()) {
     body.resume_url = resumeUrl;
   }
-  appendOptionalApplicationFields(body, { githubUrl, additionalLink, additionalDocumentUrl });
+  appendOptionalApplicationFields(body, { githubUrl, additionalLinks, additionalDocumentUrl });
   return appendScreeningAnswers(body, answers);
 }
 

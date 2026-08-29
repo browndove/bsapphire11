@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, Suspense } from 'react';
+import { useEffect, useRef, useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCandidate } from '../CandidateContext';
@@ -20,6 +20,7 @@ import {
   composeCoverLetterMaterials,
   fileNameFromStorageKey,
   normalizeOptionalUrl,
+  normalizeOptionalUrlList,
   resolveApplicationDocuments,
   stripUrlProtocol,
   uploadOptionalDocument,
@@ -45,6 +46,7 @@ import {
   applicationFieldLabel,
   isApplicationFieldRequired,
   isApplicationFieldVisible,
+  MAX_ADDITIONAL_LINKS,
   normalizeApplicationFields,
 } from '@/lib/job-api/application-fields';
 import { getFieldErrors, toUserMessage } from '@/lib/job-api/errors';
@@ -108,7 +110,9 @@ function CandidateApplyInner() {
   const previewMode = Boolean(previewKey);
   const { isReady, isAuthed, applications, refreshApplications } = useCandidate();
 
+  const roleDetailsRef = useRef(null);
   const [job, setJob] = useState(null);
+  const [roleDetailsHeight, setRoleDetailsHeight] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [firstName, setFirstName] = useState('');
@@ -120,7 +124,7 @@ function CandidateApplyInner() {
   const [additionalDocumentFile, setAdditionalDocumentFile] = useState(null);
   const [additionalDocumentError, setAdditionalDocumentError] = useState('');
   const [githubUrl, setGithubUrl] = useState('');
-  const [additionalLink, setAdditionalLink] = useState('');
+  const [additionalLinks, setAdditionalLinks] = useState(['']);
   const [resumeFile, setResumeFile] = useState(null);
   const [resumeError, setResumeError] = useState('');
   const [applyError, setApplyError] = useState('');
@@ -170,6 +174,25 @@ function CandidateApplyInner() {
     };
   }, [jobId, previewKey]);
 
+  useEffect(() => {
+    const roleDetails = roleDetailsRef.current;
+    if (!roleDetails) {
+      setRoleDetailsHeight(null);
+      return undefined;
+    }
+
+    const updateRoleDetailsHeight = () => {
+      setRoleDetailsHeight(Math.ceil(roleDetails.getBoundingClientRect().height));
+    };
+
+    updateRoleDetailsHeight();
+    if (typeof ResizeObserver === 'undefined') return undefined;
+
+    const observer = new ResizeObserver(updateRoleDetailsHeight);
+    observer.observe(roleDetails);
+    return () => observer.disconnect();
+  }, [job?.id, loading, error]);
+
   const activeApplication =
     isReady && isAuthed ? getActiveApplicationForJob(applications, jobId) : null;
   const withdrawnApplication =
@@ -208,6 +231,24 @@ function CandidateApplyInner() {
   const handleAdditionalDocumentChange = (file, validationError = '') => {
     setAdditionalDocumentFile(file);
     setAdditionalDocumentError(validationError);
+  };
+
+  const handleAdditionalLinkChange = (index, value) => {
+    setAdditionalLinks((prev) =>
+      prev.map((link, i) => (i === index ? stripUrlProtocol(value) : link))
+    );
+  };
+
+  const addAdditionalLinkField = () => {
+    setAdditionalLinks((prev) =>
+      prev.length >= MAX_ADDITIONAL_LINKS ? prev : [...prev, '']
+    );
+  };
+
+  const removeAdditionalLinkField = (index) => {
+    setAdditionalLinks((prev) =>
+      prev.length <= 1 ? [''] : prev.filter((_, i) => i !== index)
+    );
   };
 
   const applicationFields = normalizeApplicationFields(job?.applicationFields);
@@ -260,7 +301,11 @@ function CandidateApplyInner() {
       return;
     }
 
-    if (showAdditionalLink && requireAdditionalLink && !additionalLink.trim()) {
+    const submittedAdditionalLinks = showAdditionalLink
+      ? normalizeOptionalUrlList(additionalLinks)
+      : [];
+
+    if (showAdditionalLink && requireAdditionalLink && !submittedAdditionalLinks.length) {
       setFieldErrors((prev) => ({ ...prev, additional_link: 'Portfolio or other link is required.' }));
       setApplyError('Please enter a portfolio or other link.');
       return;
@@ -321,7 +366,7 @@ function CandidateApplyInner() {
         coverLetter: stored.coverLetter,
         resumeUrl: uploaded.file_url || uploaded.url || '',
         githubUrl: showGithub ? normalizeOptionalUrl(githubUrl) : '',
-        additionalLink: showAdditionalLink ? normalizeOptionalUrl(additionalLink) : '',
+        additionalLinks: submittedAdditionalLinks,
         additionalDocumentUrl: stored.additionalDocumentUrl,
         answers: normalizeScreeningAnswersForApi(job.screeningQuestions || [], screeningAnswers),
       };
@@ -404,7 +449,7 @@ function CandidateApplyInner() {
           </div>
         ) : (
           <div className="ats-detail-grid ats-detail-grid--role-wide">
-            <section className="ats-panel">
+            <section className="ats-panel" ref={roleDetailsRef}>
               <div className="ats-panel-head">
                 <h2 className="ats-panel-title">Role details</h2>
               </div>
@@ -436,12 +481,20 @@ function CandidateApplyInner() {
               ) : null}
             </section>
 
-            <section className="ats-panel">
+            <section
+              className="ats-panel"
+              style={
+                roleDetailsHeight
+                  ? { '--role-details-height': `${roleDetailsHeight}px` }
+                  : undefined
+              }
+            >
               <div className="ats-panel-head">
                 <h2 className="ats-panel-title">Your application</h2>
               </div>
 
-              {emailApplication ? (
+              <div className="ats-apply-panel-content">
+                {emailApplication ? (
                 <div className="ats-email-application">
                   <p className="hint">
                     To apply for this role, email your cover letter and CV directly to{' '}
@@ -495,13 +548,13 @@ function CandidateApplyInner() {
                   </div>
                 ) : null}
 
-                {(activeApplication.githubUrl || activeApplication.additionalLink) ? (
+                {(activeApplication.githubUrl || activeApplication.additionalLinks?.length) ? (
                   <div className="ats-material-block">
                     <p className="ats-material-label">Links</p>
                     <CoverLetterMaterials
                       mode="links"
                       githubUrl={activeApplication.githubUrl}
-                      additionalLink={activeApplication.additionalLink}
+                      additionalLinks={activeApplication.additionalLinks}
                     />
                   </div>
                 ) : null}
@@ -631,23 +684,47 @@ function CandidateApplyInner() {
                 ) : null}
                 {showAdditionalLink ? (
                   <div className="ats-field">
-                    <label className="ats-field-label" htmlFor="additional-link">
+                    <span className="ats-field-label">
                       {applicationFieldLabel('additional_link', applicationFields)}
-                    </label>
-                    <div className="ats-input-prefix-wrap">
-                      <span className="ats-input-prefix" aria-hidden="true">https://</span>
-                      <input
-                        id="additional-link"
-                        type="text"
-                        inputMode="url"
-                        autoComplete="url"
-                        placeholder="portfolio.site"
-                        value={stripUrlProtocol(additionalLink)}
-                        onChange={(e) => setAdditionalLink(stripUrlProtocol(e.target.value))}
-                        disabled={submitting || previewMode}
-                        required={requireAdditionalLink}
-                      />
+                    </span>
+                    <div className="ats-option-list">
+                      {additionalLinks.map((link, index) => (
+                        <div className="ats-input-prefix-wrap" key={index}>
+                          <span className="ats-input-prefix" aria-hidden="true">https://</span>
+                          <input
+                            id={`additional-link-${index}`}
+                            type="text"
+                            inputMode="url"
+                            autoComplete="url"
+                            placeholder="portfolio.site"
+                            value={stripUrlProtocol(link)}
+                            onChange={(e) => handleAdditionalLinkChange(index, e.target.value)}
+                            disabled={submitting || previewMode}
+                          />
+                          {additionalLinks.length > 1 ? (
+                            <button
+                              type="button"
+                              className="ats-option-remove"
+                              aria-label={`Remove additional link ${index + 1}`}
+                              onClick={() => removeAdditionalLinkField(index)}
+                              disabled={submitting || previewMode}
+                            >
+                              ×
+                            </button>
+                          ) : null}
+                        </div>
+                      ))}
                     </div>
+                    {additionalLinks.length < MAX_ADDITIONAL_LINKS ? (
+                      <button
+                        type="button"
+                        className="btn btn-outline btn-sm ats-option-add"
+                        onClick={addAdditionalLinkField}
+                        disabled={submitting || previewMode}
+                      >
+                        Add another link
+                      </button>
+                    ) : null}
                     {fieldErrors.additional_link ? (
                       <p className="ats-field-error">{fieldErrors.additional_link}</p>
                     ) : null}
@@ -665,7 +742,8 @@ function CandidateApplyInner() {
                   {previewMode ? 'Preview only' : submitting ? 'Submitting…' : 'Submit application'}
                 </button>
                 </form>
-              )}
+                )}
+              </div>
             </section>
           </div>
         )}

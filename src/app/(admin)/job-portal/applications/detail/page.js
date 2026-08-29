@@ -528,13 +528,13 @@ function ApplicationDetailView() {
               </div>
             ) : null}
 
-            {(app.githubUrl || app.additionalLink) ? (
+            {(app.githubUrl || app.additionalLinks?.length) ? (
               <div className="ats-material-block">
                 <p className="ats-material-label">Links</p>
                 <CoverLetterMaterials
                   mode="links"
                   githubUrl={app.githubUrl}
-                  additionalLink={app.additionalLink}
+                  additionalLinks={app.additionalLinks}
                 />
               </div>
             ) : null}

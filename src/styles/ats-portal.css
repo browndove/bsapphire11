@@ -1165,6 +1165,17 @@ button.ats-menu-item {
   .ats-detail-grid--role-wide > .ats-panel:last-child {
     position: sticky;
     top: 1.5rem;
+    min-height: 0;
+    max-height: var(--role-details-height, none);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .ats-detail-grid--role-wide > .ats-panel:last-child .ats-apply-panel-content {
+    min-height: 0;
+    overflow-y: auto;
+    scrollbar-gutter: stable;
   }
 }
 

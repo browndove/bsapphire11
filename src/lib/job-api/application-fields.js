@@ -8,6 +8,8 @@ export const APPLICATION_FIELD_KEYS = [
 
 export const APPLICATION_FIELD_REQUIREMENTS = ['required', 'optional', 'hidden'];
 
+export const MAX_ADDITIONAL_LINKS = 5;
+
 export const DEFAULT_APPLICATION_FIELDS = {
   cover_letter: 'required',
   resume: 'required',

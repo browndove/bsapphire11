@@ -158,7 +158,7 @@ Submit an application without a candidate session.
 | `cover_letter` | Yes | Non-empty after trim |
 | `resume_url` | Yes | Must be a `file_url` from `POST /public/files/upload-url` (or authenticated upload) |
 | `github_url` | No | Optional GitHub profile / repo URL |
-| `additional_link` | No | Optional portfolio / website URL |
+| `additional_link` | No | Optional array of portfolio / website URLs |
 | `additional_document_url` | No | Optional `file_url` from upload (`purpose: "document"`) — used for cover-letter PDF uploads |
 | `answers` | Conditional | Same rules as `POST /me/applications` |
 

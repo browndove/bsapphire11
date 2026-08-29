@@ -5,6 +5,7 @@ import { openFileWithOriginalName } from '@/lib/job-api/client';
 import {
   fileNameFromStorageKey,
   normalizeOptionalUrl,
+  normalizeOptionalUrlList,
   resolveApplicationDocuments,
   sanitizeDownloadFileName,
 } from '@/lib/job-api/cover-letter';
@@ -119,17 +120,20 @@ export default function CoverLetterMaterials({
   coverLetter = '',
   additionalDocumentUrl = '',
   githubUrl = '',
-  additionalLink = '',
+  additionalLinks = [],
   mode = 'cover', // 'cover' | 'links' | 'additional'
 }) {
   if (mode === 'links') {
-    if (!githubUrl && !additionalLink) {
+    const links = normalizeOptionalUrlList(additionalLinks);
+    if (!githubUrl && !links.length) {
       return null;
     }
     return (
       <div className="ats-cover-letter-materials">
         <LinkRow label="GitHub" href={githubUrl} />
-        <LinkRow label="Link" href={additionalLink} />
+        {links.map((link, index) => (
+          <LinkRow key={link} label={links.length > 1 ? `Link ${index + 1}` : 'Link'} href={link} />
+        ))}
       </div>
     );
   }
