@@ -206,17 +206,32 @@ function PostingEditForm() {
 
   const handlePreview = () => {
     const key = `job-preview-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
-    const previewUrl = `/candidate/apply?preview=${encodeURIComponent(key)}`;
+    let serializedJob;
     try {
-      localStorage.setItem(key, JSON.stringify(job));
+      serializedJob = JSON.stringify(job);
     } catch {
       setError('Preview could not be prepared. Please try again.');
       return;
     }
 
+    // Keep the payload in the fragment as a fallback for browsers that partition
+    // or block localStorage between the editor and a newly opened tab.
+    const previewUrl =
+      `/candidate/apply?preview=${encodeURIComponent(key)}` +
+      `#preview-data=${encodeURIComponent(serializedJob)}`;
+    try {
+      localStorage.setItem(key, serializedJob);
+    } catch {
+      // The inline fragment is sufficient when localStorage is unavailable.
+    }
+
     const previewWindow = window.open(previewUrl, '_blank');
     if (!previewWindow) {
-      localStorage.removeItem(key);
+      try {
+        localStorage.removeItem(key);
+      } catch {
+        // Ignore storage cleanup failures when the popup is blocked.
+      }
       setError('Preview could not open. Please allow pop-ups for this site and try again.');
       return;
     }

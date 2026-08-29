@@ -141,7 +141,17 @@ function CandidateApplyInner() {
       setError('');
       try {
         if (previewKey) {
-          const previewJob = JSON.parse(localStorage.getItem(previewKey) || 'null');
+          let serializedPreviewJob = null;
+          try {
+            serializedPreviewJob = localStorage.getItem(previewKey);
+          } catch {
+            // Fall back to the URL fragment when browser storage is unavailable.
+          }
+          if (!serializedPreviewJob && typeof window !== 'undefined') {
+            const hashParams = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+            serializedPreviewJob = hashParams.get('preview-data');
+          }
+          const previewJob = JSON.parse(serializedPreviewJob || 'null');
           if (!previewJob) throw new Error('Preview data is no longer available.');
           if (!cancelled) setJob(previewJob);
           return;
