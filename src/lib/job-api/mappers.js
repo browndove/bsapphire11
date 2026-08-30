@@ -135,6 +135,12 @@ export function mapJobToApi(job, { isCreate = false } = {}) {
 
 export function mapApplicationFromApi(app) {
   if (!app) return null;
+  const additionalLinkValues = normalizeOptionalUrlList(app.additional_link);
+  const additionalLinksValues = normalizeOptionalUrlList(app.additional_links);
+  const additionalLinks =
+    additionalLinksValues.length > additionalLinkValues.length
+      ? additionalLinksValues
+      : additionalLinkValues;
   const candidate = app.candidate || app.user || {};
   const firstName =
     candidate.first_name ||
@@ -175,7 +181,7 @@ export function mapApplicationFromApi(app) {
     coverLetter: app.cover_letter || '',
     resumeUrl: app.resume_url || '',
     githubUrl: app.github_url || '',
-    additionalLinks: normalizeOptionalUrlList(app.additional_link ?? app.additional_links),
+    additionalLinks,
     additionalDocumentUrl: app.additional_document_url || '',
     answers: app.answers ?? {},
     source: app.source || 'Website',

@@ -132,7 +132,11 @@ export default function CoverLetterMaterials({
       <div className="ats-cover-letter-materials">
         <LinkRow label="GitHub" href={githubUrl} />
         {links.map((link, index) => (
-          <LinkRow key={link} label={links.length > 1 ? `Link ${index + 1}` : 'Link'} href={link} />
+          <LinkRow
+            key={`${link}-${index}`}
+            label={links.length > 1 ? `Link ${index + 1}` : 'Link'}
+            href={link}
+          />
         ))}
       </div>
     );

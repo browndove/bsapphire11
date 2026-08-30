@@ -201,7 +201,7 @@ export function normalizeOptionalUrl(value) {
   return `https://${trimmed}`;
 }
 
-/** Accepts a single value or a list and returns unique, normalized URLs. */
+/** Accepts a single value or a list and returns normalized URLs. */
 export function normalizeOptionalUrlList(value) {
   let entries = value;
   if (typeof value === 'string') {
@@ -211,19 +211,22 @@ export function normalizeOptionalUrlList(value) {
       const parsed = JSON.parse(trimmed);
       entries = Array.isArray(parsed) ? parsed : [value];
     } catch {
-      entries = [value];
+      const postgresArray = trimmed.match(/^\{(.*)\}$/s);
+      if (postgresArray) {
+        entries = postgresArray[1]
+          .split(',')
+          .map((entry) => entry.trim().replace(/^"(.*)"$/, '$1'));
+      } else {
+        entries = trimmed.split(/\r?\n|,\s*(?=(?:https?:)?\/\/)/i);
+      }
     }
   }
   if (!Array.isArray(entries)) entries = [entries];
 
-  const seen = new Set();
   const urls = [];
   for (const entry of entries) {
     const url = normalizeOptionalUrl(entry);
     if (!url) continue;
-    const key = url.toLowerCase();
-    if (seen.has(key)) continue;
-    seen.add(key);
     urls.push(url);
   }
   return urls;

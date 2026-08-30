@@ -587,6 +587,13 @@
   overflow: hidden;
 }
 
+.ats-kanban-col--submitted {
+  position: sticky;
+  left: 0;
+  z-index: 3;
+  box-shadow: 8px 0 14px -12px rgba(15, 23, 42, 0.45);
+}
+
 .ats-kanban-col-header {
   padding: 0.75rem 0.85rem;
   border-bottom: 1px solid var(--border-color);

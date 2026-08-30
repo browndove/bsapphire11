@@ -6,13 +6,6 @@ function fieldError(errors, questionId) {
   return errors?.[`answers.${questionId}`] || errors?.[questionId] || '';
 }
 
-const TYPE_LABELS = {
-  single: 'Single choice',
-  multi: 'Multiple choice',
-  text: 'Short text',
-  number: 'Number',
-};
-
 const TYPE_HINTS = {
   single: 'Select one option',
   multi: 'Select all that apply',
@@ -60,7 +53,6 @@ export default function ScreeningAnswersForm({
       <div className="ats-answer-list">
         {questions.map((q, index) => {
           const err = fieldError(errors, q.id);
-          const typeLabel = TYPE_LABELS[q.type] || 'Question';
           const typeHint = TYPE_HINTS[q.type] || '';
 
           return (
@@ -76,7 +68,6 @@ export default function ScreeningAnswersForm({
                   </span>
                   <div>
                     <strong>{q.label}</strong>
-                    <span>{typeLabel}</span>
                   </div>
                 </div>
               </header>
