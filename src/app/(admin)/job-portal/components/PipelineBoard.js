@@ -6,12 +6,12 @@ import Avatar from './Avatar';
 import { formatRelativeTime } from '@/lib/job-api/format';
 import { PortalStages } from '../PortalContext';
 
-function CandidateCard({ app, jobTitle, onDragStart, onDragEnd }) {
+function CandidateCard({ app, jobTitle, dragging, onDragStart, onDragEnd }) {
   const router = useRouter();
 
   return (
     <div
-      className="ats-candidate-card"
+      className={`ats-candidate-card${dragging ? ' is-dragging' : ''}`}
       draggable
       onDragStart={(e) => onDragStart(e, app)}
       onDragEnd={onDragEnd}
@@ -95,14 +95,14 @@ export default function PipelineBoard({
               {colApps.map((app) => {
                 const job = jobs.find((j) => j.id === app.jobId);
                 return (
-                  <div key={app.id} className={draggingId === app.id ? 'is-dragging' : ''}>
-                    <CandidateCard
-                      app={app}
-                      jobTitle={job?.title || app.jobTitle}
-                      onDragStart={handleDragStart}
-                      onDragEnd={handleDragEnd}
-                    />
-                  </div>
+                  <CandidateCard
+                    key={app.id}
+                    app={app}
+                    jobTitle={job?.title || app.jobTitle}
+                    dragging={draggingId === app.id}
+                    onDragStart={handleDragStart}
+                    onDragEnd={handleDragEnd}
+                  />
                 );
               })}
             </div>

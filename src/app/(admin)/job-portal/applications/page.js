@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, Suspense, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, Suspense, useMemo, useCallback, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { usePortal } from '../PortalContext';
 import { toUserMessage } from '@/lib/job-api/errors';
@@ -60,6 +60,8 @@ function ApplicationsInbox() {
   const [statusModal, setStatusModal] = useState(null);
   const [statusModalError, setStatusModalError] = useState('');
   const [statusSaving, setStatusSaving] = useState(false);
+  const jobsRef = useRef(jobs);
+  jobsRef.current = jobs;
 
   const hasScreeningClientFilters =
     Object.keys(screeningFilters).length > 0 || Object.keys(numericFilters).length > 0;
@@ -194,7 +196,7 @@ function ApplicationsInbox() {
         if (!cancelled) setSelectedJobDetail(job);
       })
       .catch(() => {
-        const fallback = jobs.find((j) => j.id === selectedJob) || null;
+        const fallback = jobsRef.current.find((j) => j.id === selectedJob) || null;
         if (!cancelled) setSelectedJobDetail(fallback);
       })
       .finally(() => {
@@ -204,7 +206,7 @@ function ApplicationsInbox() {
     return () => {
       cancelled = true;
     };
-  }, [isReady, isAuthed, selectedJob, loadJobById, jobs]);
+  }, [isReady, isAuthed, selectedJob, loadJobById]);
 
   useEffect(() => {
     if (!isReady || !isAuthed) return undefined;
