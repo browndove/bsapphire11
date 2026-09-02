@@ -18,7 +18,8 @@
 html {
   font-size: 16px;
   -webkit-font-smoothing: antialiased;
-  scroll-behavior: smooth;
+  /* Smooth scroll makes nested board/page scroll handoffs feel like flicker. */
+  scroll-behavior: auto;
   background-color: var(--bg-color);
 }
 

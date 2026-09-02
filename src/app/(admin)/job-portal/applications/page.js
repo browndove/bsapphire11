@@ -37,7 +37,7 @@ function ApplicationsInbox() {
     updateApplicationWithEmail,
     finalizeHirePipeline,
     countOtherOpenApplicants,
-    loadApplications,
+    loadAllApplications,
     loadJobById,
     mergeApplications,
   } = usePortal();
@@ -220,7 +220,7 @@ function ApplicationsInbox() {
     const timer = window.setTimeout(async () => {
       setLoadingApps(true);
       try {
-        const params = { job_id: selectedJob, limit: 500, offset: 0 };
+        const params = { job_id: selectedJob };
         if (selectedStage !== '__all') params.status = selectedStage;
         if (searchQuery.trim()) params.q = searchQuery.trim();
         if (Object.keys(apiChoiceFilters).length) {
@@ -233,7 +233,7 @@ function ApplicationsInbox() {
           params.sort_by = apiSortBy;
           params.sort_dir = answerSortDir || 'desc';
         }
-        const result = await loadApplications(params);
+        const result = await loadAllApplications(params);
         if (!cancelled) {
           const apps = result.applications || [];
           setServerAppsRaw(apps);
@@ -263,7 +263,7 @@ function ApplicationsInbox() {
     apiNumericFilters,
     apiSortBy,
     answerSortDir,
-    loadApplications,
+    loadAllApplications,
     mergeApplications,
   ]);
 
@@ -417,10 +417,8 @@ function ApplicationsInbox() {
         if (selectedJob !== '__all') {
           // Refresh board from server after hire cascade
           try {
-            const refreshed = await loadApplications({
+            const refreshed = await loadAllApplications({
               job_id: selectedJob,
-              limit: 500,
-              offset: 0,
             });
             setServerAppsRaw(refreshed.applications);
           } catch {
@@ -561,9 +559,9 @@ function ApplicationsInbox() {
         />
 
         <div className="ats-board-main">
-          {loadingApps ? (
+          {loadingApps && filteredApps.length === 0 ? (
             <div className="ats-skeleton" />
-          ) : filteredApps.length === 0 ? (
+          ) : filteredApps.length === 0 && !loadingApps ? (
             <EmptyState
               icon="search"
               title="No candidates match"

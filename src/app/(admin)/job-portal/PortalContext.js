@@ -48,6 +48,67 @@ function isApplicantStillOpen(app, hiredId) {
   return app.id !== hiredId && !ALREADY_SETTLED_ON_HIRE.has(app.status);
 }
 
+/** Upstream often caps page size (~20) even when a higher limit is requested. */
+async function fetchAllApplicationPages(params = {}) {
+  // Match the common upstream page size so "short page" detection is reliable
+  // when `total` is missing from the response.
+  const pageSize = 20;
+  const { limit: _limit, offset: _offset, ...filterParams } = params;
+  const seen = new Set();
+  const all = [];
+  let offset = 0;
+  let total = null;
+  let appliedFilters = {};
+  let appliedNumericFilters;
+
+  for (;;) {
+    const appsRes = await fetchEmployerApplications({
+      ...filterParams,
+      limit: pageSize,
+      offset,
+    });
+    const appRows = getPaginatedItems(appsRes);
+    // Only trust an explicit total — getPaginatedTotal falls back to page
+    // length, which would stop pagination after the first capped page.
+    if (total == null && appsRes?.total != null && Number.isFinite(Number(appsRes.total))) {
+      total = Number(appsRes.total);
+    }
+    if (appsRes?.applied_filters) appliedFilters = appsRes.applied_filters;
+    if (appsRes?.applied_numeric_filters) {
+      appliedNumericFilters = appsRes.applied_numeric_filters;
+    }
+
+    let added = 0;
+    for (const row of appRows || []) {
+      const mapped = mapApplicationFromApi(row);
+      if (!mapped) continue;
+      if (mapped.id) {
+        if (seen.has(mapped.id)) continue;
+        seen.add(mapped.id);
+      }
+      all.push(mapped);
+      added += 1;
+    }
+
+    const received = (appRows || []).length;
+    offset += received;
+    if (!received || added === 0) break;
+    if (total != null && seen.size >= total) break;
+    if (received < pageSize) break;
+    if (all.length >= 10000) break;
+  }
+
+  return {
+    applications: all,
+    total: total ?? all.length,
+    appliedFilters,
+    appliedNumericFilters,
+  };
+}
+
+const PIPELINE_STATUSES = getPipelineStatuses();
+const STATUS_UPDATE_OPTIONS = getEmployerStatusUpdates();
+
 const PortalContext = createContext();
 
 export { PortalStages };
@@ -64,8 +125,10 @@ export function PortalProvider({ children }) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   const categoriesRef = useRef([]);
+  const jobsRef = useRef([]);
   const lastCountsRefreshAt = useRef(0);
   categoriesRef.current = categories;
+  jobsRef.current = jobs;
   const previewMode = isPortalPreview();
 
   const applyPreviewData = useCallback(() => {
@@ -126,24 +189,22 @@ export function PortalProvider({ children }) {
     setLoading(true);
     setError(null);
     try {
-      const [cats, dashRes, jobsRes, appsRes] = await Promise.all([
+      const [cats, dashRes, jobsRes, appsPage] = await Promise.all([
         fetchCategories().catch(() => ({ data: [] })),
         fetchDashboard().catch(() => null),
         fetchEmployerJobs({ limit: 200, offset: 0 }),
-        fetchEmployerApplications({ limit: 500, offset: 0 }),
+        fetchAllApplicationPages(),
       ]);
 
       const catList = getPaginatedItems(cats);
       const byId = Object.fromEntries(catList.map((c) => [c.id, c]));
       const jobRows = getPaginatedItems(jobsRes);
-      const appRows = getPaginatedItems(appsRes);
-      const mappedApps = (appRows || []).map(mapApplicationFromApi).filter(Boolean);
 
       setCategories(catList);
       setDashboardStats(dashRes);
       setJobs(jobRows.map((job) => mapJobFromApi(job, byId)));
-      setApplications(mappedApps);
-      setApplicationsTotal(getPaginatedTotal(appsRes, appRows));
+      setApplications(appsPage.applications);
+      setApplicationsTotal(appsPage.total);
       lastCountsRefreshAt.current = Date.now();
     } catch (err) {
       setError(toUserMessage(err));
@@ -163,20 +224,18 @@ export function PortalProvider({ children }) {
     lastCountsRefreshAt.current = now;
 
     try {
-      const [dashRes, jobsRes, appsRes] = await Promise.all([
+      const [dashRes, jobsRes, appsPage] = await Promise.all([
         fetchDashboard().catch(() => null),
         fetchEmployerJobs({ limit: 200, offset: 0 }),
-        fetchEmployerApplications({ limit: 500, offset: 0 }),
+        fetchAllApplicationPages(),
       ]);
       const catById = Object.fromEntries(categoriesRef.current.map((c) => [c.id, c]));
       const jobRows = getPaginatedItems(jobsRes);
-      const appRows = getPaginatedItems(appsRes);
-      const mappedApps = (appRows || []).map(mapApplicationFromApi).filter(Boolean);
 
       if (dashRes) setDashboardStats(dashRes);
       setJobs(jobRows.map((job) => mapJobFromApi(job, catById)));
-      setApplications(mappedApps);
-      setApplicationsTotal(getPaginatedTotal(appsRes, appRows));
+      setApplications(appsPage.applications);
+      setApplicationsTotal(appsPage.total);
     } catch {
       // Keep existing counts if a background refresh fails.
     }
@@ -237,8 +296,20 @@ export function PortalProvider({ children }) {
       applications: mappedApps,
       total: getPaginatedTotal(appsRes, appRows),
       appliedFilters: appsRes?.applied_filters || {},
+      appliedNumericFilters: appsRes?.applied_numeric_filters || {},
     };
   }, [previewMode]);
+
+  /** Walk every page — upstream often caps page size (~20) even when limit is higher. */
+  const loadAllApplications = useCallback(
+    async (params = {}) => {
+      if (previewMode) {
+        return loadApplications(params);
+      }
+      return fetchAllApplicationPages(params);
+    },
+    [previewMode, loadApplications]
+  );
 
   useEffect(() => {
     let cancelled = false;
@@ -412,29 +483,42 @@ export function PortalProvider({ children }) {
     setApplications((prev) => prev.filter((a) => a.jobId !== id));
   };
 
-  const loadJobById = async (id) => {
+  const loadJobById = useCallback(async (id) => {
     if (previewMode) {
-      const found = jobs.find((j) => j.id === id);
+      const found = jobsRef.current.find((j) => j.id === id);
       if (!found) throw new Error('Job not found');
       return { ...found };
     }
 
     const res = await fetchEmployerJob(id);
-    const mapped = mapJobFromApi(res?.data || res, categoriesById);
+    const catById = Object.fromEntries(categoriesRef.current.map((c) => [c.id, c]));
+    const mapped = mapJobFromApi(res?.data || res, catById);
     if (!mapped) throw new Error('Job not found');
 
     setJobs((prev) => {
       const idx = prev.findIndex((j) => j.id === id);
       if (idx >= 0) {
+        const existing = prev[idx];
+        // Skip state update when nothing meaningful changed — avoids
+        // re-render storms that make the candidates board twitch.
+        if (
+          existing.title === mapped.title &&
+          existing.status === mapped.status &&
+          existing.applicationCount === mapped.applicationCount &&
+          JSON.stringify(existing.screeningQuestions || []) ===
+            JSON.stringify(mapped.screeningQuestions || [])
+        ) {
+          return prev;
+        }
         const next = [...prev];
-        next[idx] = { ...next[idx], ...mapped };
+        next[idx] = { ...existing, ...mapped };
         return next;
       }
       return [...prev, mapped];
     });
 
     return mapped;
-  };
+  }, [previewMode]);
 
   const mergeApplications = useCallback((rows = []) => {
     if (!rows?.length) return;
@@ -529,22 +613,8 @@ export function PortalProvider({ children }) {
       return applications.filter((a) => a.jobId === jobId);
     }
 
-    const all = [];
-    let offset = 0;
-    const limit = 200;
-    for (;;) {
-      const { applications: page, total } = await loadApplications({
-        job_id: jobId,
-        limit,
-        offset,
-      });
-      const rows = page || [];
-      all.push(...rows);
-      offset += rows.length;
-      if (rows.length === 0 || offset >= (total || rows.length)) break;
-      if (offset > 5000) break;
-    }
-    return all;
+    const { applications: rows } = await loadAllApplications({ job_id: jobId });
+    return rows || [];
   };
 
   /**
@@ -725,9 +795,6 @@ export function PortalProvider({ children }) {
     [applications]
   );
 
-  const PIPELINE_STATUSES = getPipelineStatuses();
-  const STATUS_UPDATE_OPTIONS = getEmployerStatusUpdates();
-
   return (
     <PortalContext.Provider
       value={{
@@ -763,6 +830,7 @@ export function PortalProvider({ children }) {
         refreshData,
         refreshCounts,
         loadApplications,
+        loadAllApplications,
         PIPELINE_STATUSES,
         STATUS_UPDATE_OPTIONS,
         PortalStages,

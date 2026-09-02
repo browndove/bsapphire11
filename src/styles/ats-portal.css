@@ -564,9 +564,34 @@
 .ats-kanban {
   display: flex;
   gap: 0.85rem;
-  overflow-x: auto;
-  padding-bottom: 0.5rem;
+  align-items: stretch;
   min-height: 420px;
+  /* overflow-x:auto alone computes overflow-y to auto too, creating a second
+     vertical scroller that fights column bodies and causes flicker. */
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 0.5rem;
+}
+
+.ats-kanban.has-pinned {
+  overflow: hidden;
+  padding-bottom: 0;
+}
+
+.ats-kanban-pinned {
+  flex: 0 0 auto;
+  z-index: 2;
+  box-shadow: 8px 0 14px -12px rgba(15, 23, 42, 0.45);
+}
+
+.ats-kanban-scroll {
+  display: flex;
+  gap: 0.85rem;
+  flex: 1;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding-bottom: 0.5rem;
 }
 
 .ats-kanban.is-focused .ats-kanban-col {
@@ -586,15 +611,6 @@
   height: calc(100vh - 220px);
   max-height: calc(100vh - 220px);
   overflow: hidden;
-}
-
-.ats-kanban-col--submitted {
-  position: sticky;
-  left: 0;
-  z-index: 3;
-  /* Keep sticky column on its own layer so vertical card scroll doesn't hitch. */
-  box-shadow: 8px 0 14px -12px rgba(15, 23, 42, 0.45);
-  backface-visibility: hidden;
 }
 
 .ats-kanban-col-header {
@@ -629,6 +645,7 @@
 .ats-kanban-col-body {
   flex: 1;
   min-height: 0;
+  overflow-x: hidden;
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-gutter: stable;
@@ -636,6 +653,10 @@
   display: flex;
   flex-direction: column;
   gap: 0.55rem;
+  /* Avoid scroll-anchoring jumps when list content re-renders. */
+  overflow-anchor: none;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
 }
 
 .ats-kanban-col-body.is-drag-over {
@@ -649,15 +670,7 @@
   padding: 0.8rem;
   cursor: grab;
   flex-shrink: 0;
-  transition: border-color var(--transition-snappy), box-shadow var(--transition-snappy);
-}
-
-/* No translateY on hover — it flickers as cards pass under the cursor while scrolling. */
-@media (hover: hover) and (pointer: fine) {
-  .ats-candidate-card:hover {
-    border-color: var(--portal-border-hover);
-    box-shadow: var(--portal-card-shadow);
-  }
+  /* No hover motion/shadow — both flicker as cards pass under the cursor. */
 }
 
 .ats-candidate-card.is-dragging {
