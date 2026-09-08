@@ -175,6 +175,7 @@ export function mapApplicationFromApi(app) {
     status: app.status || 'submitted',
     companyName: app.company_name || app.company?.name || '',
     interviewAt: app.interview_at || null,
+    shortlistedAt: app.shortlisted_at || null,
     interviewReminderSentAt: app.interview_reminder_sent_at || null,
     emailSent: app.email_sent,
     emailError: app.email_error || '',

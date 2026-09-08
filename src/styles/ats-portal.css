@@ -704,6 +704,17 @@
   padding-top: 0.45rem;
 }
 
+.ats-candidate-card-actions {
+  display: flex;
+  gap: 0.4rem;
+  margin-top: 0.55rem;
+}
+
+.ats-candidate-card-shortlist {
+  width: 100%;
+  justify-content: center;
+}
+
 /* —— Data table ATS —— */
 .ats-table-shell {
   border: 1px solid var(--border-color);
@@ -1449,6 +1460,13 @@ button.ats-menu-item {
 
 .ats-stage-control-row .custom-select {
   flex: 1;
+}
+
+.ats-stage-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
 }
 
 .ats-panel-footer {

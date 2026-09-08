@@ -270,6 +270,17 @@ export async function updateApplicationStatus(id, statusOrPayload) {
   );
 }
 
+export async function shortlistApplication(id, payload = {}) {
+  return portalFetch(
+    `/employer/applications/${id}/shortlist`,
+    {
+      method: 'POST',
+      body: JSON.stringify(payload && typeof payload === 'object' ? payload : {}),
+    },
+    true
+  );
+}
+
 export async function fetchCategories() {
   return portalFetch('/categories');
 }

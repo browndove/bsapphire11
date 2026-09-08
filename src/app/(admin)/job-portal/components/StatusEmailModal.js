@@ -145,15 +145,10 @@ export default function StatusEmailModal({
                   Resend the <strong>{statusLabel}</strong> notification to{' '}
                   <strong>{candidateLabel}</strong>. Status stays unchanged.
                 </>
-              ) : targetStatus === 'hired' ? (
-                <>
-                  Hiring <strong>{candidateLabel}</strong>. Every other applicant for this job
-                  will be rejected and emailed, and the job posting will be closed.
-                </>
               ) : (
                 <>
-                  Moving <strong>{candidateLabel}</strong> to{' '}
-                  <strong>{statusLabel}</strong>. The candidate receives this email when you confirm.
+                  Email <strong>{candidateLabel}</strong> about their{' '}
+                  <strong>{statusLabel}</strong> status.
                 </>
               )}
             </p>
@@ -265,9 +260,7 @@ export default function StatusEmailModal({
                 ? 'Sending…'
                 : isResend
                   ? 'Resend email'
-                  : targetStatus === 'hired'
-                    ? 'Hire, notify others & close job'
-                    : 'Update status & send email'}
+                  : 'Send email'}
             </button>
           </div>
         </form>

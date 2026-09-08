@@ -18,6 +18,7 @@ import {
   logoutApi,
   renewSession,
   updateApplicationStatus,
+  shortlistApplication as shortlistApplicationApi,
   updateEmployerJob,
   verify2FA,
   loginStep1,
@@ -37,16 +38,9 @@ import {
   PortalStages,
 } from '@/lib/job-api/mappers';
 import {
-  buildStatusEmailDefaults,
-  buildStatusEmailPatch,
+  buildSilentStatusPatch,
 } from '@/lib/job-api/email-templates';
 import { isPortalPreview, loadPreviewData } from '@/lib/job-api/preview';
-
-const ALREADY_SETTLED_ON_HIRE = new Set(['rejected', 'hired']);
-
-function isApplicantStillOpen(app, hiredId) {
-  return app.id !== hiredId && !ALREADY_SETTLED_ON_HIRE.has(app.status);
-}
 
 /** Upstream often caps page size (~20) even when a higher limit is requested. */
 async function fetchAllApplicationPages(params = {}) {
@@ -533,50 +527,8 @@ export function PortalProvider({ children }) {
     });
   }, []);
 
-  const upsertApplication = async (app) => {
-    if (previewMode) {
-      const mapped = { ...app };
-      setApplications((prev) => {
-        const idx = prev.findIndex((a) => a.id === mapped.id);
-        if (idx >= 0) {
-          const next = [...prev];
-          next[idx] = { ...next[idx], ...mapped };
-          return next;
-        }
-        return [...prev, mapped];
-      });
-      return mapped;
-    }
-
-    throw new Error('Use updateApplicationWithEmail to change application status.');
-  };
-
-  const updateApplicationWithEmail = async (id, emailPayload) => {
-    const existing = applications.find((a) => a.id === id);
-
-    if (previewMode) {
-      const mapped = {
-        ...(existing || { id }),
-        status: emailPayload.status,
-        interviewAt: emailPayload.interview_at || existing?.interviewAt || null,
-        emailSent: true,
-        emailError: '',
-      };
-      setApplications((prev) => {
-        const idx = prev.findIndex((a) => a.id === id);
-        if (idx >= 0) {
-          const next = [...prev];
-          next[idx] = { ...next[idx], ...mapped };
-          return next;
-        }
-        return [...prev, mapped];
-      });
-      return { application: mapped, emailWarning: '' };
-    }
-
-    const updated = await updateApplicationStatus(id, emailPayload);
-    const raw = updated?.data || updated;
-    const mapped = mapApplicationFromApi(raw);
+  const applyMappedApplication = (mapped) => {
+    if (!mapped?.id) return mapped;
     setApplications((prev) => {
       const idx = prev.findIndex((a) => a.id === mapped.id);
       if (idx >= 0) {
@@ -586,167 +538,114 @@ export function PortalProvider({ children }) {
       }
       return [...prev, mapped];
     });
-
-    // Backend contract: email_sent === true means Resend accepted the send.
-    // Anything else after a status update must surface as a warning.
-    const emailSent = raw?.email_sent === true || mapped.emailSent === true;
-    const emailError =
-      raw?.email_error ||
-      mapped.emailError ||
-      'Status was saved but the email could not be sent. Retry or contact the candidate manually.';
-
-    return {
-      application: { ...mapped, emailSent, emailError: emailSent ? '' : emailError },
-      emailWarning: emailSent ? '' : emailError,
-    };
+    return mapped;
   };
 
-  const countOtherOpenApplicants = useCallback(
-    (jobId, hiredId) =>
-      applications.filter((a) => a.jobId === jobId && isApplicantStillOpen(a, hiredId))
-        .length,
-    [applications]
-  );
+  const updateApplicationStage = async (id, statusOrPayload) => {
+    const existing = applications.find((a) => a.id === id);
+    const payload =
+      typeof statusOrPayload === 'string'
+        ? buildSilentStatusPatch({ status: statusOrPayload })
+        : statusOrPayload;
 
-  const loadAllApplicantsForJob = async (jobId) => {
     if (previewMode) {
-      return applications.filter((a) => a.jobId === jobId);
+      const mapped = {
+        ...(existing || { id }),
+        status: payload.status,
+        interviewAt: payload.interview_at || existing?.interviewAt || null,
+        shortlistedAt:
+          payload.status === 'shortlisted'
+            ? existing?.shortlistedAt || new Date().toISOString()
+            : existing?.shortlistedAt || null,
+        emailSent: false,
+        emailError: '',
+      };
+      applyMappedApplication(mapped);
+      return { application: mapped, emailWarning: '' };
     }
 
-    const { applications: rows } = await loadAllApplications({ job_id: jobId });
-    return rows || [];
-  };
+    const updated = await updateApplicationStatus(id, payload);
+    const raw = updated?.data || updated;
+    const mapped = mapApplicationFromApi(raw);
+    applyMappedApplication(mapped);
 
-  /**
-   * After hiring one candidate: reject every other applicant for the job
-   * (anyone not already hired/rejected), email them a rejection, and close
-   * the job posting.
-   */
-  const finalizeHirePipeline = async (hiredId, hirePayload) => {
-    const hireResult = await updateApplicationWithEmail(hiredId, hirePayload);
-    const hired = hireResult.application;
-    const jobId = hired.jobId;
-    if (!jobId) {
+    const requestedEmail = payload.send_email === true;
+    const emailSent = raw?.email_sent === true || mapped.emailSent === true;
+    if (requestedEmail && !emailSent) {
+      const emailError =
+        raw?.email_error ||
+        mapped.emailError ||
+        'The status was saved, but the candidate did not receive the notification.';
       return {
-        ...hireResult,
-        rejectedCount: 0,
-        rejectionEmailFailures: 0,
-        rejectionFailures: [],
-        jobClosed: false,
-        jobCloseError: 'Hired candidate is missing a job id; other applicants were not rejected.',
+        application: { ...mapped, emailSent: false, emailError },
+        emailWarning: emailError,
       };
     }
 
-    const job =
-      jobs.find((j) => j.id === jobId) ||
-      (await loadJobById(jobId).catch(() => null));
-    const companyName = hired.companyName || job?.companyName || 'Blvck Sapphire';
+    return { application: mapped, emailWarning: '' };
+  };
 
-    let allForJob = [];
-    try {
-      allForJob = await loadAllApplicantsForJob(jobId);
-    } catch (err) {
-      // Prefer in-memory over aborting after a successful hire
-      allForJob = applications.filter((a) => a.jobId === jobId);
-      if (!allForJob.length) {
-        return {
-          ...hireResult,
-          rejectedCount: 0,
-          rejectionEmailFailures: 0,
-          rejectionFailures: [
-            {
-              id: jobId,
-              name: 'all other applicants',
-              message: toUserMessage(err),
-            },
-          ],
-          jobClosed: false,
-          jobCloseError: 'Could not load other applicants to reject them.',
-        };
-      }
+  const upsertApplication = async (app) => {
+    if (previewMode) {
+      const mapped = { ...app };
+      applyMappedApplication(mapped);
+      return mapped;
     }
 
-    const siblings = allForJob.filter((a) => isApplicantStillOpen(a, hiredId));
+    throw new Error('Use updateApplicationStage to change application status.');
+  };
 
-    const rejectionFailures = [];
-    let rejectedCount = 0;
-    let rejectionEmailFailures = 0;
+  const updateApplicationWithEmail = async (id, emailPayload) => {
+    const payload =
+      emailPayload?.send_email === false
+        ? emailPayload
+        : { ...emailPayload, send_email: true };
+    return updateApplicationStage(id, payload);
+  };
 
-    for (const other of siblings) {
-      try {
-        const defaults = buildStatusEmailDefaults(
-          other,
-          job,
-          companyName,
-          'rejected'
-        );
-        const rejectPayload = buildStatusEmailPatch({
-          status: 'rejected',
-          emailSubject: defaults.fields.emailSubject,
-          emailBody: defaults.fields.emailBody,
-        });
+  const shortlistApplication = async (id) => {
+    const existing = applications.find((a) => a.id === id);
 
-        if (previewMode) {
-          setApplications((prev) =>
-            prev.map((a) => (a.id === other.id ? { ...a, status: 'rejected' } : a))
-          );
-          rejectedCount += 1;
-          continue;
-        }
-
-        const { emailWarning } = await updateApplicationWithEmail(
-          other.id,
-          rejectPayload
-        );
-        rejectedCount += 1;
-        if (emailWarning) rejectionEmailFailures += 1;
-      } catch (err) {
-        rejectionFailures.push({
-          id: other.id,
-          name: other.candidateName || other.email || other.id,
-          message: toUserMessage(err, 'status-email'),
-        });
-      }
+    if (previewMode) {
+      const mapped = {
+        ...(existing || { id }),
+        status: 'shortlisted',
+        shortlistedAt: new Date().toISOString(),
+        emailSent: false,
+        emailError: '',
+      };
+      applyMappedApplication(mapped);
+      return mapped;
     }
 
-    // Second pass: anyone still not hired/rejected must be reported
-    let leftover = [];
-    try {
-      const after = await loadAllApplicantsForJob(jobId);
-      leftover = after.filter((a) => isApplicantStillOpen(a, hiredId));
-      for (const left of leftover) {
-        if (rejectionFailures.some((f) => f.id === left.id)) continue;
-        rejectionFailures.push({
-          id: left.id,
-          name: left.candidateName || left.email || left.id,
-          message: 'Still not rejected after hire cascade.',
-        });
-      }
-    } catch {
-      // ignore verification fetch errors
-    }
+    const updated = await shortlistApplicationApi(id);
+    const raw = updated?.data || updated;
+    const mapped = mapApplicationFromApi(raw);
+    return applyMappedApplication(mapped);
+  };
 
-    let jobClosed = false;
-    let jobCloseError = '';
-    if (job && job.status !== 'closed' && job.status !== 'archived') {
-      try {
-        await upsertJob({ ...job, status: 'closed' });
-        jobClosed = true;
-      } catch (err) {
-        jobCloseError = toUserMessage(err, 'job');
-      }
-    } else if (job?.status === 'closed' || job?.status === 'archived') {
-      jobClosed = true;
-    }
+  /**
+   * Hire one candidate. Does not reject others or close the job,
+   * so multiple people can be hired for the same posting.
+   */
+  const finalizeHirePipeline = async (hiredId, hirePayload = null) => {
+    const hireBody =
+      hirePayload && typeof hirePayload === 'object'
+        ? hirePayload.send_email
+          ? { ...hirePayload, send_email: true }
+          : buildSilentStatusPatch({ status: 'hired' })
+        : buildSilentStatusPatch({ status: 'hired' });
+
+    const hireResult = await updateApplicationStage(hiredId, hireBody);
 
     return {
       ...hireResult,
-      rejectedCount,
-      rejectionEmailFailures,
-      rejectionFailures,
-      leftoverCount: leftover.length,
-      jobClosed,
-      jobCloseError,
+      rejectedCount: 0,
+      rejectionEmailFailures: 0,
+      rejectionFailures: [],
+      leftoverCount: 0,
+      jobClosed: false,
+      jobCloseError: '',
     };
   };
 
@@ -754,23 +653,15 @@ export function PortalProvider({ children }) {
     const existing = applications.find((a) => a.id === id);
     if (!existing) return;
 
-    if (!previewMode) {
-      throw new Error('Use updateApplicationWithEmail to change application status.');
+    if (status === 'shortlisted') {
+      return shortlistApplication(id);
     }
 
-    const prevStatus = existing.status;
-    setApplications((prev) =>
-      prev.map((a) => (a.id === id ? { ...a, status } : a))
+    const { application } = await updateApplicationStage(
+      id,
+      buildSilentStatusPatch({ status })
     );
-
-    try {
-      return await upsertApplication({ ...existing, status });
-    } catch (err) {
-      setApplications((prev) =>
-        prev.map((a) => (a.id === id ? { ...a, status: prevStatus } : a))
-      );
-      throw err;
-    }
+    return application;
   };
 
   const saveProfile = async (body) => {
@@ -823,9 +714,10 @@ export function PortalProvider({ children }) {
         loadJobById,
         upsertApplication,
         mergeApplications,
+        updateApplicationStage,
         updateApplicationWithEmail,
+        shortlistApplication,
         finalizeHirePipeline,
-        countOtherOpenApplicants,
         moveApplication,
         refreshData,
         refreshCounts,

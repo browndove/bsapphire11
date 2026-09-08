@@ -22,10 +22,22 @@ Provider: Resend (configured server-side only)
 
 `PATCH /employer/applications/{id}/status`
 
-Required always: `status`, `email_subject`, `email_body`  
-Interview also requires: `interview_at`, `reminder_email_subject`, `reminder_email_body`
+Default is **silent** (no email):
 
-Success includes:
+```json
+{ "status": "reviewing" }
+```
+
+`interview` can also be set silently without `interview_at`.
+
+To notify the candidate, pass `send_email: true` with `email_subject` and `email_body`.
+When emailing for interview, include `interview_at` and reminder fields if you want them in the message.
+
+Shortlist without email:
+
+`POST /employer/applications/{id}/shortlist`
+
+Success may include:
 
 ```json
 {
@@ -36,18 +48,18 @@ Success includes:
 
 | `email_sent` | Meaning |
 |--------------|---------|
-| `true` | Resend accepted the send |
-| `false` | Status updated; email failed — show warning + retry |
-| HTTP 503 | Email not configured — status **not** updated |
+| `true` | Resend accepted the send (only expected when `send_email: true`) |
+| `false` / omitted | Status updated; no email (or email failed if notify was requested) |
+| HTTP 503 | Email not configured — only blocks when `send_email: true` |
 
-Placeholders (`{{first_name}}`, etc.) are expanded **client-side** before PATCH.
+Placeholders (`{{first_name}}`, etc.) are expanded **client-side** before PATCH when notifying.
 
 ## Frontend wiring (this repo)
 
 - Templates: `src/lib/job-api/email-templates.js`
-- Modal: `src/app/(admin)/job-portal/components/StatusEmailModal.js`
-- Detail + kanban open the modal before PATCH
-- BFF: `PATCH /api/job-portal/employer/applications/:id/status` → upstream status route (body forwarded as-is)
+- Modal: `src/app/(admin)/job-portal/components/StatusEmailModal.js` (optional notify / resend)
+- Board + detail move stages silently by default; Shortlist uses the shortlist endpoint
+- BFF: `PATCH /api/job-portal/employer/applications/:id/status`, `POST .../shortlist`
 - Guest success: `/success-job` mentions checking email for tracking link
 
 ## Server config (EC2)

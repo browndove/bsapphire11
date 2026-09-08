@@ -6,9 +6,20 @@ import Avatar from './Avatar';
 import { formatRelativeTime } from '@/lib/job-api/format';
 import { PortalStages } from '../PortalContext';
 
-function CandidateCard({ app, jobTitle, dragging, onDragStart, onDragEnd }) {
+const SHORTLISTABLE = new Set(['submitted', 'reviewing', 'interview']);
+
+function CandidateCard({
+  app,
+  jobTitle,
+  dragging,
+  onDragStart,
+  onDragEnd,
+  onShortlist,
+}) {
   const router = useRouter();
   const cardRef = useRef(null);
+  const [shortlisting, setShortlisting] = useState(false);
+  const canShortlist = SHORTLISTABLE.has(app.status);
 
   const armDrag = (e) => {
     if (e.button === 0 && cardRef.current) cardRef.current.draggable = true;
@@ -16,6 +27,12 @@ function CandidateCard({ app, jobTitle, dragging, onDragStart, onDragEnd }) {
 
   const disarmDrag = () => {
     if (cardRef.current) cardRef.current.draggable = false;
+  };
+
+  const openDetail = () => {
+    const params = new URLSearchParams({ id: app.id });
+    if (app.jobId) params.set('job', app.jobId);
+    router.push(`/job-portal/applications/detail?${params.toString()}`);
   };
 
   return (
@@ -31,20 +48,41 @@ function CandidateCard({ app, jobTitle, dragging, onDragStart, onDragEnd }) {
         disarmDrag();
         onDragEnd();
       }}
-      onClick={() => {
-        const params = new URLSearchParams({ id: app.id });
-        if (app.jobId) params.set('job', app.jobId);
-        router.push(`/job-portal/applications/detail?${params.toString()}`);
-      }}
+      onClick={openDetail}
     >
       <div className="ats-candidate-card-head">
         <Avatar name={app.candidateName} size="sm" />
         <div>
           <div className="ats-candidate-card-name">{app.candidateName}</div>
-          <div className="ats-candidate-card-meta">{formatRelativeTime(app.submittedAt)}</div>
+          <div className="ats-candidate-card-meta">
+            {app.status === 'shortlisted' && app.shortlistedAt
+              ? `Shortlisted ${formatRelativeTime(app.shortlistedAt)}`
+              : formatRelativeTime(app.submittedAt)}
+          </div>
         </div>
       </div>
       <div className="ats-candidate-card-job">{jobTitle || '—'}</div>
+      {canShortlist && onShortlist ? (
+        <div className="ats-candidate-card-actions">
+          <button
+            type="button"
+            className="btn btn-outline btn-sm ats-candidate-card-shortlist"
+            disabled={shortlisting}
+            onClick={async (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setShortlisting(true);
+              try {
+                await onShortlist(app.id);
+              } finally {
+                setShortlisting(false);
+              }
+            }}
+          >
+            {shortlisting ? 'Saving…' : 'Shortlist'}
+          </button>
+        </div>
+      ) : null}
     </div>
   );
 }
@@ -60,6 +98,7 @@ function StageColumn({
   onDragOver,
   onDragLeave,
   onDrop,
+  onShortlist,
 }) {
   return (
     <div className={`ats-kanban-col ats-kanban-col--${stage}`}>
@@ -83,6 +122,7 @@ function StageColumn({
               dragging={draggingId === app.id}
               onDragStart={onDragStart}
               onDragEnd={onDragEnd}
+              onShortlist={onShortlist}
             />
           );
         })}
@@ -96,6 +136,7 @@ export default function PipelineBoard({
   applications,
   jobs,
   onMoveApplication,
+  onShortlist,
   onError,
 }) {
   const [draggingId, setDraggingId] = useState(null);
@@ -119,8 +160,6 @@ export default function PipelineBoard({
     return acc;
   }, [stages, applications]);
 
-  // Pin Submitted by layout (not position:sticky) so vertical card scroll
-  // isn't fighting a sticky column inside an overflow-x scroller.
   const pinSubmitted = stages.length > 1 && stages[0] === 'submitted';
   const pinnedStage = pinSubmitted ? 'submitted' : null;
   const scrollStages = pinnedStage ? stages.slice(1) : stages;
@@ -164,6 +203,7 @@ export default function PipelineBoard({
     },
     onDragLeave: () => setDragOverCol(null),
     onDrop: (e) => handleDrop(e, stage),
+    onShortlist,
   });
 
   return (

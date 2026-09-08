@@ -5,7 +5,6 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { usePortal } from '../PortalContext';
 import { toUserMessage } from '@/lib/job-api/errors';
 import { getFilterableScreeningQuestions, matchesScreeningFilters } from '@/lib/job-api/mappers';
-import { buildStatusEmailDefaults } from '@/lib/job-api/email-templates';
 import { useConfirm } from '@/components/ConfirmProvider';
 import PortalHeader from '../components/PortalHeader';
 import ViewToggle from '../components/ViewToggle';
@@ -14,7 +13,6 @@ import PipelineBoard from '../components/PipelineBoard';
 import CandidateTable from '../components/CandidateTable';
 import ScreeningResponsesTable from '../components/ScreeningResponsesTable';
 import EmptyState from '../components/EmptyState';
-import StatusEmailModal from '../components/StatusEmailModal';
 
 const PAGE_SIZE = 50;
 const VIEW_KEY = 'ats-candidates-view';
@@ -28,15 +26,13 @@ function ApplicationsInbox() {
   const {
     isReady,
     isAuthed,
-    isPreview,
     applications: allApplications,
     applicationsTotal,
     jobs,
     PIPELINE_STATUSES,
     moveApplication,
-    updateApplicationWithEmail,
+    shortlistApplication,
     finalizeHirePipeline,
-    countOtherOpenApplicants,
     loadAllApplications,
     loadJobById,
     mergeApplications,
@@ -57,9 +53,6 @@ function ApplicationsInbox() {
   const [loadingApps, setLoadingApps] = useState(false);
   const [selectedJobDetail, setSelectedJobDetail] = useState(null);
   const [loadingJobDetail, setLoadingJobDetail] = useState(false);
-  const [statusModal, setStatusModal] = useState(null);
-  const [statusModalError, setStatusModalError] = useState('');
-  const [statusSaving, setStatusSaving] = useState(false);
   const jobsRef = useRef(jobs);
   jobsRef.current = jobs;
 
@@ -347,138 +340,94 @@ function ApplicationsInbox() {
     [selectedJob]
   );
 
+  const patchServerApp = useCallback((application) => {
+    if (selectedJob === '__all' || !application?.id) return;
+    setServerAppsRaw((prev) => {
+      if (!prev) return prev;
+      return prev.map((a) => (a.id === application.id ? { ...a, ...application } : a));
+    });
+  }, [selectedJob]);
+
   const handleMove = useCallback(
     async (id, status) => {
       const app = filteredApps.find((a) => a.id === id);
       if (!app || app.status === status) return;
 
-      if (isPreview) {
+      if (status === 'hired') {
+        const ok = await confirm({
+          title: 'Hire candidate?',
+          message:
+            `${app.candidateName || 'This candidate'} will be marked as hired.\n\n` +
+            'Other applicants stay in their current stages. The job stays open so you can hire more people if needed. No emails will be sent.',
+          confirmText: 'Hire',
+          cancelText: 'Cancel',
+        });
+        if (!ok) return;
+
         try {
-          await moveApplication(id, status);
-          if (selectedJob !== '__all' && serverAppsRaw) {
-            setServerAppsRaw((prev) =>
-              (prev || []).map((a) => (a.id === id ? { ...a, status } : a))
-            );
+          const result = await finalizeHirePipeline(app.id);
+          if (selectedJob !== '__all') {
+            try {
+              const refreshed = await loadAllApplications({ job_id: selectedJob });
+              setServerAppsRaw(refreshed.applications);
+            } catch {
+              patchServerApp(result.application);
+            }
           }
+          showToast('Candidate hired.', 'success');
         } catch (err) {
           showToast(toUserMessage(err));
         }
         return;
       }
 
-      if (status === 'hired') {
-        const others = countOtherOpenApplicants(app.jobId, app.id);
+      if (status === 'rejected') {
         const ok = await confirm({
-          title: 'Hire candidate?',
-          message:
-            `${app.candidateName || 'This candidate'} will be hired and emailed.\n\n` +
-            (others > 0
-              ? `All ${others} other applicant${others === 1 ? '' : 's'} for this job will be rejected and emailed a rejection.\n\n`
-              : 'There are no other open applicants for this job.\n\n') +
-            'This job posting will be closed.',
-          confirmText: 'Hire & reject others',
+          title: 'Reject candidate?',
+          message: `${app.candidateName || 'This candidate'} will be marked as rejected. No email will be sent.`,
+          confirmText: 'Reject',
           cancelText: 'Cancel',
+          variant: 'danger',
         });
         if (!ok) return;
       }
 
-      setStatusModalError('');
-      const modalJob = jobs.find((j) => j.id === app.jobId) || selectedJobRecord;
-      const defaults = buildStatusEmailDefaults(
-        app,
-        modalJob,
-        app.companyName || 'Blvck Sapphire',
-        status
-      );
-      setStatusModal({ app, targetStatus: status, ...defaults });
+      try {
+        const updated = await moveApplication(id, status);
+        patchServerApp(updated);
+        if (status === 'shortlisted') {
+          showToast('Shortlisted. Filter Stage → Shortlisted to review them.', 'success');
+        }
+      } catch (err) {
+        showToast(toUserMessage(err));
+      }
     },
     [
       filteredApps,
-      isPreview,
-      jobs,
       moveApplication,
+      finalizeHirePipeline,
+      loadAllApplications,
       selectedJob,
-      selectedJobRecord,
-      serverAppsRaw,
       showToast,
       confirm,
-      countOtherOpenApplicants,
+      patchServerApp,
     ]
   );
 
-  const handleStatusEmailSubmit = async (payload) => {
-    if (!statusModal?.app) return;
-    const { app } = statusModal;
-    setStatusSaving(true);
-    setStatusModalError('');
-    try {
-      if (payload.status === 'hired') {
-        const result = await finalizeHirePipeline(app.id, payload);
-        if (selectedJob !== '__all') {
-          // Refresh board from server after hire cascade
-          try {
-            const refreshed = await loadAllApplications({
-              job_id: selectedJob,
-            });
-            setServerAppsRaw(refreshed.applications);
-          } catch {
-            setServerAppsRaw((prev) =>
-              (prev || []).map((a) => {
-                if (a.id === result.application.id) return { ...a, ...result.application };
-                if (a.jobId === result.application.jobId && a.id !== result.application.id) {
-                  return { ...a, status: 'rejected' };
-                }
-                return a;
-              })
-            );
-          }
-        }
-        setStatusModal(null);
-        const parts = [];
-        if (result.emailWarning) parts.push(result.emailWarning);
-        else parts.push('Candidate hired and emailed.');
-        if (result.rejectedCount > 0) {
-          parts.push(`Rejected all ${result.rejectedCount} other applicant(s).`);
-        }
-        if (result.leftoverCount > 0) {
-          parts.push(`${result.leftoverCount} still not rejected — check the board.`);
-        }
-        if (result.rejectionEmailFailures > 0) {
-          parts.push(`${result.rejectionEmailFailures} rejection email(s) failed.`);
-        }
-        if (result.rejectionFailures?.length) {
-          parts.push(`Could not reject ${result.rejectionFailures.length} applicant(s).`);
-        }
-        if (result.jobClosed) parts.push('Job closed.');
-        else if (result.jobCloseError) parts.push(`Job not closed: ${result.jobCloseError}`);
-        const isWarning =
-          !!result.emailWarning ||
-          result.rejectionEmailFailures > 0 ||
-          (result.rejectionFailures?.length || 0) > 0 ||
-          (result.leftoverCount || 0) > 0 ||
-          !!result.jobCloseError;
-        showToast(parts.join(' '), isWarning ? 'warning' : 'success');
-        return;
+  const handleShortlist = useCallback(
+    async (id) => {
+      const app = filteredApps.find((a) => a.id === id);
+      if (!app || app.status === 'shortlisted') return;
+      try {
+        const updated = await shortlistApplication(id);
+        patchServerApp(updated);
+        showToast('Shortlisted. Filter Stage → Shortlisted to review them.', 'success');
+      } catch (err) {
+        showToast(toUserMessage(err));
       }
-
-      const { application, emailWarning } = await updateApplicationWithEmail(app.id, payload);
-      if (selectedJob !== '__all' && serverAppsRaw) {
-        setServerAppsRaw((prev) =>
-          (prev || []).map((a) => (a.id === application.id ? { ...a, ...application } : a))
-        );
-      }
-      setStatusModal(null);
-      if (emailWarning) {
-        showToast(emailWarning, 'warning');
-      } else if (application.email) {
-        showToast(`Status updated · email sent to ${application.email}`, 'success');
-      }
-    } catch (err) {
-      setStatusModalError(toUserMessage(err, 'status-email'));
-    } finally {
-      setStatusSaving(false);
-    }
-  };
+    },
+    [filteredApps, shortlistApplication, patchServerApp, showToast]
+  );
 
   const clearFilters = () => {
     setSelectedJob('__all');
@@ -513,25 +462,6 @@ function ApplicationsInbox() {
           {toast}
         </div>
       ) : null}
-
-      <StatusEmailModal
-        key={
-          statusModal
-            ? `${statusModal.app.id}-${statusModal.targetStatus}`
-            : 'closed'
-        }
-        open={!!statusModal}
-        application={statusModal?.app}
-        initialFields={statusModal?.fields}
-        interviewIso={statusModal?.interviewIso}
-        targetStatus={statusModal?.targetStatus}
-        onClose={() => {
-          if (!statusSaving) setStatusModal(null);
-        }}
-        onSubmit={handleStatusEmailSubmit}
-        submitting={statusSaving}
-        error={statusModalError}
-      />
 
       <div className="ats-board-layout">
         <FilterRail
@@ -573,6 +503,7 @@ function ApplicationsInbox() {
               applications={filteredApps}
               jobs={jobs}
               onMoveApplication={handleMove}
+              onShortlist={handleShortlist}
               onError={(err) => {
                 setToast(toUserMessage(err));
                 setTimeout(() => setToast(''), 4000);

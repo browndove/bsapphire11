@@ -185,6 +185,7 @@ export function buildStatusEmailPatch({
   reminderEmailSubject,
   reminderEmailBody,
   reminderEmailHtml,
+  sendEmail = true,
 }) {
   const subject = String(emailSubject || '').trim();
   const bodyText = String(emailBody || '').trim();
@@ -192,50 +193,70 @@ export function buildStatusEmailPatch({
   if (!status) {
     throw new Error('Status is required.');
   }
-  if (!subject || !bodyText) {
-    throw new Error('Email subject and body are required before updating status.');
+
+  if (sendEmail) {
+    if (!subject || !bodyText) {
+      throw new Error('Email subject and body are required before notifying the candidate.');
+    }
+
+    const unresolvedMain = findUnresolvedEmailPlaceholders(bodyText);
+    if (unresolvedMain.length) {
+      throw new Error(
+        `Replace placeholder text before sending: ${unresolvedMain.join(', ')}`
+      );
+    }
   }
 
-  const unresolvedMain = findUnresolvedEmailPlaceholders(bodyText);
-  if (unresolvedMain.length) {
-    throw new Error(
-      `Replace placeholder text before sending: ${unresolvedMain.join(', ')}`
-    );
-  }
+  const body = { status };
 
-  const body = {
-    status,
-    email_subject: subject,
-    email_body: bodyText,
-  };
-
-  if (emailHtml?.trim()) {
-    body.email_html = String(emailHtml).trim();
+  if (sendEmail) {
+    body.send_email = true;
+    body.email_subject = subject;
+    body.email_body = bodyText;
+    if (emailHtml?.trim()) {
+      body.email_html = String(emailHtml).trim();
+    }
   }
 
   if (status === 'interview') {
-    const reminderSubject = String(reminderEmailSubject || '').trim();
-    const reminderBody = String(reminderEmailBody || '').trim();
-    if (!interviewAt) {
-      throw new Error('Interview date and time are required.');
+    if (interviewAt) {
+      body.interview_at = interviewAt;
     }
-    if (!reminderSubject || !reminderBody) {
-      throw new Error('Reminder email subject and body are required for interviews.');
-    }
-    const unresolvedReminder = findUnresolvedEmailPlaceholders(reminderBody);
-    if (unresolvedReminder.length) {
-      throw new Error(
-        `Replace placeholder text in the reminder before sending: ${unresolvedReminder.join(', ')}`
-      );
-    }
-    body.interview_at = interviewAt;
-    body.reminder_email_subject = reminderSubject;
-    body.reminder_email_body = reminderBody;
-    if (reminderEmailHtml?.trim()) {
-      body.reminder_email_html = String(reminderEmailHtml).trim();
+    if (sendEmail) {
+      const reminderSubject = String(reminderEmailSubject || '').trim();
+      const reminderBody = String(reminderEmailBody || '').trim();
+      if (!interviewAt) {
+        throw new Error('Interview date and time are required.');
+      }
+      if (!reminderSubject || !reminderBody) {
+        throw new Error('Reminder email subject and body are required for interviews.');
+      }
+      const unresolvedReminder = findUnresolvedEmailPlaceholders(reminderBody);
+      if (unresolvedReminder.length) {
+        throw new Error(
+          `Replace placeholder text in the reminder before sending: ${unresolvedReminder.join(', ')}`
+        );
+      }
+      body.reminder_email_subject = reminderSubject;
+      body.reminder_email_body = reminderBody;
+      if (reminderEmailHtml?.trim()) {
+        body.reminder_email_html = String(reminderEmailHtml).trim();
+      }
     }
   }
 
+  return body;
+}
+
+/** Silent stage change — no candidate email. */
+export function buildSilentStatusPatch({ status, interviewAt } = {}) {
+  if (!status) {
+    throw new Error('Status is required.');
+  }
+  const body = { status };
+  if (status === 'interview' && interviewAt) {
+    body.interview_at = interviewAt;
+  }
   return body;
 }
 

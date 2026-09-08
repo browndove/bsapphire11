@@ -7,7 +7,7 @@ import { usePortal, PortalStages } from '../../PortalContext';
 import { toUserMessage } from '@/lib/job-api/errors';
 import { formatDateTime } from '@/lib/job-api/format';
 import { formatAnswerValue } from '@/lib/job-api/mappers';
-import { buildStatusEmailDefaults, buildStatusEmailPatch } from '@/lib/job-api/email-templates';
+import { buildSilentStatusPatch, buildStatusEmailDefaults } from '@/lib/job-api/email-templates';
 import PortalHeader, { BreadcrumbLink } from '../../components/PortalHeader';
 import Avatar from '../../components/Avatar';
 import StatusEmailModal from '../../components/StatusEmailModal';
@@ -31,8 +31,9 @@ function ApplicationDetailView() {
     jobs,
     STATUS_UPDATE_OPTIONS,
     updateApplicationWithEmail,
+    updateApplicationStage,
+    shortlistApplication,
     finalizeHirePipeline,
-    countOtherOpenApplicants,
     moveApplication,
     loadApplications,
     mergeApplications,
@@ -174,7 +175,7 @@ function ApplicationDetailView() {
       const updated = await moveApplication(app.id, newStatus);
       setApp(updated);
       setStage(updated.status);
-      showToast('Status updated.');
+      showToast(newStatus === 'shortlisted' ? 'Shortlisted.' : 'Status updated.');
     } catch (err) {
       setError(toUserMessage(err));
     } finally {
@@ -186,57 +187,10 @@ function ApplicationDetailView() {
     setSaving(true);
     setStatusModalError('');
     try {
-      if (payload.status === 'hired' && !statusModal?.resend) {
-        const result = await finalizeHirePipeline(app.id, payload);
-        setApp(result.application);
-        setStage(result.application.status);
-        setStatusModal(null);
-
-        const parts = [];
-        if (result.emailWarning) {
-          parts.push(result.emailWarning);
-        } else {
-          parts.push(
-            `Hired ${result.application.candidateName || displayName} and emailed them.`
-          );
-        }
-        if (result.rejectedCount > 0) {
-          parts.push(
-            `Rejected all ${result.rejectedCount} other applicant${result.rejectedCount === 1 ? '' : 's'} with rejection emails.`
-          );
-        }
-        if (result.leftoverCount > 0) {
-          parts.push(
-            `${result.leftoverCount} applicant${result.leftoverCount === 1 ? '' : 's'} could not be rejected — check the board.`
-          );
-        }
-        if (result.rejectionEmailFailures > 0) {
-          parts.push(
-            `${result.rejectionEmailFailures} rejection email${result.rejectionEmailFailures === 1 ? '' : 's'} failed to send.`
-          );
-        }
-        if (result.rejectionFailures?.length) {
-          parts.push(
-            `Could not reject ${result.rejectionFailures.length} applicant${result.rejectionFailures.length === 1 ? '' : 's'}.`
-          );
-        }
-        if (result.jobClosed) {
-          parts.push('Job posting closed.');
-        } else if (result.jobCloseError) {
-          parts.push(`Job was not closed: ${result.jobCloseError}`);
-        }
-
-        const isWarning =
-          !!result.emailWarning ||
-          result.rejectionEmailFailures > 0 ||
-          (result.rejectionFailures?.length || 0) > 0 ||
-          (result.leftoverCount || 0) > 0 ||
-          !!result.jobCloseError;
-        showToast(parts.join(' '), isWarning ? 'warning' : 'success');
-        return;
-      }
-
-      const { application, emailWarning } = await updateApplicationWithEmail(app.id, payload);
+      const { application, emailWarning } = await updateApplicationWithEmail(app.id, {
+        ...payload,
+        send_email: true,
+      });
       setApp(application);
       setStage(application.status);
       setStatusModal(null);
@@ -246,7 +200,7 @@ function ApplicationDetailView() {
         showToast(
           statusModal?.resend
             ? `Email sent to ${application.email || 'candidate'}.`
-            : `Status updated and email sent to ${application.email || 'candidate'}.`
+            : `Notified ${application.email || 'candidate'}.`
         );
       }
     } catch (err) {
@@ -259,27 +213,22 @@ function ApplicationDetailView() {
   const confirmReject = async () =>
     confirm({
       title: 'Reject candidate?',
-      message: `${displayName || 'This candidate'} will be marked as rejected and notified by email.`,
-      confirmText: 'Continue',
+      message: `${displayName || 'This candidate'} will be marked as rejected. No email will be sent.`,
+      confirmText: 'Reject',
       cancelText: 'Cancel',
       variant: 'danger',
     });
 
-  const confirmHire = async () => {
-    const others = countOtherOpenApplicants(app.jobId, app.id);
-    return confirm({
+  const confirmHire = async () =>
+    confirm({
       title: 'Hire candidate?',
       message:
-        `${displayName || 'This candidate'} will be hired and emailed.\n\n` +
-        (others > 0
-          ? `All ${others} other applicant${others === 1 ? '' : 's'} for this job will be rejected and emailed a rejection.\n\n`
-          : 'There are no other open applicants for this job.\n\n') +
-        'This job posting will be closed.',
-      confirmText: 'Hire & reject others',
+        `${displayName || 'This candidate'} will be marked as hired.\n\n` +
+        'Other applicants stay in their current stages. The job stays open so you can hire more people if needed. No emails will be sent.',
+      confirmText: 'Hire',
       cancelText: 'Cancel',
       variant: 'default',
     });
-  };
 
   const requestStatusChange = async (newStatus) => {
     if (newStatus === app.status) return;
@@ -299,18 +248,10 @@ function ApplicationDetailView() {
         setSaving(true);
         setError('');
         try {
-          const defaults = buildStatusEmailDefaults(app, job, companyName, 'hired');
-          const payload = buildStatusEmailPatch({
-            status: 'hired',
-            emailSubject: defaults.fields.emailSubject,
-            emailBody: defaults.fields.emailBody,
-          });
-          const result = await finalizeHirePipeline(app.id, payload);
+          const result = await finalizeHirePipeline(app.id);
           setApp(result.application);
           setStage(result.application.status);
-          showToast(
-            `Hired. Rejected ${result.rejectedCount} other(s).${result.jobClosed ? ' Job closed.' : ''}`
-          );
+          showToast('Hired.');
         } catch (err) {
           setError(toUserMessage(err));
         } finally {
@@ -322,7 +263,54 @@ function ApplicationDetailView() {
       return;
     }
 
-    openStatusModal(newStatus);
+    setSaving(true);
+    setError('');
+    try {
+      if (newStatus === 'hired') {
+        const result = await finalizeHirePipeline(app.id);
+        setApp(result.application);
+        setStage(result.application.status);
+        showToast('Candidate hired.', 'success');
+        return;
+      }
+
+      if (newStatus === 'shortlisted') {
+        const updated = await shortlistApplication(app.id);
+        setApp(updated);
+        setStage(updated.status);
+        showToast('Shortlisted.');
+        return;
+      }
+
+      const { application } = await updateApplicationStage(
+        app.id,
+        buildSilentStatusPatch({ status: newStatus })
+      );
+      setApp(application);
+      setStage(application.status);
+      showToast('Status updated.');
+    } catch (err) {
+      setError(toUserMessage(err));
+      setStage(app.status);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleShortlist = async () => {
+    if (app.status === 'shortlisted') return;
+    setSaving(true);
+    setError('');
+    try {
+      const updated = await shortlistApplication(app.id);
+      setApp(updated);
+      setStage(updated.status);
+      showToast('Shortlisted.');
+    } catch (err) {
+      setError(toUserMessage(err));
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleSave = async () => {
@@ -497,6 +485,35 @@ function ApplicationDetailView() {
                   {saving ? 'Saving…' : 'Save'}
                 </button>
               </div>
+              <div className="ats-stage-actions">
+                {app.status !== 'shortlisted' &&
+                app.status !== 'hired' &&
+                app.status !== 'rejected' &&
+                app.status !== 'withdrawn' ? (
+                  <button
+                    type="button"
+                    className="btn btn-outline btn-sm"
+                    disabled={saving}
+                    onClick={handleShortlist}
+                  >
+                    Shortlist
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  className="btn btn-outline btn-sm"
+                  disabled={saving || !app.email}
+                  title={app.email ? 'Compose and send an email for the current stage' : 'No email on file'}
+                  onClick={() => openStatusModal(app.status)}
+                >
+                  Notify candidate
+                </button>
+              </div>
+              {app.shortlistedAt ? (
+                <p className="ats-filter-hint">
+                  Shortlisted {formatDateTime(app.shortlistedAt)}
+                </p>
+              ) : null}
             </div>
 
             <div className="ats-panel-footer">
