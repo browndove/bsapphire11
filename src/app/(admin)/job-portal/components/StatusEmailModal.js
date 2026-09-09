@@ -1,14 +1,29 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import CustomSelect from '@/components/CustomSelect';
+import CustomDatePicker from '@/components/CustomDatePicker';
 import { PortalStages } from '../PortalContext';
 import { formatDateTime } from '@/lib/job-api/format';
 import {
   buildStatusEmailPatch,
   datetimeLocalToIso,
   findUnresolvedEmailPlaceholders,
-  toDatetimeLocalValue,
+  getInterviewSendBlockers,
+  setLabeledValue,
 } from '@/lib/job-api/email-templates';
+import {
+  INTERVIEW_FORMAT_OPTIONS,
+  INTERVIEW_SLOT_PLACEHOLDERS,
+  buildHourOptions,
+  buildMinuteOptions,
+  interviewSlotToLocal,
+  isoToInterviewSlot,
+  locationFieldCopy,
+  minSelectableDateValue,
+  parseInterviewFormat,
+  parseInterviewLocation,
+} from '@/lib/job-api/interview-slot';
 
 export default function StatusEmailModal({
   open,
@@ -24,15 +39,18 @@ export default function StatusEmailModal({
 }) {
   const [emailSubject, setEmailSubject] = useState(initialFields?.emailSubject || '');
   const [emailBody, setEmailBody] = useState(initialFields?.emailBody || '');
-  const [interviewAtLocal, setInterviewAtLocal] = useState(
-    interviewIso ? toDatetimeLocalValue(interviewIso) : ''
-  );
+  const [interviewDate, setInterviewDate] = useState('');
+  const [interviewHour, setInterviewHour] = useState('');
+  const [interviewMinute, setInterviewMinute] = useState('');
+  const [interviewFormat, setInterviewFormat] = useState('');
+  const [interviewLocation, setInterviewLocation] = useState('');
+  const [slotReady, setSlotReady] = useState(false);
   const [reminderSubject, setReminderSubject] = useState(initialFields?.reminderEmailSubject || '');
   const [reminderBody, setReminderBody] = useState(initialFields?.reminderEmailBody || '');
   const [localError, setLocalError] = useState('');
-  const [lastInterviewFormatted, setLastInterviewFormatted] = useState(
-    interviewIso ? formatDateTime(interviewIso) : ''
-  );
+  const [nagShake, setNagShake] = useState(0);
+  const [interviewTouched, setInterviewTouched] = useState(false);
+  const [initialInterviewIso, setInitialInterviewIso] = useState(interviewIso || '');
 
   const isInterview = targetStatus === 'interview';
   const statusLabel = PortalStages.labels[targetStatus] || targetStatus;
@@ -40,43 +58,161 @@ export default function StatusEmailModal({
     emailBody,
     isInterview ? reminderBody : ''
   );
+  const interviewAtLocal = interviewSlotToLocal(interviewDate, interviewHour, interviewMinute);
+  const interviewIsoNow = datetimeLocalToIso(interviewAtLocal);
+  const interviewBlockers = useMemo(
+    () =>
+      isInterview
+        ? getInterviewSendBlockers({
+            emailBody,
+            reminderBody,
+            interviewAtIso: interviewIsoNow,
+            interviewTouched,
+            initialInterviewIso,
+            isResend,
+          })
+        : [],
+    [
+      isInterview,
+      emailBody,
+      reminderBody,
+      interviewIsoNow,
+      interviewTouched,
+      initialInterviewIso,
+      isResend,
+    ]
+  );
   const canSubmit = Boolean(
     emailSubject.trim() &&
       emailBody.trim() &&
       unresolvedPlaceholders.length === 0 &&
+      interviewBlockers.length === 0 &&
       (!isInterview ||
         (interviewAtLocal &&
           reminderSubject.trim() &&
           reminderBody.trim()))
   );
-  const interviewMinLocal = toDatetimeLocalValue(new Date().toISOString());
+  const blockerSummary = interviewBlockers
+    .map((item) => `${item.field}: ${item.message}`)
+    .join(' ');
+  const hourOptions = useMemo(() => buildHourOptions(interviewDate), [open, interviewDate]);
+  const minuteOptions = useMemo(
+    () => buildMinuteOptions(interviewDate, interviewHour),
+    [open, interviewDate, interviewHour]
+  );
+  const locationCopy = locationFieldCopy(interviewFormat);
+  const dateBlocked = interviewBlockers.some((item) => item.field === 'Date & time');
+  const formatBlocked = interviewBlockers.some((item) => item.field === 'Format');
+  const locationBlocked = interviewBlockers.some((item) => item.field === 'Location or link');
 
   useEffect(() => {
-    if (!open || !initialFields) return;
+    if (!open || !initialFields) {
+      setSlotReady(false);
+      return;
+    }
     setEmailSubject(initialFields.emailSubject || '');
     setEmailBody(initialFields.emailBody || '');
     setReminderSubject(initialFields.reminderEmailSubject || '');
     setReminderBody(initialFields.reminderEmailBody || '');
-    setInterviewAtLocal(interviewIso ? toDatetimeLocalValue(interviewIso) : '');
-    setLastInterviewFormatted(interviewIso ? formatDateTime(interviewIso) : '');
+    setInitialInterviewIso(interviewIso || '');
+    setInterviewTouched(false);
     setLocalError('');
-  }, [open, initialFields, interviewIso]);
+
+    if (isInterview && isResend && interviewIso) {
+      const slot = isoToInterviewSlot(interviewIso);
+      const slotIso = datetimeLocalToIso(interviewSlotToLocal(slot.date, slot.hour, slot.minute));
+      const inFuture = slotIso && new Date(slotIso).getTime() > Date.now();
+      if (inFuture) {
+        setInterviewDate(slot.date);
+        setInterviewHour(slot.hour);
+        setInterviewMinute(slot.minute);
+      } else {
+        setInterviewDate('');
+        setInterviewHour('');
+        setInterviewMinute('');
+      }
+      setInterviewFormat(parseInterviewFormat(initialFields.emailBody));
+      setInterviewLocation(parseInterviewLocation(initialFields.emailBody));
+    } else {
+      setInterviewDate('');
+      setInterviewHour('');
+      setInterviewMinute('');
+      setInterviewFormat('');
+      setInterviewLocation('');
+    }
+    setSlotReady(true);
+  }, [open, initialFields, interviewIso, isInterview, isResend]);
 
   useEffect(() => {
-    if (!open || !isInterview || !interviewAtLocal) return;
-    const iso = datetimeLocalToIso(interviewAtLocal);
-    if (!iso) return;
-    const formatted = formatDateTime(iso);
-    if (!lastInterviewFormatted || formatted === lastInterviewFormatted) return;
-    setEmailBody((prev) => prev.replaceAll(lastInterviewFormatted, formatted));
-    setReminderBody((prev) => prev.replaceAll(lastInterviewFormatted, formatted));
-    setLastInterviewFormatted(formatted);
-  }, [open, isInterview, interviewAtLocal, lastInterviewFormatted]);
+    if (!open || !isInterview || !slotReady) return;
+
+    const formatted = interviewIsoNow
+      ? formatDateTime(interviewIsoNow)
+      : INTERVIEW_SLOT_PLACEHOLDERS.datetime;
+    const formatLabel = interviewFormat || INTERVIEW_SLOT_PLACEHOLDERS.format;
+    const locationLabel = interviewLocation.trim() || locationCopy.bodyValue;
+
+    const applySlotLines = (prev) => {
+      let next = prev;
+      next = setLabeledValue(next, 'Date & time', formatted);
+      next = setLabeledValue(next, 'Format', formatLabel);
+      next = setLabeledValue(next, 'Location or link', locationLabel);
+      return next;
+    };
+
+    setEmailBody((prev) => applySlotLines(prev));
+    setReminderBody((prev) => applySlotLines(prev));
+  }, [
+    open,
+    isInterview,
+    slotReady,
+    interviewIsoNow,
+    interviewFormat,
+    interviewLocation,
+    locationCopy.bodyValue,
+  ]);
 
   if (!open || !application || !targetStatus || !initialFields) return null;
 
-  const candidateLabel =
-    application.candidateName || application.email || 'Candidate';
+  const candidateLabel = application.candidateName || application.email || 'Candidate';
+
+  const markInterviewTouched = () => setInterviewTouched(true);
+
+  const handleDateChange = (nextDate) => {
+    if (nextDate && nextDate < minSelectableDateValue()) return;
+    markInterviewTouched();
+    setInterviewDate(nextDate);
+    const nextHours = buildHourOptions(nextDate);
+    if (!nextHours.some((opt) => opt.value === interviewHour)) {
+      setInterviewHour('');
+      setInterviewMinute('');
+      return;
+    }
+    const nextMinutes = buildMinuteOptions(nextDate, interviewHour);
+    if (!nextMinutes.some((opt) => opt.value === interviewMinute)) {
+      setInterviewMinute('');
+    }
+  };
+
+  const handleHourChange = (nextHour) => {
+    markInterviewTouched();
+    setInterviewHour(nextHour);
+    const nextMinutes = buildMinuteOptions(interviewDate, nextHour);
+    if (!nextMinutes.some((opt) => opt.value === interviewMinute)) {
+      setInterviewMinute('');
+    }
+  };
+
+  const handleBlockedSubmit = () => {
+    setNagShake((count) => count + 1);
+    setLocalError(
+      interviewBlockers.length
+        ? `YOU CANNOT SEND THIS EMAIL YET.\n${interviewBlockers
+            .map((item) => `• ${item.field}: ${item.message}`)
+            .join('\n')}`
+        : 'YOU CANNOT SEND THIS EMAIL YET. Fix the highlighted fields.'
+    );
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -84,6 +220,7 @@ export default function StatusEmailModal({
 
     if (!emailSubject.trim() || !emailBody.trim()) {
       setLocalError('Email subject and body are required.');
+      setNagShake((count) => count + 1);
       return;
     }
 
@@ -92,25 +229,31 @@ export default function StatusEmailModal({
       isInterview ? reminderBody : ''
     );
     if (unresolved.length) {
-      setLocalError(
-        `Replace placeholder text before sending: ${unresolved.join(', ')}`
-      );
+      setLocalError(`Replace placeholder text before sending: ${unresolved.join(', ')}`);
+      setNagShake((count) => count + 1);
       return;
     }
 
     let nextInterviewAtIso = '';
     if (isInterview) {
-      nextInterviewAtIso = datetimeLocalToIso(interviewAtLocal);
+      nextInterviewAtIso = interviewIsoNow;
+      if (interviewBlockers.length) {
+        handleBlockedSubmit();
+        return;
+      }
       if (!interviewAtLocal || !nextInterviewAtIso) {
         setLocalError('Please choose a valid interview date and time.');
+        setNagShake((count) => count + 1);
         return;
       }
       if (new Date(nextInterviewAtIso).getTime() <= Date.now()) {
-        setLocalError('Interview time must be in the future.');
+        setLocalError('STOP. Interview time must be in the future.');
+        setNagShake((count) => count + 1);
         return;
       }
       if (!reminderSubject.trim() || !reminderBody.trim()) {
         setLocalError('Reminder email subject and body are required for interviews.');
+        setNagShake((count) => count + 1);
         return;
       }
     }
@@ -158,7 +301,107 @@ export default function StatusEmailModal({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit}>
+        <form
+          onSubmit={handleSubmit}
+          onInvalid={(e) => {
+            e.preventDefault();
+            handleBlockedSubmit();
+          }}
+        >
+          {isInterview ? (
+            <fieldset className="status-email-fieldset interview-slot-fields">
+              <legend>Interview details</legend>
+              <div className="interview-slot-grid">
+                <div className="ats-field">
+                  <label className="ats-field-label" htmlFor="status-email-interview-date">
+                    Date
+                  </label>
+                  <CustomDatePicker
+                    id="status-email-interview-date"
+                    value={interviewDate}
+                    onChange={handleDateChange}
+                    placeholder="Select date"
+                    disabled={submitting}
+                    className={dateBlocked ? 'is-blocked-field' : ''}
+                  />
+                  <p className="ats-field-hint">Open the calendar and pick today or a future day. Previous dates are disabled.</p>
+                </div>
+
+                <div className="ats-field">
+                  <label className="ats-field-label" htmlFor="status-email-interview-hour">
+                    Time
+                  </label>
+                  <div className="interview-slot-time">
+                    <CustomSelect
+                      id="status-email-interview-hour"
+                      value={interviewHour}
+                      onChange={handleHourChange}
+                      options={hourOptions}
+                      placeholder="Hour"
+                      disabled={submitting || !interviewDate}
+                      className={dateBlocked ? 'is-blocked-field' : ''}
+                    />
+                    <span className="interview-slot-time-sep" aria-hidden="true">
+                      :
+                    </span>
+                    <CustomSelect
+                      id="status-email-interview-minute"
+                      value={interviewMinute}
+                      onChange={(nextMinute) => {
+                        markInterviewTouched();
+                        setInterviewMinute(nextMinute);
+                      }}
+                      options={minuteOptions}
+                      placeholder="Min"
+                      disabled={submitting || !interviewDate || !interviewHour}
+                      className={dateBlocked ? 'is-blocked-field' : ''}
+                    />
+                  </div>
+                  <p className="ats-field-hint">
+                    24-hour time, 5-minute steps. If you pick today, times that have already passed are hidden.
+                  </p>
+                </div>
+
+                <div className="ats-field">
+                  <label className="ats-field-label" htmlFor="status-email-interview-format">
+                    Format
+                  </label>
+                  <CustomSelect
+                    id="status-email-interview-format"
+                    value={interviewFormat}
+                    onChange={(nextFormat) => {
+                      markInterviewTouched();
+                      setInterviewFormat(nextFormat);
+                    }}
+                    options={INTERVIEW_FORMAT_OPTIONS}
+                    placeholder="Select format"
+                    disabled={submitting}
+                    className={formatBlocked ? 'is-blocked-field' : ''}
+                  />
+                </div>
+
+                <div className="ats-field">
+                  <label className="ats-field-label" htmlFor="status-email-interview-location">
+                    {locationCopy.label}
+                  </label>
+                  <input
+                    id="status-email-interview-location"
+                    type="text"
+                    value={interviewLocation}
+                    onChange={(e) => {
+                      markInterviewTouched();
+                      setInterviewLocation(e.target.value);
+                    }}
+                    placeholder={locationCopy.placeholder}
+                    disabled={submitting}
+                    autoComplete="off"
+                    className={locationBlocked ? 'is-blocked-field' : undefined}
+                  />
+                </div>
+              </div>
+            </fieldset>
+          ) : null}
+
           <div className="ats-field">
             <label className="ats-field-label" htmlFor="status-email-subject">Email subject</label>
             <input
@@ -179,9 +422,16 @@ export default function StatusEmailModal({
               value={emailBody}
               onChange={(e) => setEmailBody(e.target.value)}
               disabled={submitting}
+              className={
+                interviewBlockers.some((item) =>
+                  ['Date & time', 'Format', 'Location or link'].includes(item.field)
+                )
+                  ? 'is-blocked-field'
+                  : undefined
+              }
             />
             <p className="ats-field-hint">
-              Plain text. Edit format and location details before sending.
+              Date &amp; time, Format, and Location or link update from the choices above.
             </p>
             {unresolvedPlaceholders.length ? (
               <p className="ats-field-hint" style={{ color: 'var(--danger, #b42318)' }}>
@@ -192,25 +442,7 @@ export default function StatusEmailModal({
 
           {isInterview ? (
             <fieldset className="status-email-fieldset">
-              <legend>Interview details</legend>
-              <div className="ats-field">
-                <label className="ats-field-label" htmlFor="status-email-interview-at">
-                  Interview date & time
-                </label>
-                <input
-                  id="status-email-interview-at"
-                  type="datetime-local"
-                  required
-                  min={interviewMinLocal}
-                  value={interviewAtLocal}
-                  onChange={(e) => setInterviewAtLocal(e.target.value)}
-                  disabled={submitting}
-                />
-                <p className="ats-field-hint">
-                  A reminder email is sent automatically about 24 hours before this time.
-                </p>
-              </div>
-
+              <legend>Reminder</legend>
               <div className="ats-field">
                 <label className="ats-field-label" htmlFor="status-email-reminder-subject">
                   Reminder email subject
@@ -235,14 +467,24 @@ export default function StatusEmailModal({
                   value={reminderBody}
                   onChange={(e) => setReminderBody(e.target.value)}
                   disabled={submitting}
+                  className={
+                    interviewBlockers.some((item) => item.field.startsWith('Reminder'))
+                      ? 'is-blocked-field'
+                      : undefined
+                  }
                 />
+                <p className="ats-field-hint">
+                  Reminder Date &amp; time, Format, and Location or link copy from the interview details above.
+                </p>
               </div>
             </fieldset>
           ) : null}
 
           {localError || error ? (
             <div className="status-email-error" role="alert">
-              {localError || error}
+              {(localError || error).split('\n').map((line) => (
+                <div key={line}>{line}</div>
+              ))}
             </div>
           ) : null}
 
@@ -251,9 +493,12 @@ export default function StatusEmailModal({
               Cancel
             </button>
             <button
-              type="submit"
-              className="btn btn-primary"
-              disabled={submitting || !canSubmit}
+              type={canSubmit ? 'submit' : 'button'}
+              className={`btn btn-primary${canSubmit ? '' : ' is-locked-send'}`}
+              disabled={submitting}
+              title={!canSubmit ? blockerSummary || 'Fix the required fields before sending.' : undefined}
+              aria-describedby={interviewBlockers.length ? 'status-email-send-why' : undefined}
+              onClick={!canSubmit ? handleBlockedSubmit : undefined}
             >
               {submitting
                 ? 'Sending…'
@@ -262,6 +507,11 @@ export default function StatusEmailModal({
                   : 'Send email'}
             </button>
           </div>
+          {!canSubmit ? (
+            <p id="status-email-send-why" className="status-email-send-why">
+              Send is locked until Date &amp; time, Format, and Location or link are chosen — in both emails.
+            </p>
+          ) : null}
         </form>
       </div>
     </div>

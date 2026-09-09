@@ -29,9 +29,9 @@ The {{company_name}} Hiring Team`,
 
 We would like to invite you to an interview for the {{job_title}} role at {{company_name}}.
 
-Date & time: {{interview_at}}
-Format: Video call or in person
-Location or link: Add details
+Date & time: Select date & time
+Format: Select format
+Location or link: Select location
 
 Please reply to this email if you need to reschedule.
 
@@ -42,8 +42,9 @@ The {{company_name}} Hiring Team`,
 
 This is a friendly reminder about your upcoming interview for {{job_title}} at {{company_name}}.
 
-Date & time: {{interview_at}}
-Location or link: Same as invitation
+Date & time: Select date & time
+Format: Select format
+Location or link: Select location
 
 We look forward to speaking with you.
 
@@ -103,6 +104,151 @@ export function findUnresolvedEmailPlaceholders(...texts) {
     }
   }
   return [...found];
+}
+
+const VALID_FORMATS = new Set(['video call', 'in person']);
+
+const STOCK_FORMATS = [
+  'select format',
+  'video call or in person',
+  'video call / in person — edit as needed',
+  'video call / in person - edit as needed',
+];
+
+const STOCK_LOCATIONS = [
+  'select location',
+  'add details',
+  'add meeting link',
+  'add address',
+  'same as invitation',
+  'meeting link will be shared before the interview',
+];
+
+const STOCK_DATETIMES = ['select date & time', 'select date'];
+
+export function extractLabeledValue(text, label) {
+  const re = new RegExp(`^${label}:\\s*(.*)$`, 'im');
+  const match = String(text || '').match(re);
+  return match ? match[1].trim() : '';
+}
+
+export function setLabeledValue(text, label, value) {
+  const source = String(text || '');
+  const re = new RegExp(`^${label}:\\s*.*$`, 'im');
+  const nextLine = `${label}: ${value}`;
+  if (re.test(source)) return source.replace(re, nextLine);
+  return source;
+}
+
+function isBlankOrStock(value, stockList) {
+  const normalized = String(value || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[–—]/g, '-');
+  if (!normalized) return true;
+  if (stockList.some((stock) => normalized === stock || normalized.includes(stock))) {
+    return true;
+  }
+  return (
+    normalized.includes('edit as needed') ||
+    normalized.includes('add details') ||
+    normalized.includes('same as invitation') ||
+    normalized.includes('select format') ||
+    normalized.includes('select location') ||
+    normalized.includes('select date') ||
+    normalized.includes('add meeting link') ||
+    normalized.includes('add address')
+  );
+}
+
+function isValidInterviewFormat(value) {
+  return VALID_FORMATS.has(String(value || '').trim().toLowerCase());
+}
+
+/**
+ * Hard stops for interview emails. Invitation AND reminder must have
+ * a real future slot, format, and location — not the template defaults.
+ */
+export function getInterviewSendBlockers({
+  emailBody,
+  reminderBody,
+  interviewAtIso,
+  interviewTouched = false,
+  initialInterviewIso = '',
+  isResend = false,
+} = {}) {
+  const issues = [];
+  const format = extractLabeledValue(emailBody, 'Format');
+  const location = extractLabeledValue(emailBody, 'Location or link');
+  const reminderFormat = extractLabeledValue(reminderBody, 'Format');
+  const reminderLocation = extractLabeledValue(reminderBody, 'Location or link');
+  const dateLine = extractLabeledValue(emailBody, 'Date & time');
+
+  if (!interviewAtIso) {
+    issues.push({
+      field: 'Date & time',
+      message: 'Pick the real interview date and time. You cannot send with a blank slot.',
+    });
+  } else {
+    const when = new Date(interviewAtIso).getTime();
+    if (Number.isNaN(when) || when <= Date.now()) {
+      issues.push({
+        field: 'Date & time',
+        message: 'STOP — that time is not in the future. Set a later date and time.',
+      });
+    } else if (
+      !isResend &&
+      !interviewTouched &&
+      initialInterviewIso &&
+      interviewAtIso === initialInterviewIso
+    ) {
+      issues.push({
+        field: 'Date & time',
+        message: 'Choose the interview date and time from the lists. Past days cannot be selected.',
+      });
+    }
+  }
+
+  if ((!dateLine || isBlankOrStock(dateLine, STOCK_DATETIMES)) && interviewAtIso) {
+    issues.push({
+      field: 'Date & time',
+      message: 'Choose a date and time from the lists. Past days are not available.',
+    });
+  }
+
+  if (!isValidInterviewFormat(format) || isBlankOrStock(format, STOCK_FORMATS)) {
+    issues.push({
+      field: 'Format',
+      message: 'Choose Video call or In person from the list. You cannot send until one is selected.',
+    });
+  }
+
+  if (isBlankOrStock(location, STOCK_LOCATIONS)) {
+    issues.push({
+      field: 'Location or link',
+      message:
+        String(format).toLowerCase() === 'in person'
+          ? 'Enter the street address. Placeholder text will not send.'
+          : 'Enter the meeting link. Placeholder text will not send.',
+    });
+  }
+
+  if (!isValidInterviewFormat(reminderFormat) || isBlankOrStock(reminderFormat, STOCK_FORMATS)) {
+    issues.push({
+      field: 'Reminder · Format',
+      message: 'The reminder Format is still the placeholder. It must match the real invitation.',
+    });
+  }
+
+  if (isBlankOrStock(reminderLocation, STOCK_LOCATIONS)) {
+    issues.push({
+      field: 'Reminder · Location or link',
+      message:
+        'The reminder still has placeholder location text. Put the real meeting link or address there too.',
+    });
+  }
+
+  return issues;
 }
 
 export function buildEmailContext(application, job, companyName, interviewAt) {
@@ -235,6 +381,18 @@ export function buildStatusEmailPatch({
       if (unresolvedReminder.length) {
         throw new Error(
           `Replace placeholder text in the reminder before sending: ${unresolvedReminder.join(', ')}`
+        );
+      }
+      const blockers = getInterviewSendBlockers({
+        emailBody: bodyText,
+        reminderBody,
+        interviewAtIso: interviewAt,
+        interviewTouched: true,
+        isResend: true,
+      });
+      if (blockers.length) {
+        throw new Error(
+          `YOU CANNOT SEND YET.\n${blockers.map((item) => `• ${item.field}: ${item.message}`).join('\n')}`
         );
       }
       body.reminder_email_subject = reminderSubject;

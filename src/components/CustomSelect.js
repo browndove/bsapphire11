@@ -57,8 +57,9 @@ export default function CustomSelect({
     };
   }, [open]);
 
-  const pick = (next) => {
-    onChange?.(next);
+  const pick = (opt) => {
+    if (opt?.disabled) return;
+    onChange?.(opt.value);
     setOpen(false);
   };
 
@@ -86,14 +87,17 @@ export default function CustomSelect({
         <ul id={listboxId} className="custom-select-menu" role="listbox" aria-labelledby={selectId}>
           {options.map((opt) => {
             const isSelected = opt.value === value;
+            const isDisabled = Boolean(opt.disabled);
             return (
               <li key={opt.value} role="presentation">
                 <button
                   type="button"
                   role="option"
                   aria-selected={isSelected}
-                  className={`custom-select-option ${isSelected ? 'is-selected' : ''}`}
-                  onClick={() => pick(opt.value)}
+                  aria-disabled={isDisabled}
+                  disabled={isDisabled}
+                  className={`custom-select-option ${isSelected ? 'is-selected' : ''} ${isDisabled ? 'is-disabled' : ''}`}
+                  onClick={() => pick(opt)}
                 >
                   <span className="custom-select-option-check" aria-hidden="true">
                     {isSelected ? <IconCheck /> : null}
