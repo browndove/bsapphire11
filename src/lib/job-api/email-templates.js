@@ -30,8 +30,8 @@ The {{company_name}} Hiring Team`,
 We would like to invite you to an interview for the {{job_title}} role at {{company_name}}.
 
 Date & time: {{interview_at}}
-Format: [Video call / In person — edit as needed]
-Location or link: [Add details]
+Format: Video call or in person
+Location or link: Add details
 
 Please reply to this email if you need to reschedule.
 
@@ -43,7 +43,7 @@ The {{company_name}} Hiring Team`,
 This is a friendly reminder about your upcoming interview for {{job_title}} at {{company_name}}.
 
 Date & time: {{interview_at}}
-Location or link: [Same as invitation]
+Location or link: Same as invitation
 
 We look forward to speaking with you.
 
@@ -96,7 +96,7 @@ export function findUnresolvedEmailPlaceholders(...texts) {
     }
     for (const match of value.match(/\[[^\[\]]+\]/g) || []) {
       const inner = match.slice(1, -1).trim();
-      // Ignore empty / numeric markers; keep instructional fill-ins like [Add details].
+      // Ignore empty / numeric markers; flag leftover bracket fill-ins if typed manually.
       if (inner && /[a-zA-Z]/.test(inner)) {
         found.add(match);
       }

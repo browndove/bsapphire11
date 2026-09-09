@@ -181,8 +181,7 @@ export default function StatusEmailModal({
               disabled={submitting}
             />
             <p className="ats-field-hint">
-              Plain text. Replace any bracketed placeholders (for example{' '}
-              <code>[Add details]</code>) before sending.
+              Plain text. Edit format and location details before sending.
             </p>
             {unresolvedPlaceholders.length ? (
               <p className="ats-field-hint" style={{ color: 'var(--danger, #b42318)' }}>
