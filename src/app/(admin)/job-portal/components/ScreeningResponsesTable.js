@@ -57,6 +57,8 @@ export default function ScreeningResponsesTable({
   const router = useRouter();
   const [sortKey, setSortKey] = useState('submittedAt');
   const [sortDir, setSortDir] = useState('desc');
+  const [hiddenIds, setHiddenIds] = useState([]);
+  const [columnsOpen, setColumnsOpen] = useState(false);
 
   const columns = useMemo(() => {
     if (questions?.length) return questions;
@@ -123,6 +125,29 @@ export default function ScreeningResponsesTable({
     return sortDir === 'asc' ? ' ↑' : ' ↓';
   };
 
+  const visibleColumns = columns.filter((question) => !hiddenIds.includes(question.id));
+
+  const exportCsv = () => {
+    const header = ['Candidate', 'Email', 'Stage', 'Applied', ...visibleColumns.map((question) => question.label || question.id)];
+    const lines = [header, ...sortedApps.map((app) => [
+      candidateDisplayName(app),
+      app.email || '',
+      PortalStages.labels[app.status] || app.status,
+      app.submittedAt || '',
+      ...visibleColumns.map((question) => formatAnswerValue(app.answers?.[question.id]) || ''),
+    ])];
+    const csv = lines
+      .map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+      .join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'screening-responses.csv';
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
   const openDetail = (app) => {
     const params = new URLSearchParams({ id: app.id });
     if (jobId) params.set('job', jobId);
@@ -143,9 +168,36 @@ export default function ScreeningResponsesTable({
               : ''}
           </p>
         </div>
-        <p className="ats-field-hint" style={{ margin: 0 }}>
-          Click a column header to sort. Click a row to open the candidate.
-        </p>
+        <div className="ats-responses-actions">
+          <div className="ats-menu">
+            <button type="button" className="btn btn-outline btn-sm" onClick={() => setColumnsOpen((open) => !open)}>
+              Columns
+            </button>
+            {columnsOpen ? (
+              <div className="ats-menu-dropdown ats-column-menu" role="menu">
+                {columns.map((question) => (
+                  <label key={question.id} className="ats-menu-item">
+                    <input
+                      type="checkbox"
+                      checked={!hiddenIds.includes(question.id)}
+                      onChange={() => {
+                        setHiddenIds((current) =>
+                          current.includes(question.id)
+                            ? current.filter((id) => id !== question.id)
+                            : [...current, question.id]
+                        );
+                      }}
+                    />
+                    {question.label || question.id}
+                  </label>
+                ))}
+              </div>
+            ) : null}
+          </div>
+          <button type="button" className="btn btn-outline btn-sm" onClick={exportCsv}>
+            Export CSV
+          </button>
+        </div>
       </div>
 
       <div className="ats-table-shell ats-responses-table-shell">
@@ -168,7 +220,7 @@ export default function ScreeningResponsesTable({
                     Submitted{sortIndicator('submittedAt')}
                   </button>
                 </th>
-                {columns.map((q) => (
+                {visibleColumns.map((q) => (
                   <th key={q.id}>
                     <button
                       type="button"
@@ -204,7 +256,7 @@ export default function ScreeningResponsesTable({
                       <span className={`tag ${tagClass}`}>{tagLabel}</span>
                     </td>
                     <td className="ats-table-sub">{formatRelativeTime(app.submittedAt)}</td>
-                    {columns.map((q) => {
+                    {visibleColumns.map((q) => {
                       const value = formatAnswerValue(app.answers?.[q.id]);
                       return (
                         <td key={q.id} className="ats-responses-answer">

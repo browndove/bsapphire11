@@ -45,5 +45,19 @@ export const DEFAULT_JOB_CURRENCY = 'GHS';
 export const JOB_CURRENCY_SYMBOL = '₵';
 
 export const JOB_CURRENCIES = [
-  { value: 'GHS', label: '₵ Ghana Cedi (GHS)' },
+  { value: 'GHS', label: '₵ Ghana Cedi (GHS)', symbol: '₵', name: 'Ghana Cedis' },
+  { value: 'USD', label: '$ US Dollar (USD)', symbol: '$', name: 'US Dollars' },
+  { value: 'EUR', label: '€ Euro (EUR)', symbol: '€', name: 'Euros' },
+  { value: 'GBP', label: '£ British Pound (GBP)', symbol: '£', name: 'British Pounds' },
 ];
+
+export function currencyMeta(code) {
+  return (
+    JOB_CURRENCIES.find((item) => item.value === code) || {
+      value: code || DEFAULT_JOB_CURRENCY,
+      label: code || DEFAULT_JOB_CURRENCY,
+      symbol: code || JOB_CURRENCY_SYMBOL,
+      name: code || 'the selected currency',
+    }
+  );
+}

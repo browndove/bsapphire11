@@ -2,9 +2,21 @@
 
 import React, { useState, useEffect, Suspense, useMemo, useCallback, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { usePortal } from '../PortalContext';
+import { PortalStages, usePortal } from '../PortalContext';
 import { toUserMessage } from '@/lib/job-api/errors';
+import { isWithinDays } from '@/lib/job-api/format';
 import { getFilterableScreeningQuestions, matchesScreeningFilters } from '@/lib/job-api/mappers';
+import { applyEmailPlaceholders, buildEmailContext, buildStatusEmailDefaults } from '@/lib/job-api/email-templates';
+import {
+  readFilterRailCollapsed,
+  readReview,
+  readSelectedJob,
+  writeFilterRailCollapsed,
+  writeReview,
+  writeReviewQueue,
+  writeSelectedJob,
+} from '@/lib/job-api/portal-ui';
+import StatusEmailModal from '../components/StatusEmailModal';
 import { useConfirm } from '@/components/ConfirmProvider';
 import PortalHeader from '../components/PortalHeader';
 import ViewToggle from '../components/ViewToggle';
@@ -14,7 +26,8 @@ import CandidateTable from '../components/CandidateTable';
 import ScreeningResponsesTable from '../components/ScreeningResponsesTable';
 import EmptyState from '../components/EmptyState';
 
-const PAGE_SIZE = 50;
+const PAGE_SIZE = 20;
+const BULK_STAGES = ['reviewing', 'shortlisted', 'interview', 'rejected', 'hired'];
 const VIEW_KEY = 'ats-candidates-view';
 
 function ApplicationsInbox() {
@@ -33,13 +46,14 @@ function ApplicationsInbox() {
     moveApplication,
     shortlistApplication,
     finalizeHirePipeline,
+    updateApplicationWithEmail,
     loadAllApplications,
     loadJobById,
     mergeApplications,
   } = usePortal();
 
   const [selectedJob, setSelectedJob] = useState(jobParam || '__all');
-  const [selectedStage, setSelectedStage] = useState('__all');
+  const [selectedStage, setSelectedStage] = useState(searchParams.get('status') || '__all');
   const [searchQuery, setSearchQuery] = useState('');
   const [screeningFilters, setScreeningFilters] = useState({});
   const [numericFilters, setNumericFilters] = useState({});
@@ -53,8 +67,29 @@ function ApplicationsInbox() {
   const [loadingApps, setLoadingApps] = useState(false);
   const [selectedJobDetail, setSelectedJobDetail] = useState(null);
   const [loadingJobDetail, setLoadingJobDetail] = useState(false);
+  const [railCollapsed, setRailCollapsed] = useState(false);
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [tableSort, setTableSort] = useState({ key: 'submittedAt', dir: 'desc' });
+  const [undoMove, setUndoMove] = useState(null);
+  const [statusModal, setStatusModal] = useState(null);
+  const [statusModalError, setStatusModalError] = useState('');
+  const [bulkSaving, setBulkSaving] = useState(false);
   const jobsRef = useRef(jobs);
   jobsRef.current = jobs;
+  const sinceDays = Number(searchParams.get('since') || '');
+
+  useEffect(() => {
+    setRailCollapsed(readFilterRailCollapsed());
+    if (!jobParam) {
+      const stored = readSelectedJob();
+      if (stored) setSelectedJob(stored);
+    }
+  }, [jobParam]);
+
+  useEffect(() => {
+    const status = searchParams.get('status');
+    if (status) setSelectedStage(status);
+  }, [searchParams]);
 
   const hasScreeningClientFilters =
     Object.keys(screeningFilters).length > 0 || Object.keys(numericFilters).length > 0;
@@ -267,9 +302,14 @@ function ApplicationsInbox() {
 
   const filteredApps = useMemo(() => {
     if (!isReady) return [];
-    if (selectedJob !== '__all' && serverApps) return serverApps;
+    const withinWindow = (app) =>
+      !Number.isFinite(sinceDays) || sinceDays <= 0 || isWithinDays(app.submittedAt, sinceDays);
+    if (selectedJob !== '__all' && serverApps) {
+      return serverApps.filter(withinWindow);
+    }
 
     return allApplications.filter((a) => {
+      if (!withinWindow(a)) return false;
       if (selectedJob !== '__all' && a.jobId !== selectedJob) return false;
       if (selectedStage !== '__all' && a.status !== selectedStage) return false;
       if (searchQuery) {
@@ -283,7 +323,7 @@ function ApplicationsInbox() {
       }
       return true;
     });
-  }, [isReady, allApplications, selectedJob, selectedStage, searchQuery, serverApps]);
+  }, [isReady, allApplications, selectedJob, selectedStage, searchQuery, serverApps, sinceDays]);
 
   useEffect(() => {
     setPage(0);
@@ -306,11 +346,28 @@ function ApplicationsInbox() {
     }
   };
 
+  const sortedApps = useMemo(() => {
+    const rows = [...filteredApps];
+    const dir = tableSort.dir === 'asc' ? 1 : -1;
+    rows.sort((a, b) => {
+      if (tableSort.key === 'name') {
+        return String(a.candidateName || '').localeCompare(String(b.candidateName || '')) * dir;
+      }
+      if (tableSort.key === 'status') {
+        return String(a.status || '').localeCompare(String(b.status || '')) * dir;
+      }
+      const aTime = a.submittedAt ? new Date(a.submittedAt).getTime() : 0;
+      const bTime = b.submittedAt ? new Date(b.submittedAt).getTime() : 0;
+      return (aTime - bTime) * dir;
+    });
+    return rows;
+  }, [filteredApps, tableSort]);
+
   const paginatedApps = useMemo(() => {
-    if (view === 'board' || view === 'responses') return filteredApps;
+    if (view === 'board' || view === 'responses') return sortedApps;
     const start = page * PAGE_SIZE;
-    return filteredApps.slice(start, start + PAGE_SIZE);
-  }, [filteredApps, page, view]);
+    return sortedApps.slice(start, start + PAGE_SIZE);
+  }, [sortedApps, page, view]);
 
   const totalCount = filteredApps.length;
   const totalPages = Math.ceil(filteredApps.length / PAGE_SIZE);
@@ -353,51 +410,23 @@ function ApplicationsInbox() {
       const app = filteredApps.find((a) => a.id === id);
       if (!app || app.status === status) return;
 
-      if (status === 'hired') {
-        const ok = await confirm({
-          title: 'Hire candidate?',
-          message:
-            `${app.candidateName || 'This candidate'} will be marked as hired.\n\n` +
-            'Other applicants stay in their current stages. The job stays open so you can hire more people if needed. No emails will be sent.',
-          confirmText: 'Hire',
-          cancelText: 'Cancel',
+      if (status === 'hired' || status === 'rejected') {
+        const job = jobs.find((item) => item.id === app.jobId);
+        const defaults = buildStatusEmailDefaults(app, job, app.companyName || 'Blvck Sapphire', status);
+        setStatusModalError('');
+        setStatusModal({
+          apps: [app],
+          targetStatus: status,
+          ...defaults,
         });
-        if (!ok) return;
-
-        try {
-          const result = await finalizeHirePipeline(app.id);
-          if (selectedJob !== '__all') {
-            try {
-              const refreshed = await loadAllApplications({ job_id: selectedJob });
-              setServerAppsRaw(refreshed.applications);
-            } catch {
-              patchServerApp(result.application);
-            }
-          }
-          showToast('Candidate hired.', 'success');
-        } catch (err) {
-          showToast(toUserMessage(err));
-        }
         return;
-      }
-
-      if (status === 'rejected') {
-        const ok = await confirm({
-          title: 'Reject candidate?',
-          message: `${app.candidateName || 'This candidate'} will be marked as rejected. No email will be sent.`,
-          confirmText: 'Reject',
-          cancelText: 'Cancel',
-          variant: 'danger',
-        });
-        if (!ok) return;
       }
 
       try {
         const updated = await moveApplication(id, status);
         patchServerApp(updated);
-        if (status === 'shortlisted') {
-          showToast('Shortlisted. Filter Stage → Shortlisted to review them.', 'success');
-        }
+        setUndoMove({ id, from: app.status, name: app.candidateName || 'Candidate', to: status });
+        showToast(`Moved ${app.candidateName || 'candidate'} to ${status}.`, 'success');
       } catch (err) {
         showToast(toUserMessage(err));
       }
@@ -411,8 +440,103 @@ function ApplicationsInbox() {
       showToast,
       confirm,
       patchServerApp,
+      jobs,
     ]
   );
+
+  const undoLastMove = async () => {
+    if (!undoMove) return;
+    try {
+      const updated = await moveApplication(undoMove.id, undoMove.from);
+      patchServerApp(updated);
+      showToast('Move undone.', 'success');
+    } catch (err) {
+      showToast(toUserMessage(err));
+    } finally {
+      setUndoMove(null);
+    }
+  };
+
+  const openBulkMove = (status) => {
+    const apps = filteredApps.filter((app) => selectedIds.includes(app.id));
+    if (!apps.length) return;
+    const sample = {
+      ...apps[0],
+      firstName: '{{first_name}}',
+      lastName: '{{last_name}}',
+      candidateName: '{{first_name}}',
+    };
+    const job = jobs.find((item) => item.id === sample.jobId);
+    const defaults = buildStatusEmailDefaults(sample, job, sample.companyName || 'Blvck Sapphire', status);
+    setStatusModalError('');
+    setStatusModal({ apps, targetStatus: status, ...defaults });
+  };
+
+  const handleBulkSubmit = async (payload) => {
+    const apps = statusModal?.apps || [];
+    setBulkSaving(true);
+    setStatusModalError('');
+    try {
+      for (const app of apps) {
+        const job = jobs.find((item) => item.id === app.jobId);
+        const context = buildEmailContext(app, job, app.companyName || 'Blvck Sapphire', payload.interview_at);
+        const nextPayload = payload.send_email === false
+          ? payload
+          : {
+              ...payload,
+              email_subject: applyEmailPlaceholders(payload.email_subject, context),
+              email_body: applyEmailPlaceholders(payload.email_body, context),
+              reminder_email_subject: applyEmailPlaceholders(payload.reminder_email_subject, context),
+              reminder_email_body: applyEmailPlaceholders(payload.reminder_email_body, context),
+            };
+        if (payload.status === 'hired') {
+          const result = await finalizeHirePipeline(app.id, nextPayload);
+          patchServerApp(result.application);
+        } else {
+          const result = await updateApplicationWithEmail(app.id, nextPayload);
+          patchServerApp(result.application);
+        }
+      }
+      setStatusModal(null);
+      setSelectedIds([]);
+      showToast(`Updated ${apps.length} candidate${apps.length === 1 ? '' : 's'}.`, 'success');
+    } catch (err) {
+      setStatusModalError(toUserMessage(err, 'status-email'));
+    } finally {
+      setBulkSaving(false);
+    }
+  };
+
+  const exportSelected = () => {
+    const apps = filteredApps.filter((app) => selectedIds.includes(app.id));
+    const lines = [
+      ['Name', 'Email', 'Job', 'Stage', 'Applied'],
+      ...apps.map((app) => [
+        app.candidateName || '',
+        app.email || '',
+        app.jobTitle || '',
+        app.status || '',
+        app.submittedAt || '',
+      ]),
+    ];
+    const csv = lines.map((row) => row.map((cell) => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'candidates.csv';
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const activeFilterCount = [
+    selectedJob !== '__all',
+    selectedStage !== '__all',
+    Boolean(searchQuery),
+    Object.keys(screeningFilters).length > 0,
+    Object.keys(numericFilters).length > 0,
+    Number.isFinite(sinceDays) && sinceDays > 0,
+  ].filter(Boolean).length;
 
   const handleShortlist = useCallback(
     async (id) => {
@@ -431,6 +555,7 @@ function ApplicationsInbox() {
 
   const clearFilters = () => {
     setSelectedJob('__all');
+    writeSelectedJob('__all');
     setSelectedStage('__all');
     setSearchQuery('');
     setScreeningFilters({});
@@ -460,14 +585,30 @@ function ApplicationsInbox() {
           }`}
         >
           {toast}
+          {undoMove ? (
+            <button type="button" className="btn btn-outline btn-sm" onClick={undoLastMove}>
+              Undo
+            </button>
+          ) : null}
         </div>
       ) : null}
 
       <div className="ats-board-layout">
         <FilterRail
+          collapsed={railCollapsed}
+          activeFilterCount={activeFilterCount}
+          onToggleCollapsed={() => {
+            setRailCollapsed((current) => {
+              writeFilterRailCollapsed(!current);
+              return !current;
+            });
+          }}
           jobs={jobs}
           selectedJob={selectedJob}
-          onJobChange={setSelectedJob}
+          onJobChange={(value) => {
+            setSelectedJob(value);
+            writeSelectedJob(value);
+          }}
           selectedStage={selectedStage}
           onStageChange={setSelectedStage}
           stages={PIPELINE_STATUSES}
@@ -504,6 +645,7 @@ function ApplicationsInbox() {
               jobs={jobs}
               onMoveApplication={handleMove}
               onShortlist={handleShortlist}
+              onBeforeOpen={() => writeReviewQueue(filteredApps.map((app) => app.id))}
               onError={(err) => {
                 setToast(toUserMessage(err));
                 setTimeout(() => setToast(''), 4000);
@@ -529,6 +671,36 @@ function ApplicationsInbox() {
                 applications={paginatedApps}
                 jobs={jobs}
                 screeningQuestions={selectedJobRecord?.screeningQuestions}
+                selectable
+                selectedIds={selectedIds}
+                sortKey={tableSort.key}
+                sortDir={tableSort.dir}
+                onSort={(key) => {
+                  setTableSort((current) => ({
+                    key,
+                    dir: current.key === key && current.dir === 'asc' ? 'desc' : 'asc',
+                  }));
+                }}
+                onToggleRow={(id) => {
+                  setSelectedIds((current) =>
+                    current.includes(id) ? current.filter((item) => item !== id) : [...current, id]
+                  );
+                }}
+                onToggleAll={(checked) => {
+                  setSelectedIds(checked ? paginatedApps.map((app) => app.id) : []);
+                }}
+                onToggleShortlist={(app) => {
+                  const review = readReview(app.id);
+                  const tagged = review.tags?.includes('shortlisted');
+                  writeReview(app.id, {
+                    tags: tagged
+                      ? review.tags.filter((tag) => tag !== 'shortlisted')
+                      : [...(review.tags || []), 'shortlisted'],
+                  });
+                  if (!tagged && app.status !== 'shortlisted') handleShortlist(app.id);
+                  setSelectedIds((current) => [...current]);
+                }}
+                onRowClick={() => writeReviewQueue(filteredApps.map((app) => app.id))}
               />
               {showPagination ? (
                 <div className="ats-pagination">
@@ -560,6 +732,53 @@ function ApplicationsInbox() {
           )}
         </div>
       </div>
+
+      {selectedIds.length ? (
+        <div className="ats-bulk-bar">
+          <span className="ats-bulk-count">
+            <strong>{selectedIds.length}</strong> selected
+          </span>
+          <div className="ats-bulk-move">
+            <span>Move to</span>
+            {BULK_STAGES.map((status) => (
+              <button
+                key={status}
+                type="button"
+                className={`ats-bulk-stage${status === 'rejected' ? ' is-danger' : ''}`}
+                onClick={() => openBulkMove(status)}
+              >
+                {PortalStages.labels[status] || status}
+              </button>
+            ))}
+          </div>
+          <div className="ats-bulk-actions">
+            <button type="button" className="btn btn-outline btn-sm" onClick={() => openBulkMove('interview')}>
+              Email selected
+            </button>
+            <button type="button" className="btn btn-outline btn-sm" onClick={exportSelected}>
+              Export selected
+            </button>
+            <button type="button" className="btn btn-outline btn-sm" onClick={() => setSelectedIds([])}>
+              Clear
+            </button>
+          </div>
+        </div>
+      ) : null}
+
+      <StatusEmailModal
+        open={!!statusModal}
+        application={statusModal?.apps?.[0]}
+        initialFields={statusModal?.fields}
+        interviewIso={statusModal?.interviewIso}
+        targetStatus={statusModal?.targetStatus}
+        bulkCount={statusModal?.apps?.length || 1}
+        onClose={() => {
+          if (!bulkSaving) setStatusModal(null);
+        }}
+        onSubmit={handleBulkSubmit}
+        submitting={bulkSaving}
+        error={statusModalError}
+      />
     </>
   );
 }

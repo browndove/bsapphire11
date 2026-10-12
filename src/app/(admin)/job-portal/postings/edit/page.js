@@ -3,7 +3,7 @@
 import React, { useState, useEffect, Suspense } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { usePortal } from '../../PortalContext';
-import { DEFAULT_JOB_CURRENCY, EMPLOYMENT_TYPES, JOB_CURRENCIES, JOB_CURRENCY_SYMBOL, JOB_STATUSES, REMOTE_TYPES } from '@/lib/job-api/config';
+import { currencyMeta, DEFAULT_JOB_CURRENCY, EMPLOYMENT_TYPES, JOB_CURRENCIES, JOB_STATUSES, REMOTE_TYPES } from '@/lib/job-api/config';
 import { formatEmploymentType, formatRemoteType } from '@/lib/job-api/mappers';
 import { toUserMessage } from '@/lib/job-api/errors';
 import PortalHeader, { BreadcrumbLink } from '../../components/PortalHeader';
@@ -72,6 +72,10 @@ function PostingEditForm() {
   const [loadingJob, setLoadingJob] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [dirty, setDirty] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewSrc, setPreviewSrc] = useState('');
+  const [sectionErrors, setSectionErrors] = useState({});
 
   useEffect(() => {
     if (isReady && !isAuthed) {
@@ -94,9 +98,20 @@ function PostingEditForm() {
     }
   }, [isReady, isAuthed, id, job.id, router, loadJobById]);
 
+  useEffect(() => {
+    const onLeave = (event) => {
+      if (!dirty) return;
+      event.preventDefault();
+      event.returnValue = '';
+    };
+    window.addEventListener('beforeunload', onLeave);
+    return () => window.removeEventListener('beforeunload', onLeave);
+  }, [dirty]);
+
   if (!isReady || !isAuthed) return null;
 
   const updateField = (field, value) => {
+    setDirty(true);
     setJob((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -128,19 +143,21 @@ function PostingEditForm() {
 
   const handleSave = async ({ advance = false } = {}) => {
     setError('');
-    if (!job.title?.trim()) {
-      setError('Job title is required.');
-      setSection('details');
-      return false;
-    }
-    if (!job.description?.trim()) {
-      setError('Description is required before you can save or publish.');
-      setSection('description');
-      return false;
-    }
-    if (!id && job.status === 'closed') {
-      setError('Save the job as draft or published first. You can close it after it exists.');
-      setSection('publish');
+    const nextErrors = {};
+    if (!job.title?.trim()) nextErrors.details = true;
+    if (!job.description?.trim()) nextErrors.description = true;
+    if (!id && job.status === 'closed') nextErrors.publish = true;
+    setSectionErrors(nextErrors);
+    const firstError = ['details', 'description', 'publish'].find((key) => nextErrors[key]);
+    if (firstError) {
+      setSection(firstError);
+      setError(
+        firstError === 'details'
+          ? 'Job title is required.'
+          : firstError === 'description'
+            ? 'Description is required before you can save or publish.'
+            : 'Save the job as draft or published first. You can close it after it exists.'
+      );
       return false;
     }
 
@@ -153,6 +170,8 @@ function PostingEditForm() {
         screeningQuestions: saved.screeningQuestions || [],
         applicationFields: saved.applicationFields || { ...DEFAULT_APPLICATION_FIELDS },
       });
+      setDirty(false);
+      setSectionErrors({});
       setToast(advance ? 'Saved — continuing…' : 'Saved successfully!');
       setTimeout(() => setToast(''), 3000);
       if (!id) {
@@ -225,17 +244,8 @@ function PostingEditForm() {
       // The inline fragment is sufficient when localStorage is unavailable.
     }
 
-    const previewWindow = window.open(previewUrl, '_blank');
-    if (!previewWindow) {
-      try {
-        localStorage.removeItem(key);
-      } catch {
-        // Ignore storage cleanup failures when the popup is blocked.
-      }
-      setError('Preview could not open. Please allow pop-ups for this site and try again.');
-      return;
-    }
-    previewWindow.opener = null;
+    setPreviewSrc(previewUrl);
+    setPreviewOpen(true);
   };
 
   return (
@@ -253,7 +263,11 @@ function PostingEditForm() {
 
       {loadingJob ? <div className="ats-skeleton" /> : null}
 
-      <PageTabs tabs={SECTIONS} active={section} onChange={setSection} />
+      <PageTabs
+        tabs={SECTIONS.map((item) => ({ ...item, error: Boolean(sectionErrors[item.id]) }))}
+        active={section}
+        onChange={setSection}
+      />
 
       <form
         id="job-form"
@@ -324,7 +338,7 @@ function PostingEditForm() {
             <div className="ats-field">
               <label className="ats-field-label" htmlFor="field-salary-min">Salary min</label>
               <div className="ats-input-prefix-wrap">
-                <span className="ats-input-prefix" aria-hidden="true">{JOB_CURRENCY_SYMBOL}</span>
+                <span className="ats-input-prefix" aria-hidden="true">{currencyMeta(job.currency).symbol}</span>
                 <input
                   type="number"
                   id="field-salary-min"
@@ -337,7 +351,7 @@ function PostingEditForm() {
             <div className="ats-field">
               <label className="ats-field-label" htmlFor="field-salary-max">Salary max</label>
               <div className="ats-input-prefix-wrap">
-                <span className="ats-input-prefix" aria-hidden="true">{JOB_CURRENCY_SYMBOL}</span>
+                <span className="ats-input-prefix" aria-hidden="true">{currencyMeta(job.currency).symbol}</span>
                 <input
                   type="number"
                   id="field-salary-max"
@@ -355,7 +369,7 @@ function PostingEditForm() {
                 onChange={(v) => updateField('currency', v)}
                 options={JOB_CURRENCIES}
               />
-              <p className="ats-field-hint">Salaries are stored in Ghana Cedis ({JOB_CURRENCY_SYMBOL}).</p>
+              <p className="ats-field-hint">Salaries are stored in {currencyMeta(job.currency).name} ({currencyMeta(job.currency).symbol}).</p>
             </div>
           </div>
         ) : null}
@@ -419,6 +433,18 @@ function PostingEditForm() {
           </div>
         ) : null}
       </form>
+
+      {previewOpen ? (
+        <aside className="ats-preview-drawer" aria-label="Job preview">
+          <div className="ats-preview-drawer-bar">
+            <strong>Preview</strong>
+            <button type="button" className="btn btn-outline btn-sm" onClick={() => setPreviewOpen(false)}>
+              Close
+            </button>
+          </div>
+          <iframe title="Job preview" src={previewSrc} className="ats-preview-frame" />
+        </aside>
+      ) : null}
 
       <StickyFormBar
         status={job.status}

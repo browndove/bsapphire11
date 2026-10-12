@@ -91,4 +91,49 @@
 
   --portal-login-card-bg: #ffffff;
   --portal-login-input-autofill: #ffffff;
+
+  --space-section: 1.75rem;
+  --info: #0284c7;
+  --info-soft: rgba(2, 132, 199, 0.12);
+  --warning: #d97706;
+  --warning-soft: #fef3c7;
+}
+
+html[data-portal-theme='dark'] {
+  --bg-color: #0f141b;
+  --text-color: #f3f4f6;
+  --text-muted: #9ca3af;
+  --border-color: #2a3340;
+  --bg: #0f141b;
+  --bg-subtle: #171e27;
+  --surface: #171e27;
+  --surface-2: #1f2733;
+  --border: #2a3340;
+  --border-strong: #3b4656;
+  --text: #f3f4f6;
+  --muted: #9ca3af;
+  --ats-surface: #171e27;
+  --ats-surface-2: #1f2733;
+  --ats-surface-3: #283140;
+  --portal-elevated: #1f2733;
+  --portal-elevated-border: #2a3340;
+  --portal-sidebar-bg: #121820;
+  --portal-brand-bg: #171e27;
+  --portal-user-card-bg: #1f2733;
+  --portal-avatar-bg: #283140;
+  --portal-header-bg: rgba(18, 24, 32, 0.92);
+  --portal-sticky-bg: rgba(18, 24, 32, 0.96);
+  --portal-hover: rgba(255, 255, 255, 0.06);
+  --portal-hover-strong: rgba(255, 255, 255, 0.1);
+  --portal-active: rgba(255, 255, 255, 0.12);
+  --portal-input-bg: #121820;
+  --portal-input-border: #3b4656;
+  --portal-input-text: #f3f4f6;
+  --portal-input-placeholder: #6b7280;
+  --portal-login-card-bg: #171e27;
+  --portal-text-secondary: #d1d5db;
+  --portal-text-tertiary: #9ca3af;
+  --success-soft: rgba(22, 163, 74, 0.18);
+  --danger-soft: rgba(220, 38, 38, 0.18);
+  --warning-soft: rgba(217, 119, 6, 0.2);
 }

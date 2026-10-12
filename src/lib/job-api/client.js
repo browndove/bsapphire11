@@ -1,10 +1,22 @@
 import {
   clearAuthSession,
+  expireAuthSession,
   getAccessToken,
   getRefreshToken,
+  isTokenExpired,
   setAuthSession,
 } from './auth-storage';
 import { createHttpError } from './errors';
+
+const PUBLIC_AUTH_PATH = /^\/auth\/(login|register|2fa\/verify|renew)(\?|$)/;
+
+function sessionExpiredError() {
+  const err = new Error('Your session has expired. Please sign in again.');
+  err.status = 401;
+  return err;
+}
+
+let renewInFlight = null;
 
 async function parseResponse(res, context) {
   const text = await res.text();
@@ -27,6 +39,15 @@ async function parseResponse(res, context) {
 }
 
 async function portalFetch(path, options = {}, retry = true, context) {
+  const isPublicAuth = PUBLIC_AUTH_PATH.test(path);
+
+  if (!isPublicAuth && retry) {
+    const access = getAccessToken();
+    if (access && isTokenExpired(access)) {
+      await renewSession();
+    }
+  }
+
   const token = getAccessToken();
   const res = await fetch(`/api/job-portal${path}`, {
     cache: 'no-store',
@@ -39,13 +60,22 @@ async function portalFetch(path, options = {}, retry = true, context) {
     },
   });
 
-  if (res.status === 401 && retry && getRefreshToken()) {
-    try {
-      await renewSession();
-      return portalFetch(path, options, false, context);
-    } catch {
-      clearAuthSession();
-      throw await parseResponse(res, context);
+  if (res.status === 401 && !isPublicAuth) {
+    const refresh = getRefreshToken();
+    if (retry && refresh && !isTokenExpired(refresh)) {
+      try {
+        await renewSession();
+        return portalFetch(path, options, false, context);
+      } catch (err) {
+        if (err?.status === 401 || err?.status === 403) {
+          throw sessionExpiredError();
+        }
+        throw await parseResponse(res, context);
+      }
+    }
+    if (token || refresh) {
+      expireAuthSession();
+      throw sessionExpiredError();
     }
   }
 
@@ -53,16 +83,53 @@ async function portalFetch(path, options = {}, retry = true, context) {
 }
 
 export async function renewSession() {
-  const refresh_token = getRefreshToken();
-  const data = await parseResponse(
-    await fetch('/api/job-portal/auth/renew', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ refresh_token }),
-    })
-  );
-  setAuthSession(data);
-  return data;
+  if (renewInFlight) return renewInFlight;
+
+  renewInFlight = (async () => {
+    const refresh_token = getRefreshToken();
+    if (!refresh_token || isTokenExpired(refresh_token)) {
+      expireAuthSession();
+      throw sessionExpiredError();
+    }
+
+    try {
+      const data = await parseResponse(
+        await fetch('/api/job-portal/auth/renew', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refresh_token }),
+        })
+      );
+      setAuthSession(data);
+      return data;
+    } catch (err) {
+      if (err?.status === 401 || err?.status === 403) {
+        expireAuthSession();
+      }
+      throw err;
+    }
+  })().finally(() => {
+    renewInFlight = null;
+  });
+
+  return renewInFlight;
+}
+
+/** Log out once the refresh token (or access token, if there is no refresh token) is expired. */
+export function watchSessionExpiry() {
+  if (typeof window === 'undefined') return () => {};
+
+  const tick = () => {
+    const access = getAccessToken();
+    const refresh = getRefreshToken();
+    if (!access && !refresh) return;
+    const expired = refresh ? isTokenExpired(refresh) : isTokenExpired(access);
+    if (expired) expireAuthSession();
+  };
+
+  tick();
+  const id = window.setInterval(tick, 15000);
+  return () => window.clearInterval(id);
 }
 
 export async function loginStep1(email, password) {
@@ -159,7 +226,16 @@ export async function withdrawApplication(id) {
 
 export async function logoutApi() {
   try {
-    await portalFetch('/auth/logout', { method: 'POST' });
+    const token = getAccessToken();
+    if (token && !isTokenExpired(token)) {
+      await fetch('/api/job-portal/auth/logout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+      });
+    }
   } finally {
     clearAuthSession();
   }
@@ -353,20 +429,16 @@ export async function resolveFileDownloadUrl(fileUrl, { filename } = {}) {
     return raw;
   }
 
-  const token = getAccessToken();
-  if (!token) {
+  if (!getAccessToken()) {
     const err = new Error('Sign in to download files.');
     err.status = 401;
     throw err;
   }
 
-  const data = await parseResponse(
-    await fetch('/api/job-portal/files/download-url', {
+  const data = await portalFetch(
+    '/files/download-url',
+    {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
       body: JSON.stringify({
         file_url: raw,
         ...(filename
@@ -376,7 +448,8 @@ export async function resolveFileDownloadUrl(fileUrl, { filename } = {}) {
             }
           : {}),
       }),
-    }),
+    },
+    true,
     'download'
   );
 
@@ -394,10 +467,7 @@ export async function resolveFileDownloadUrl(fileUrl, { filename } = {}) {
  * Uses a short-lived BFF ticket so the browser receives Content-Disposition
  * with the original name (works for View and Save/Download).
  */
-export async function openFileWithOriginalName(fileUrl, {
-  filename = '',
-  disposition = 'inline',
-} = {}) {
+async function requestFileTicket(fileUrl, { filename = '', disposition = 'inline' } = {}) {
   const raw = String(fileUrl || '').trim();
   if (!raw) {
     const err = new Error('No file to open.');
@@ -405,26 +475,23 @@ export async function openFileWithOriginalName(fileUrl, {
     throw err;
   }
 
-  const token = getAccessToken();
-  if (!token) {
+  if (!getAccessToken()) {
     const err = new Error('Sign in to download files.');
     err.status = 401;
     throw err;
   }
 
-  const data = await parseResponse(
-    await fetch('/api/job-portal/files/content', {
+  const data = await portalFetch(
+    '/files/content',
+    {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
       body: JSON.stringify({
         file_url: raw,
         filename: filename || undefined,
         disposition: disposition === 'attachment' ? 'attachment' : 'inline',
       }),
-    }),
+    },
+    true,
     'download'
   );
 
@@ -435,7 +502,23 @@ export async function openFileWithOriginalName(fileUrl, {
     throw err;
   }
 
-  const openUrl = `/api/job-portal/files/content?ticket=${encodeURIComponent(ticket)}`;
+  return {
+    url: `/api/job-portal/files/content?ticket=${encodeURIComponent(ticket)}`,
+    filename: data?.filename || filename || 'document',
+  };
+}
+
+export async function createInlineFileUrl(fileUrl, options = {}) {
+  const ticket = await requestFileTicket(fileUrl, { ...options, disposition: 'inline' });
+  return ticket.url;
+}
+
+export async function openFileWithOriginalName(fileUrl, {
+  filename = '',
+  disposition = 'inline',
+} = {}) {
+  const ticket = await requestFileTicket(fileUrl, { filename, disposition });
+  const openUrl = ticket.url;
   const opened = window.open(openUrl, '_blank', 'noopener,noreferrer');
   if (!opened) {
     // Popup blocked — navigate via temporary link (still carries Content-Disposition).
@@ -448,31 +531,35 @@ export async function openFileWithOriginalName(fileUrl, {
     a.remove();
   }
 
-  return data?.filename || filename || 'document';
+  return ticket.filename;
+}
+
+export async function inviteEmployerUser(body) {
+  return portalFetch('/employer/users', {
+    method: 'POST',
+    body: JSON.stringify(body),
+  });
 }
 
 export async function uploadFile(file, purpose = 'document') {
-  const token = getAccessToken();
-  if (!token) {
+  if (!getAccessToken()) {
     const err = new Error('Sign in to upload files.');
     err.status = 401;
     throw err;
   }
 
   const contentType = file.type || 'application/octet-stream';
-  const meta = await parseResponse(
-    await fetch('/api/job-portal/files/upload-url', {
+  const meta = await portalFetch(
+    '/files/upload-url',
+    {
       method: 'POST',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
       body: JSON.stringify({
         content_type: contentType,
         filename: file.name,
         purpose,
       }),
-    }),
+    },
+    true,
     'upload'
   );
 

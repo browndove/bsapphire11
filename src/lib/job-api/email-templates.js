@@ -1,4 +1,5 @@
 import { formatDateTime } from './format';
+import { readTemplateOverrides } from './portal-ui';
 
 const TEMPLATES = {
   reviewing: {
@@ -187,14 +188,14 @@ export function getInterviewSendBlockers({
   if (!interviewAtIso) {
     issues.push({
       field: 'Date & time',
-      message: 'Pick the real interview date and time. You cannot send with a blank slot.',
+      message: 'Choose a date and time.',
     });
   } else {
     const when = new Date(interviewAtIso).getTime();
     if (Number.isNaN(when) || when <= Date.now()) {
       issues.push({
         field: 'Date & time',
-        message: 'STOP — that time is not in the future. Set a later date and time.',
+        message: 'Choose a time that has not already passed.',
       });
     } else if (
       !isResend &&
@@ -204,7 +205,7 @@ export function getInterviewSendBlockers({
     ) {
       issues.push({
         field: 'Date & time',
-        message: 'Choose the interview date and time from the lists. Past days cannot be selected.',
+        message: 'Choose a date and time.',
       });
     }
   }
@@ -212,14 +213,14 @@ export function getInterviewSendBlockers({
   if ((!dateLine || isBlankOrStock(dateLine, STOCK_DATETIMES)) && interviewAtIso) {
     issues.push({
       field: 'Date & time',
-      message: 'Choose a date and time from the lists. Past days are not available.',
+      message: 'Choose a date and time.',
     });
   }
 
   if (!isValidInterviewFormat(format) || isBlankOrStock(format, STOCK_FORMATS)) {
     issues.push({
       field: 'Format',
-      message: 'Choose Video call or In person from the list. You cannot send until one is selected.',
+      message: 'Choose Video call or In person.',
     });
   }
 
@@ -228,15 +229,15 @@ export function getInterviewSendBlockers({
       field: 'Location or link',
       message:
         String(format).toLowerCase() === 'in person'
-          ? 'Enter the street address. Placeholder text will not send.'
-          : 'Enter the meeting link. Placeholder text will not send.',
+          ? 'Add the address.'
+          : 'Add the meeting link.',
     });
   }
 
   if (!isValidInterviewFormat(reminderFormat) || isBlankOrStock(reminderFormat, STOCK_FORMATS)) {
     issues.push({
       field: 'Reminder · Format',
-      message: 'The reminder Format is still the placeholder. It must match the real invitation.',
+      message: 'Choose Video call or In person.',
     });
   }
 
@@ -244,7 +245,7 @@ export function getInterviewSendBlockers({
     issues.push({
       field: 'Reminder · Location or link',
       message:
-        'The reminder still has placeholder location text. Put the real meeting link or address there too.',
+        'Add the meeting link or address.',
     });
   }
 
@@ -272,8 +273,20 @@ export function buildEmailContext(application, job, companyName, interviewAt) {
   };
 }
 
+export function getStatusEmailTemplate(status) {
+  const overrides = readTemplateOverrides();
+  return overrides[status] || TEMPLATES[status] || null;
+}
+
+export function listStatusEmailTemplates() {
+  return Object.keys(TEMPLATES).map((status) => ({
+    status,
+    ...(getStatusEmailTemplate(status) || {}),
+  }));
+}
+
 export function defaultStatusEmailFields(status, application, job, companyName, interviewAtIso) {
-  const template = TEMPLATES[status];
+  const template = getStatusEmailTemplate(status);
   if (!template) {
     return {
       emailSubject: '',

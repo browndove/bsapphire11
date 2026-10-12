@@ -6,6 +6,7 @@ import { IconMore } from './PortalIcons';
 
 export default function ActionsMenu({ items }) {
   const [open, setOpen] = useState(false);
+  const [flipUp, setFlipUp] = useState(false);
   const ref = useRef(null);
 
   useEffect(() => {
@@ -26,13 +27,16 @@ export default function ActionsMenu({ items }) {
         aria-expanded={open}
         onClick={(e) => {
           e.stopPropagation();
+          const rect = ref.current?.getBoundingClientRect();
+          const spaceBelow = rect ? window.innerHeight - rect.bottom : 999;
+          setFlipUp(spaceBelow < 220);
           setOpen((v) => !v);
         }}
       >
         <IconMore className="ats-icon" />
       </button>
       {open ? (
-        <div className="ats-menu-dropdown" role="menu">
+        <div className={`ats-menu-dropdown${flipUp ? ' is-up' : ''}`} role="menu">
           {items.map((item) =>
             item.onClick ? (
               <button

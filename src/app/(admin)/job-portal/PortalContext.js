@@ -2,6 +2,7 @@
 
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  AUTH_EXPIRED_EVENT,
   clearAuthSession,
   getAccessToken,
   getStoredUser,
@@ -17,6 +18,7 @@ import {
   fetchMe,
   logoutApi,
   renewSession,
+  watchSessionExpiry,
   updateApplicationStatus,
   shortlistApplication as shortlistApplicationApi,
   updateEmployerJob,
@@ -304,6 +306,23 @@ export function PortalProvider({ children }) {
     },
     [previewMode, loadApplications]
   );
+
+  useEffect(() => {
+    const onExpired = () => {
+      if (previewMode) return;
+      setIsAuthed(false);
+      setUser(null);
+      setJobs([]);
+      setApplications([]);
+      setDashboardStats(null);
+    };
+    window.addEventListener(AUTH_EXPIRED_EVENT, onExpired);
+    const stopWatch = previewMode ? () => {} : watchSessionExpiry();
+    return () => {
+      window.removeEventListener(AUTH_EXPIRED_EVENT, onExpired);
+      stopWatch();
+    };
+  }, [previewMode]);
 
   useEffect(() => {
     let cancelled = false;

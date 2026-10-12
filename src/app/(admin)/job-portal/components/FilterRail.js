@@ -6,6 +6,9 @@ import CustomSelect from '@/components/CustomSelect';
 import ScreeningFilterChips from './ScreeningFilterChips';
 
 export default function FilterRail({
+  collapsed = false,
+  onToggleCollapsed,
+  activeFilterCount = 0,
   jobs,
   selectedJob,
   onJobChange,
@@ -31,12 +34,17 @@ export default function FilterRail({
   ];
 
   return (
-    <aside className="ats-filter-rail">
+    <aside className={`ats-filter-rail${collapsed ? ' is-collapsed' : ''}`}>
       <div className="ats-filter-panel ats-form">
         <div className="ats-filter-head">
           <h2>Filters</h2>
+          <button type="button" className="btn btn-outline btn-sm" onClick={onToggleCollapsed}>
+            {collapsed ? 'Show' : 'Hide'}
+            {activeFilterCount > 0 ? <span className="ats-filter-count">{activeFilterCount}</span> : null}
+          </button>
         </div>
-
+        {collapsed ? null : (
+        <>
         <div className="ats-filter-section">
           <label className="ats-field-label" htmlFor="filter-search">Search</label>
           <div className="ats-input-icon">
@@ -114,6 +122,8 @@ export default function FilterRail({
         <button type="button" className="btn btn-outline btn-sm ats-filter-clear" onClick={onClear}>
           Clear filters
         </button>
+        </>
+        )}
       </div>
     </aside>
   );

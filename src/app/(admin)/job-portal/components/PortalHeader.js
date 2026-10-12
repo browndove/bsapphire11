@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { IconSearch } from './PortalIcons';
+import { usePortalNav } from '../PortalNavContext';
 
 export default function PortalHeader({
   title,
@@ -14,10 +15,17 @@ export default function PortalHeader({
   action,
 }) {
   const trail = breadcrumb ?? breadcrumbs;
+  const { hidden, show } = usePortalNav();
 
   return (
     <header className="ats-header">
       <div className="ats-header-left">
+        {hidden ? (
+          <button type="button" className="portal-nav-show" onClick={show}>
+            Show menu
+          </button>
+        ) : null}
+        <div className="ats-header-titles">
         {trail ? (
           <nav className="ats-breadcrumb" aria-label="Breadcrumb">
             {trail}
@@ -31,6 +39,7 @@ export default function PortalHeader({
         ) : badge != null ? (
           <span className="ats-badge">{badge}</span>
         ) : null}
+        </div>
       </div>
       <div className="ats-header-right">
         {search != null ? (

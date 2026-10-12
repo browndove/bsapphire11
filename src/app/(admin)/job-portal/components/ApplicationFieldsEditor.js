@@ -56,7 +56,7 @@ export default function ApplicationFieldsEditor({
                     <button
                       key={option.value}
                       type="button"
-                      className={`ats-requirement-btn${active ? ' is-active' : ''}`}
+                      className={`ats-requirement-btn is-${option.value}${active ? ' is-active' : ''}`}
                       aria-pressed={active}
                       disabled={disabled || locked}
                       onClick={() => updateField(key, option.value)}

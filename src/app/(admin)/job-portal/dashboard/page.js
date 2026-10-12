@@ -10,6 +10,7 @@ import PipelineFunnel from '../components/PipelineFunnel';
 import CandidateTable from '../components/CandidateTable';
 import EmptyState from '../components/EmptyState';
 import CustomSelect from '@/components/CustomSelect';
+import { readSelectedJob, writeSelectedJob } from '@/lib/job-api/portal-ui';
 
 function isWithinDays(iso, days) {
   if (!iso) return false;
@@ -35,6 +36,26 @@ export default function Dashboard() {
   } = usePortal();
 
   const [selectedJob, setSelectedJob] = useState('__all');
+
+  useEffect(() => {
+    const stored = readSelectedJob();
+    if (stored) setSelectedJob(stored);
+  }, []);
+
+  const changeJob = (value) => {
+    setSelectedJob(value);
+    writeSelectedJob(value);
+  };
+
+  const candidatesHref = (extra = {}) => {
+    const params = new URLSearchParams();
+    if (selectedJob !== '__all') params.set('job', selectedJob);
+    Object.entries(extra).forEach(([key, value]) => {
+      if (value != null && value !== '') params.set(key, String(value));
+    });
+    const query = params.toString();
+    return `/job-portal/applications${query ? `?${query}` : ''}`;
+  };
 
   useEffect(() => {
     if (isReady && !isAuthed) {
@@ -90,6 +111,16 @@ export default function Dashboard() {
     [scopedApps]
   );
 
+  const staleSubmitted = useMemo(
+    () => scopedApps.filter((app) => app.status === 'submitted' && !isWithinDays(app.submittedAt, 2)).length,
+    [scopedApps]
+  );
+
+  const interviewsUnscheduled = useMemo(
+    () => scopedApps.filter((app) => app.status === 'interview' && !app.interviewAt).length,
+    [scopedApps]
+  );
+
   const visibleJobs = useMemo(() => {
     if (selectedJob === '__all') return pubJobs;
     return jobs.filter((j) => j.id === selectedJob);
@@ -123,14 +154,14 @@ export default function Dashboard() {
       <PortalHeader
         title="Dashboard"
         action={
-          <div className="ats-dashboard-filters ats-form">
+          <div className="ats-dashboard-filters">
             <label className="ats-field-label" htmlFor="dashboard-job-filter">
               Filter by job
             </label>
             <CustomSelect
               id="dashboard-job-filter"
               value={selectedJob}
-              onChange={setSelectedJob}
+              onChange={changeJob}
               options={jobOptions}
               placeholder="All jobs"
             />
@@ -156,23 +187,45 @@ export default function Dashboard() {
                 : `/job-portal/postings/edit?id=${encodeURIComponent(selectedJob)}`
             }
           />
-          <AtsStatCard label="New this week" value={newThisWeek} />
-          <AtsStatCard label="In interview" value={inInterview} href={applicationsHref} />
+          <AtsStatCard
+            label="New this week"
+            value={newThisWeek}
+            href={candidatesHref({ status: 'submitted', since: 7 })}
+          />
+          <AtsStatCard label="In interview" value={inInterview} href={candidatesHref({ status: 'interview' })} />
         </div>
       )}
 
-      <section className="ats-panel" style={{ marginTop: '1.5rem' }}>
+      <section className="ats-panel">
         <div className="ats-panel-head">
-          <h2 className="ats-panel-title">Pipeline funnel</h2>
+          <h2 className="ats-panel-title">Pipeline</h2>
         </div>
         {loading ? (
           <div className="ats-skeleton" />
         ) : (
-          <PipelineFunnel stages={stages} labels={PortalStages.labels} />
+          <PipelineFunnel
+            stages={stages}
+            labels={PortalStages.labels}
+            onStageClick={(status) => router.push(candidatesHref({ status }))}
+          />
         )}
+        {staleSubmitted > 0 || interviewsUnscheduled > 0 ? (
+          <div className="ats-attention-row">
+            {staleSubmitted > 0 ? (
+              <Link href={candidatesHref({ status: 'submitted' })}>
+                <strong>{staleSubmitted}</strong> unreviewed for more than 48 hours
+              </Link>
+            ) : null}
+            {interviewsUnscheduled > 0 ? (
+              <Link href={candidatesHref({ status: 'interview' })}>
+                <strong>{interviewsUnscheduled}</strong> interviews still need a time
+              </Link>
+            ) : null}
+          </div>
+        ) : null}
       </section>
 
-      <section className="ats-panel" style={{ marginTop: '1.5rem' }}>
+      <section className="ats-panel">
         <div className="ats-panel-head">
           <h2 className="ats-panel-title">Recent candidates</h2>
           <Link href={applicationsHref} className="ats-panel-link">
@@ -201,7 +254,7 @@ export default function Dashboard() {
         )}
       </section>
 
-      <section className="ats-panel" style={{ marginTop: '1.5rem' }}>
+      <section className="ats-panel">
         <div className="ats-panel-head">
           <h2 className="ats-panel-title">
             {selectedJob === '__all' ? 'Active jobs' : 'Selected job'}

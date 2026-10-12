@@ -10,12 +10,15 @@ import {
   deleteEmployerCategory,
   fetchEmployerCompany,
   fetchEmployerUsers,
+  inviteEmployerUser,
   updateEmployerCategory,
   updateEmployerCompany,
   updateEmployerUserStatus,
   uploadFile,
 } from '@/lib/job-api/client';
 import { toUserMessage } from '@/lib/job-api/errors';
+import { getStatusEmailTemplate, listStatusEmailTemplates } from '@/lib/job-api/email-templates';
+import { writeTemplateOverride } from '@/lib/job-api/portal-ui';
 import { useConfirm } from '@/components/ConfirmProvider';
 import MediaFilePicker from '@/components/candidate/MediaFilePicker';
 
@@ -24,6 +27,7 @@ const TABS = [
   { id: 'company', label: 'Company' },
   { id: 'categories', label: 'Categories' },
   { id: 'team', label: 'Team' },
+  { id: 'emails', label: 'Emails' },
 ];
 
 function unwrap(data) {
@@ -66,6 +70,11 @@ export default function SettingsPage() {
 
   const [users, setUsers] = useState([]);
   const [usersLoading, setUsersLoading] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteRole, setInviteRole] = useState('recruiter');
+  const [emailStatus, setEmailStatus] = useState('interview');
+  const [emailSubject, setEmailSubject] = useState('');
+  const [emailBody, setEmailBody] = useState('');
 
   useEffect(() => {
     if (isReady && !isAuthed) {
@@ -123,7 +132,38 @@ export default function SettingsPage() {
     if (!isReady || !isAuthed) return;
     if (tab === 'company') loadCompany();
     if (tab === 'team') loadUsers();
-  }, [isReady, isAuthed, tab, loadCompany, loadUsers]);
+    if (tab === 'emails') {
+      const template = getStatusEmailTemplate(emailStatus) || {};
+      setEmailSubject(template.subject || '');
+      setEmailBody(template.body || '');
+    }
+  }, [isReady, isAuthed, tab, emailStatus, loadCompany, loadUsers]);
+
+  const sendInvite = async (event) => {
+    event.preventDefault();
+    setSaving(true);
+    setError('');
+    try {
+      await inviteEmployerUser({ email: inviteEmail.trim(), role: inviteRole });
+      setInviteEmail('');
+      showToast('Invitation sent.');
+      loadUsers();
+    } catch (err) {
+      setError(toUserMessage(err));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const saveEmailTemplate = () => {
+    const current = getStatusEmailTemplate(emailStatus) || {};
+    writeTemplateOverride(emailStatus, {
+      ...current,
+      subject: emailSubject,
+      body: emailBody,
+    });
+    showToast('Email template saved on this browser.');
+  };
 
   const showToast = (msg) => {
     setToast(msg);
@@ -407,6 +447,33 @@ export default function SettingsPage() {
         ) : null}
 
         {tab === 'team' ? (
+          <>
+          <form className="ats-panel ats-form" onSubmit={sendInvite}>
+            <h3 className="ats-panel-title">Invite a teammate</h3>
+            <div className="ats-form-grid cols-2">
+              <div className="ats-field">
+                <label className="ats-field-label" htmlFor="invite-email">Email</label>
+                <input
+                  id="invite-email"
+                  type="email"
+                  required
+                  value={inviteEmail}
+                  onChange={(event) => setInviteEmail(event.target.value)}
+                />
+              </div>
+              <div className="ats-field">
+                <label className="ats-field-label" htmlFor="invite-role">Role</label>
+                <input
+                  id="invite-role"
+                  value={inviteRole}
+                  onChange={(event) => setInviteRole(event.target.value)}
+                />
+              </div>
+            </div>
+            <button type="submit" className="btn btn-primary btn-sm" disabled={saving}>
+              {saving ? 'Sending…' : 'Invite'}
+            </button>
+          </form>
           usersLoading ? (
             <div className="ats-skeleton" />
           ) : (
@@ -449,6 +516,37 @@ export default function SettingsPage() {
               </div>
             </div>
           )
+          </>
+        ) : null}
+
+        {tab === 'emails' ? (
+          <form
+            className="ats-panel ats-form"
+            onSubmit={(event) => {
+              event.preventDefault();
+              saveEmailTemplate();
+            }}
+          >
+            <h3 className="ats-panel-title">Default candidate emails</h3>
+            <p className="ats-field-hint">These templates are saved in this browser and fill the status email modal.</p>
+            <div className="ats-field">
+              <label className="ats-field-label" htmlFor="email-status">Stage</label>
+              <select id="email-status" value={emailStatus} onChange={(event) => setEmailStatus(event.target.value)}>
+                {listStatusEmailTemplates().map((template) => (
+                  <option key={template.status} value={template.status}>{template.status}</option>
+                ))}
+              </select>
+            </div>
+            <div className="ats-field">
+              <label className="ats-field-label" htmlFor="email-subject">Subject</label>
+              <input id="email-subject" value={emailSubject} onChange={(event) => setEmailSubject(event.target.value)} />
+            </div>
+            <div className="ats-field">
+              <label className="ats-field-label" htmlFor="email-body">Body</label>
+              <textarea id="email-body" rows={10} value={emailBody} onChange={(event) => setEmailBody(event.target.value)} />
+            </div>
+            <button type="submit" className="btn btn-primary btn-sm">Save template</button>
+          </form>
         ) : null}
       </div>
     </>

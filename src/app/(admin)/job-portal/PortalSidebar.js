@@ -1,11 +1,13 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { usePortal } from './PortalContext';
 import { IconCandidates, IconDashboard, IconJobs, IconSettings } from './components/PortalIcons';
 import { useConfirm } from '@/components/ConfirmProvider';
 import BrandMark from '@/components/BrandMark';
+import { readPortalTheme, writePortalTheme } from '@/lib/job-api/portal-ui';
 
 const NAV = [
   { href: '/job-portal/dashboard', label: 'Dashboard', Icon: IconDashboard },
@@ -14,10 +16,11 @@ const NAV = [
   { href: '/job-portal/settings', label: 'Settings', Icon: IconSettings },
 ];
 
-export default function PortalSidebar() {
+export default function PortalSidebar({ open = false, onNavigate, onHide }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { logout, user } = usePortal();
+  const { logout, user, applications, jobs } = usePortal();
+  const [theme, setTheme] = useState('light');
   const confirm = useConfirm();
 
   const isActive = (href) => {
@@ -37,19 +40,41 @@ export default function PortalSidebar() {
   };
 
   const initials = user?.email ? user.email.slice(0, 2).toUpperCase() : '?';
+  const submittedCount = applications.filter((app) => app.status === 'submitted').length;
+  const draftCount = jobs.filter((job) => job.status === 'draft').length;
+
+  useEffect(() => {
+    const stored = readPortalTheme();
+    setTheme(stored);
+    document.documentElement.dataset.portalTheme = stored;
+  }, []);
+
+  const toggleTheme = () => {
+    const next = theme === 'dark' ? 'light' : 'dark';
+    setTheme(next);
+    writePortalTheme(next);
+    document.documentElement.dataset.portalTheme = next;
+  };
 
   return (
-    <aside className="portal-sidebar">
+    <aside className={`portal-sidebar${open ? ' is-open' : ''}`}>
       <div className="portal-sidebar-top">
-        <Link href="/job-portal/dashboard" className="portal-brand">
-          <span className="portal-brand-mark" aria-hidden="true">
-            <BrandMark size={18} />
-          </span>
-          <div className="portal-brand-text">
-            <strong>Blvck Sapphire</strong>
-            <span>Employer</span>
-          </div>
-        </Link>
+        <div className="portal-sidebar-brand-row">
+          <Link href="/job-portal/dashboard" className="portal-brand">
+            <span className="portal-brand-mark" aria-hidden="true">
+              <BrandMark size={18} />
+            </span>
+            <div className="portal-brand-text">
+              <strong>Blvck Sapphire</strong>
+              <span>Employer</span>
+            </div>
+          </Link>
+          {onHide ? (
+            <button type="button" className="portal-sidebar-hide" onClick={onHide}>
+              Hide
+            </button>
+          ) : null}
+        </div>
 
         <Link href="/job-portal/postings/edit" className="btn btn-primary portal-sidebar-cta">
           Post a job
@@ -62,9 +87,16 @@ export default function PortalSidebar() {
             key={item.href}
             href={item.href}
             className={`portal-sidebar-link ${isActive(item.href) ? 'is-active' : ''}`}
+            onClick={() => onNavigate?.()}
           >
             <item.Icon className="ats-icon" />
             <span>{item.label}</span>
+            {item.href === '/job-portal/applications' && submittedCount > 0 ? (
+              <span className="portal-nav-badge">{submittedCount}</span>
+            ) : null}
+            {item.href === '/job-portal/postings' && draftCount > 0 ? (
+              <span className="portal-nav-badge">{draftCount}</span>
+            ) : null}
           </Link>
         ))}
       </nav>
@@ -101,6 +133,9 @@ export default function PortalSidebar() {
             }}
           >
             Sign out
+          </button>
+          <button type="button" className="btn btn-outline btn-sm portal-sidebar-signout" onClick={toggleTheme}>
+            {theme === 'dark' ? 'Light mode' : 'Dark mode'}
           </button>
         </div>
       </div>

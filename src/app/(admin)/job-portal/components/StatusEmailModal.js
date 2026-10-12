@@ -6,6 +6,7 @@ import CustomDatePicker from '@/components/CustomDatePicker';
 import { PortalStages } from '../PortalContext';
 import { formatDateTime } from '@/lib/job-api/format';
 import {
+  buildSilentStatusPatch,
   buildStatusEmailPatch,
   datetimeLocalToIso,
   findUnresolvedEmailPlaceholders,
@@ -25,6 +26,21 @@ import {
   parseInterviewLocation,
 } from '@/lib/job-api/interview-slot';
 
+function PlaceholderPreview({ text }) {
+  const parts = String(text || '').split(/(\{\{\w+\}\}|\[[^\[\]]+\])/g);
+  return (
+    <div className="ats-placeholder-preview">
+      {parts.map((part, index) =>
+        findUnresolvedEmailPlaceholders(part).includes(part) ? (
+          <mark key={`${part}-${index}`}>{part}</mark>
+        ) : (
+          <span key={`${part}-${index}`}>{part}</span>
+        )
+      )}
+    </div>
+  );
+}
+
 export default function StatusEmailModal({
   open,
   application,
@@ -36,6 +52,7 @@ export default function StatusEmailModal({
   onSubmit,
   submitting = false,
   error = '',
+  bulkCount = 1,
 }) {
   const [emailSubject, setEmailSubject] = useState(initialFields?.emailSubject || '');
   const [emailBody, setEmailBody] = useState(initialFields?.emailBody || '');
@@ -48,9 +65,12 @@ export default function StatusEmailModal({
   const [reminderSubject, setReminderSubject] = useState(initialFields?.reminderEmailSubject || '');
   const [reminderBody, setReminderBody] = useState(initialFields?.reminderEmailBody || '');
   const [localError, setLocalError] = useState('');
-  const [nagShake, setNagShake] = useState(0);
+  const [showFieldErrors, setShowFieldErrors] = useState(false);
   const [interviewTouched, setInterviewTouched] = useState(false);
   const [initialInterviewIso, setInitialInterviewIso] = useState(interviewIso || '');
+  const [step, setStep] = useState(1);
+  const [notify, setNotify] = useState(true);
+  const [showReminder, setShowReminder] = useState(false);
 
   const isInterview = targetStatus === 'interview';
   const statusLabel = PortalStages.labels[targetStatus] || targetStatus;
@@ -101,9 +121,12 @@ export default function StatusEmailModal({
     [open, interviewDate, interviewHour]
   );
   const locationCopy = locationFieldCopy(interviewFormat);
-  const dateBlocked = interviewBlockers.some((item) => item.field === 'Date & time');
-  const formatBlocked = interviewBlockers.some((item) => item.field === 'Format');
-  const locationBlocked = interviewBlockers.some((item) => item.field === 'Location or link');
+  const dateBlocked = showFieldErrors && interviewBlockers.some((item) => item.field === 'Date & time');
+  const formatBlocked = showFieldErrors && interviewBlockers.some((item) => item.field === 'Format');
+  const locationBlocked = showFieldErrors && interviewBlockers.some((item) => item.field === 'Location or link');
+  const missingSummary = isInterview && !canSubmit
+    ? 'Add a date, time, format, and location before sending.'
+    : '';
 
   useEffect(() => {
     if (!open || !initialFields) {
@@ -117,6 +140,10 @@ export default function StatusEmailModal({
     setInitialInterviewIso(interviewIso || '');
     setInterviewTouched(false);
     setLocalError('');
+    setShowFieldErrors(false);
+    setStep(isResend ? 2 : 1);
+    setNotify(isResend || ['interview', 'rejected', 'hired'].includes(targetStatus));
+    setShowReminder(false);
 
     if (isInterview && isResend && interviewIso) {
       const slot = isoToInterviewSlot(interviewIso);
@@ -141,7 +168,7 @@ export default function StatusEmailModal({
       setInterviewLocation('');
     }
     setSlotReady(true);
-  }, [open, initialFields, interviewIso, isInterview, isResend]);
+  }, [open, initialFields, interviewIso, isInterview, isResend, targetStatus]);
 
   useEffect(() => {
     if (!open || !isInterview || !slotReady) return;
@@ -204,13 +231,9 @@ export default function StatusEmailModal({
   };
 
   const handleBlockedSubmit = () => {
-    setNagShake((count) => count + 1);
+    setShowFieldErrors(true);
     setLocalError(
-      interviewBlockers.length
-        ? `YOU CANNOT SEND THIS EMAIL YET.\n${interviewBlockers
-            .map((item) => `• ${item.field}: ${item.message}`)
-            .join('\n')}`
-        : 'YOU CANNOT SEND THIS EMAIL YET. Fix the highlighted fields.'
+      interviewBlockers[0]?.message || 'Add the missing interview details before sending.'
     );
   };
 
@@ -218,9 +241,26 @@ export default function StatusEmailModal({
     e.preventDefault();
     setLocalError('');
 
+    if (!notify && !isResend) {
+      const interviewAt = isInterview && interviewIsoNow ? interviewIsoNow : undefined;
+      await onSubmit({
+        ...buildSilentStatusPatch({ status: targetStatus, interviewAt }),
+        send_email: false,
+      });
+      return;
+    }
+
+    if (step === 1) {
+      if (isInterview && interviewBlockers.length) {
+        handleBlockedSubmit();
+        return;
+      }
+      setStep(2);
+      return;
+    }
+
     if (!emailSubject.trim() || !emailBody.trim()) {
-      setLocalError('Email subject and body are required.');
-      setNagShake((count) => count + 1);
+      setLocalError('Add a subject and message before sending.');
       return;
     }
 
@@ -229,8 +269,7 @@ export default function StatusEmailModal({
       isInterview ? reminderBody : ''
     );
     if (unresolved.length) {
-      setLocalError(`Replace placeholder text before sending: ${unresolved.join(', ')}`);
-      setNagShake((count) => count + 1);
+      setLocalError('Replace the unfinished details in the message before sending.');
       return;
     }
 
@@ -242,18 +281,17 @@ export default function StatusEmailModal({
         return;
       }
       if (!interviewAtLocal || !nextInterviewAtIso) {
-        setLocalError('Please choose a valid interview date and time.');
-        setNagShake((count) => count + 1);
+        setShowFieldErrors(true);
+        setLocalError('Choose a date and time before sending.');
         return;
       }
       if (new Date(nextInterviewAtIso).getTime() <= Date.now()) {
-        setLocalError('STOP. Interview time must be in the future.');
-        setNagShake((count) => count + 1);
+        setShowFieldErrors(true);
+        setLocalError('Choose a time that has not already passed.');
         return;
       }
       if (!reminderSubject.trim() || !reminderBody.trim()) {
-        setLocalError('Reminder email subject and body are required for interviews.');
-        setNagShake((count) => count + 1);
+        setLocalError('Add a subject and message for the reminder.');
         return;
       }
     }
@@ -281,7 +319,9 @@ export default function StatusEmailModal({
       >
         <div className="status-email-dialog-head">
           <div>
-            <h2 id="status-email-title">{isResend ? 'Resend status email' : 'Send status email'}</h2>
+            <h2 id="status-email-title">
+              {isResend ? 'Resend status email' : `Move to ${statusLabel}`}
+            </h2>
             <p className="ats-field-hint">
               {isResend ? (
                 <>
@@ -290,8 +330,9 @@ export default function StatusEmailModal({
                 </>
               ) : (
                 <>
-                  Email <strong>{candidateLabel}</strong> about their{' '}
-                  <strong>{statusLabel}</strong> status.
+                  Step {step} of {notify ? 2 : 1}. Update <strong>{candidateLabel}</strong> to{' '}
+                  <strong>{statusLabel}</strong>
+                  {bulkCount > 1 ? ` and ${bulkCount - 1} more` : ''}.
                 </>
               )}
             </p>
@@ -308,7 +349,19 @@ export default function StatusEmailModal({
             handleBlockedSubmit();
           }}
         >
-          {isInterview ? (
+          {!isResend && step === 1 ? (
+            <label className="ats-notify-toggle">
+              <input
+                type="checkbox"
+                checked={notify}
+                onChange={(event) => setNotify(event.target.checked)}
+                disabled={submitting}
+              />
+              <span>Notify candidate via email</span>
+            </label>
+          ) : null}
+
+          {isInterview && notify && step === 1 ? (
             <fieldset className="status-email-fieldset interview-slot-fields">
               <legend>Interview details</legend>
               <div className="interview-slot-grid">
@@ -324,7 +377,7 @@ export default function StatusEmailModal({
                     disabled={submitting}
                     className={dateBlocked ? 'is-blocked-field' : ''}
                   />
-                  <p className="ats-field-hint">Open the calendar and pick today or a future day. Previous dates are disabled.</p>
+                  <p className="ats-field-hint">Today or a later day.</p>
                 </div>
 
                 <div className="ats-field">
@@ -357,9 +410,7 @@ export default function StatusEmailModal({
                       className={dateBlocked ? 'is-blocked-field' : ''}
                     />
                   </div>
-                  <p className="ats-field-hint">
-                    24-hour time, 5-minute steps. If you pick today, times that have already passed are hidden.
-                  </p>
+                  <p className="ats-field-hint">24-hour time. Past times today are hidden.</p>
                 </div>
 
                 <div className="ats-field">
@@ -402,6 +453,8 @@ export default function StatusEmailModal({
             </fieldset>
           ) : null}
 
+          {step === 2 ? (
+          <>
           <div className="ats-field">
             <label className="ats-field-label" htmlFor="status-email-subject">Email subject</label>
             <input
@@ -434,13 +487,24 @@ export default function StatusEmailModal({
               Date &amp; time, Format, and Location or link update from the choices above.
             </p>
             {unresolvedPlaceholders.length ? (
-              <p className="ats-field-hint" style={{ color: 'var(--danger, #b42318)' }}>
-                Still needs editing: {unresolvedPlaceholders.join(', ')}
-              </p>
+              <div className="ats-placeholder-list">
+                {unresolvedPlaceholders.map((token) => (
+                  <mark key={token}>{token}</mark>
+                ))}
+              </div>
             ) : null}
+            {emailBody ? <PlaceholderPreview text={emailBody} /> : null}
           </div>
 
           {isInterview ? (
+            <div className="ats-reminder-toggle">
+              <button type="button" className="btn btn-outline btn-sm" onClick={() => setShowReminder((open) => !open)}>
+                {showReminder ? 'Hide reminder email' : 'Add reminder email'}
+              </button>
+            </div>
+          ) : null}
+
+          {isInterview && showReminder ? (
             <fieldset className="status-email-fieldset">
               <legend>Reminder</legend>
               <div className="ats-field">
@@ -479,6 +543,8 @@ export default function StatusEmailModal({
               </div>
             </fieldset>
           ) : null}
+          </>
+          ) : null}
 
           {localError || error ? (
             <div className="status-email-error" role="alert">
@@ -492,24 +558,41 @@ export default function StatusEmailModal({
             <button type="button" className="btn btn-outline" onClick={onClose} disabled={submitting}>
               Cancel
             </button>
+            {step === 2 && !isResend ? (
+              <button
+                type="button"
+                className="btn btn-outline"
+                onClick={() => setStep(1)}
+                disabled={submitting}
+              >
+                Back
+              </button>
+            ) : null}
             <button
-              type={canSubmit ? 'submit' : 'button'}
-              className={`btn btn-primary${canSubmit ? '' : ' is-locked-send'}`}
-              disabled={submitting}
-              title={!canSubmit ? blockerSummary || 'Fix the required fields before sending.' : undefined}
-              aria-describedby={interviewBlockers.length ? 'status-email-send-why' : undefined}
-              onClick={!canSubmit ? handleBlockedSubmit : undefined}
+              type="submit"
+              className="btn btn-primary"
+              disabled={
+                submitting ||
+                (step === 2 && notify && !canSubmit) ||
+                (step === 1 && notify && isInterview && interviewBlockers.length > 0)
+              }
+              title={!canSubmit ? blockerSummary || 'Add the missing details before sending.' : undefined}
+              aria-describedby={!canSubmit && missingSummary ? 'status-email-send-why' : undefined}
             >
               {submitting
-                ? 'Sending…'
-                : isResend
-                  ? 'Resend email'
-                  : 'Send email'}
+                ? 'Saving…'
+                : !notify && !isResend
+                  ? 'Update stage'
+                  : step === 1
+                    ? 'Continue'
+                    : isResend
+                      ? 'Resend email'
+                      : 'Send email'}
             </button>
           </div>
-          {!canSubmit ? (
+          {!canSubmit && missingSummary ? (
             <p id="status-email-send-why" className="status-email-send-why">
-              Send is locked until Date &amp; time, Format, and Location or link are chosen — in both emails.
+              {missingSummary}
             </p>
           ) : null}
         </form>

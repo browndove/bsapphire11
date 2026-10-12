@@ -49,6 +49,15 @@ export default function ScreeningQuestionsEditor({ questions = [], onChange }) {
     );
   };
 
+  const moveQuestion = (index, direction) => {
+    const nextIndex = index + direction;
+    if (nextIndex < 0 || nextIndex >= questions.length) return;
+    const next = [...questions];
+    const [item] = next.splice(index, 1);
+    next.splice(nextIndex, 0, item);
+    updateQuestions(next);
+  };
+
   const removeQuestion = async (index) => {
     const ok = await confirm({
       title: 'Remove question?',
@@ -123,13 +132,21 @@ export default function ScreeningQuestionsEditor({ questions = [], onChange }) {
                     <span>{TYPE_LABELS[q.type] || 'Question'}</span>
                   </div>
                 </div>
-                <button
-                  type="button"
-                  className="ats-question-remove"
-                  onClick={() => removeQuestion(index)}
-                >
-                  Remove
-                </button>
+                <div className="ats-question-actions">
+                  <button type="button" className="btn btn-outline btn-sm" onClick={() => moveQuestion(index, -1)} disabled={index === 0}>
+                    Up
+                  </button>
+                  <button type="button" className="btn btn-outline btn-sm" onClick={() => moveQuestion(index, 1)} disabled={index === questions.length - 1}>
+                    Down
+                  </button>
+                  <button
+                    type="button"
+                    className="ats-question-remove"
+                    onClick={() => removeQuestion(index)}
+                  >
+                    Remove
+                  </button>
+                </div>
               </header>
 
               <div className="ats-question-body">

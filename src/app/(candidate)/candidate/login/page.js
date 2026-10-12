@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useEffect, Suspense } from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useCandidate } from '../CandidateContext';
 import CandidateAuthForm from '@/components/candidate/CandidateAuthForm';
+import { consumeSessionNotice } from '@/lib/job-api/auth-storage';
 import { candidateApplyPath, jobIdFromReturnTo } from '@/lib/job-api/candidate-routes';
 import BrandMark from '@/components/BrandMark';
 
@@ -14,6 +15,12 @@ function CandidateLoginInner() {
   const returnTo = searchParams.get('returnTo');
   const applyJobId = jobIdFromReturnTo(returnTo);
   const { isReady, isAuthed, login, completeLogin } = useCandidate();
+  const [notice, setNotice] = useState('');
+
+  useEffect(() => {
+    const message = consumeSessionNotice();
+    if (message) setNotice(message);
+  }, []);
 
   useEffect(() => {
     if (isReady && isAuthed) {
@@ -31,6 +38,7 @@ function CandidateLoginInner() {
           <span>Blvck Sapphire</span>
         </div>
         <h1>Candidate portal</h1>
+        {notice ? <p className="login-notice" role="status">{notice}</p> : null}
         <p className="hint" style={{ marginBottom: '1.25rem' }}>
           Sign in to view applications you submitted with an existing account.
           {' '}

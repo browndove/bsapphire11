@@ -1,4 +1,4 @@
-import { DEFAULT_JOB_CURRENCY, EMPLOYER_APPLICATION_STATUSES, EMPLOYER_STATUS_UPDATES, JOB_CURRENCY_SYMBOL } from './config';
+import { currencyMeta, DEFAULT_JOB_CURRENCY, EMPLOYER_APPLICATION_STATUSES, EMPLOYER_STATUS_UPDATES } from './config';
 import { normalizeApplicationFields } from './application-fields';
 import { normalizeOptionalUrlList } from './cover-letter';
 
@@ -72,8 +72,7 @@ export function mapJobFromApi(job, categoriesById = {}) {
     employmentType: job.employment_type || 'full_time',
     salaryMin: job.salary_min ?? null,
     salaryMax: job.salary_max ?? null,
-    // Portal only supports Ghana Cedis; normalize legacy USD/other values.
-    currency: DEFAULT_JOB_CURRENCY,
+    currency: currencyMeta(job.currency || DEFAULT_JOB_CURRENCY).value,
     categoryId: job.category_id || null,
     screeningQuestions: rawQuestions.map(mapScreeningQuestionFromApi).filter(Boolean),
     applicationFields: normalizeApplicationFields(
@@ -110,7 +109,7 @@ export function mapJobToApi(job, { isCreate = false } = {}) {
   if (job.categoryId) body.category_id = job.categoryId;
   if (job.salaryMin != null && job.salaryMin !== '') body.salary_min = Number(job.salaryMin);
   if (job.salaryMax != null && job.salaryMax !== '') body.salary_max = Number(job.salaryMax);
-  body.currency = DEFAULT_JOB_CURRENCY;
+  body.currency = currencyMeta(job.currency || DEFAULT_JOB_CURRENCY).value;
   if (Array.isArray(job.screeningQuestions) && job.screeningQuestions.length > 0) {
     body.screening_questions = job.screeningQuestions
       .filter((q) => q.label?.trim())
@@ -172,6 +171,13 @@ export function mapApplicationFromApi(app) {
     lastName,
     email: candidate.email || app.candidate_email || app.email || '',
     phone: candidate.phone || app.candidate_phone || app.phone || '',
+    photoUrl:
+      candidate.avatar_url ||
+      candidate.photo_url ||
+      candidate.profile_photo_url ||
+      app.avatar_url ||
+      app.photo_url ||
+      '',
     status: app.status || 'submitted',
     companyName: app.company_name || app.company?.name || '',
     interviewAt: app.interview_at || null,
@@ -447,7 +453,7 @@ export function formatSalaryRange(job) {
   const hasMax = max != null && !Number.isNaN(max);
   if (!hasMin && !hasMax) return '';
 
-  const symbol = JOB_CURRENCY_SYMBOL;
+  const symbol = currencyMeta(job.currency).symbol;
   const formatAmount = (n) =>
     new Intl.NumberFormat('en-GH', { maximumFractionDigits: 0 }).format(n);
 

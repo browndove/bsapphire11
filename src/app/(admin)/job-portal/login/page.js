@@ -4,23 +4,12 @@ import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { usePortal } from '../PortalContext';
+import { consumeSessionNotice } from '@/lib/job-api/auth-storage';
 import { toUserMessage } from '@/lib/job-api/errors';
 import BrandMark from '@/components/BrandMark';
 import PasswordInput from '@/components/PasswordInput';
-
-function QrCode({ value }) {
-  if (!value) return null;
-  const src = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(value)}`;
-  return (
-    <img
-      src={src}
-      alt="Scan this QR code with your authenticator app"
-      width={180}
-      height={180}
-      style={{ border: '1px solid var(--border-color)', margin: '1rem 0' }}
-    />
-  );
-}
+import PinInput from '../components/PinInput';
+import LocalQrCode from '../components/LocalQrCode';
 
 export default function Login() {
   const router = useRouter();
@@ -35,7 +24,13 @@ export default function Login() {
   const [otpSecret, setOtpSecret] = useState('');
   const [otpauthUrl, setOtpauthUrl] = useState('');
   const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    const message = consumeSessionNotice();
+    if (message) setNotice(message);
+  }, []);
 
   useEffect(() => {
     if (isReady && isAuthed) {
@@ -92,6 +87,7 @@ export default function Login() {
           <span>Blvck Sapphire</span>
         </div>
         <h1>Recruiting portal</h1>
+        {notice ? <p className="login-notice" role="status">{notice}</p> : null}
         {step === 'credentials' ? (
           <>
             <p className="hint">
@@ -134,7 +130,7 @@ export default function Login() {
             ) : null}
             {setupRequired && (otpauthUrl || otpSecret) ? (
               <div>
-                <QrCode value={otpauthUrl} />
+                <LocalQrCode value={otpauthUrl} />
                 {otpSecret ? (
                   <p className="field-hint">
                     Manual entry secret: <code>{otpSecret}</code>
@@ -148,18 +144,8 @@ export default function Login() {
                   ? 'Authenticator code'
                   : 'Email verification code'}
               </label>
-              <input
-                type="text"
-                id="code"
-                inputMode="numeric"
-                pattern="[0-9]{6}"
-                maxLength={6}
-                required
-                placeholder="123456"
-                value={code}
-                onChange={(e) => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
-              />
-              <button type="submit" className="btn btn-primary" disabled={submitting}>
+              <PinInput id="code" value={code} onChange={setCode} disabled={submitting} />
+              <button type="submit" className="btn btn-primary" disabled={submitting || code.length < 6}>
                 {submitting ? 'Verifying…' : 'Verify & sign in'}
               </button>
               <button

@@ -10,6 +10,17 @@ function authHeaders(request) {
   return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
+export async function POST(request) {
+  return jsonRoute(async () => {
+    const body = await request.json();
+    return apiRequest('/employer/users', {
+      method: 'POST',
+      headers: authHeaders(request),
+      body: JSON.stringify(body),
+    });
+  });
+}
+
 export async function GET(request) {
   return jsonRoute(async () => {
     const { searchParams } = new URL(request.url);

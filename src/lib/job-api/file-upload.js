@@ -1,4 +1,10 @@
 export const FILE_MAX_BYTES = 20 * 1024 * 1024;
+export const RESUME_MAX_BYTES = 50 * 1024 * 1024;
+
+export function maxBytesForPurpose(purpose) {
+  if (purpose === 'resume') return RESUME_MAX_BYTES;
+  return FILE_MAX_BYTES;
+}
 
 export const UPLOAD_PURPOSES = ['resume', 'company_logo', 'document', 'cover_letter'];
 
@@ -65,16 +71,17 @@ export function acceptStringForPurpose(purpose) {
 }
 
 export function hintForPurpose(purpose) {
+  const limit = formatFileSize(maxBytesForPurpose(purpose));
   if (purpose === 'company_logo') {
-    return `Images up to ${formatFileSize(FILE_MAX_BYTES)}`;
+    return `Images up to ${limit}`;
   }
   if (purpose === 'cover_letter') {
-    return `PDF, Word, or TXT up to ${formatFileSize(FILE_MAX_BYTES)}`;
+    return `PDF, Word, or TXT up to ${limit}`;
   }
   if (purpose === 'document') {
-    return `PDF, Word, or text up to ${formatFileSize(FILE_MAX_BYTES)}`;
+    return `PDF, Word, or text up to ${limit}`;
   }
-  return `PDF or Word up to ${formatFileSize(FILE_MAX_BYTES)}`;
+  return `PDF or Word up to ${limit}`;
 }
 
 function matchesExtension(name, extensions) {
@@ -84,7 +91,7 @@ function matchesExtension(name, extensions) {
 
 export function isAllowedUploadFile(file, purpose = 'resume') {
   if (!file) return false;
-  if (file.size > FILE_MAX_BYTES) return false;
+  if (file.size > maxBytesForPurpose(purpose)) return false;
 
   const allowedMimes = allowedMimeTypesForPurpose(purpose);
   if (file.type && allowedMimes.has(file.type)) return true;
@@ -106,14 +113,15 @@ export function isAllowedUploadFile(file, purpose = 'resume') {
 }
 
 export function validationErrorForPurpose(purpose = 'resume') {
+  const limit = formatFileSize(maxBytesForPurpose(purpose));
   if (purpose === 'company_logo') {
-    return `Upload an image up to ${formatFileSize(FILE_MAX_BYTES)}.`;
+    return `Upload an image up to ${limit}.`;
   }
   if (purpose === 'cover_letter') {
-    return `Upload a PDF, Word, or TXT file up to ${formatFileSize(FILE_MAX_BYTES)}.`;
+    return `Upload a PDF, Word, or TXT file up to ${limit}.`;
   }
   if (purpose === 'document') {
-    return `Upload a PDF, Word, or text file up to ${formatFileSize(FILE_MAX_BYTES)}.`;
+    return `Upload a PDF, Word, or text file up to ${limit}.`;
   }
-  return `Upload a PDF or Word file up to ${formatFileSize(FILE_MAX_BYTES)}.`;
+  return `Upload a PDF or Word file up to ${limit}.`;
 }

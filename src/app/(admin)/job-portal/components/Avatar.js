@@ -20,7 +20,7 @@ function paletteForName(name) {
   return PALETTES[Math.abs(hash) % PALETTES.length];
 }
 
-export default function Avatar({ name, size = 'md' }) {
+export default function Avatar({ name, src, size = 'md' }) {
   const palette = paletteForName(name);
 
   return (
@@ -33,7 +33,7 @@ export default function Avatar({ name, size = 'md' }) {
       }}
       aria-hidden="true"
     >
-      {getInitials(name)}
+      {src ? <img src={src} alt="" /> : getInitials(name)}
     </span>
   );
 }

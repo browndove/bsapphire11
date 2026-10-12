@@ -2,6 +2,7 @@
 
 import React, { createContext, useCallback, useContext, useEffect, useState } from 'react';
 import {
+  AUTH_EXPIRED_EVENT,
   clearAuthSession,
   getAccessToken,
   getStoredUser,
@@ -15,6 +16,7 @@ import {
   logoutApi,
   renewSession,
   updateProfile,
+  watchSessionExpiry,
   withdrawApplication,
 } from '@/lib/job-api/client';
 import { getPaginatedItems, mapApplicationFromApi } from '@/lib/job-api/mappers';
@@ -43,6 +45,20 @@ export function CandidateProvider({ children }) {
     } finally {
       setLoading(false);
     }
+  }, []);
+
+  useEffect(() => {
+    const onExpired = () => {
+      setIsAuthed(false);
+      setUser(null);
+      setApplications([]);
+    };
+    window.addEventListener(AUTH_EXPIRED_EVENT, onExpired);
+    const stopWatch = watchSessionExpiry();
+    return () => {
+      window.removeEventListener(AUTH_EXPIRED_EVENT, onExpired);
+      stopWatch();
+    };
   }, []);
 
   useEffect(() => {
