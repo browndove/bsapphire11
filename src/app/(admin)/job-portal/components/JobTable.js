@@ -1,24 +1,50 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { formatDate } from '@/lib/job-api/format';
+import { formatRelativeTime } from '@/lib/job-api/format';
 import { toUserMessage } from '@/lib/job-api/errors';
 import { useConfirm } from '@/components/ConfirmProvider';
 import { usePortal } from '../PortalContext';
 import ActionsMenu from './ActionsMenu';
+import NotifyPositionFilledModal from './NotifyPositionFilledModal';
 
 function tagClass(status) {
   if (status === 'published') return 'tag-published';
   if (status === 'draft') return 'tag-draft';
+  if (status === 'archived') return 'tag-archived';
   return 'tag-closed';
+}
+
+function statusLabel(status) {
+  if (!status) return 'Unknown';
+  return status.charAt(0).toUpperCase() + status.slice(1);
 }
 
 export default function JobTable({ jobs, getApplicantCount }) {
   const router = useRouter();
   const confirm = useConfirm();
-  const { removeJob } = usePortal();
+  const { removeJob, applications, user, loadAllApplications, mergeApplications } = usePortal();
   const [error, setError] = useState('');
+  const [notifyJob, setNotifyJob] = useState(null);
+
+  useEffect(() => {
+    if (!notifyJob?.id) return undefined;
+    let cancelled = false;
+    loadAllApplications({ job_id: notifyJob.id })
+      .then(({ applications: rows }) => {
+        if (!cancelled) mergeApplications(rows || []);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [notifyJob?.id, loadAllApplications, mergeApplications]);
+
+  const notifyApplications = useMemo(
+    () => (notifyJob ? applications.filter((app) => app.jobId === notifyJob.id) : []),
+    [applications, notifyJob]
+  );
 
   const handleDelete = async (job) => {
     const count = getApplicantCount(job.id);
@@ -45,63 +71,81 @@ export default function JobTable({ jobs, getApplicantCount }) {
   return (
     <>
       {error ? <div className="ats-toast is-error" style={{ marginBottom: '1rem' }}>{error}</div> : null}
-      <div className="ats-table-shell">
-      <div className="ats-table-wrap">
-        <table className="ats-table">
-          <thead>
-            <tr>
-              <th>Job title</th>
-              <th>Location</th>
-              <th>Status</th>
-              <th>Applicants</th>
-              <th>Updated</th>
-              <th className="ats-table-actions-col" />
-            </tr>
-          </thead>
-          <tbody>
-            {jobs.map((job) => {
-              const count = getApplicantCount(job.id);
-              return (
-                <tr
-                  key={job.id}
-                  onClick={() => router.push(`/job-portal/postings/edit?id=${encodeURIComponent(job.id)}`)}
-                >
-                  <td>
-                    <strong>{job.title}</strong>
-                    {job.department ? <div className="ats-table-sub">{job.department}</div> : null}
-                  </td>
-                  <td>{job.location || '—'}</td>
-                  <td><span className={`tag ${tagClass(job.status)}`}>{job.status}</span></td>
-                  <td>
-                    <span className={`ats-count-pill${count > 0 ? ' has-value' : ''}`}>{count}</span>
-                  </td>
-                  <td className="ats-table-sub">{formatDate(job.updatedAt)}</td>
-                  <td className="ats-table-actions-col" onClick={(e) => e.stopPropagation()}>
-                    <ActionsMenu
-                      items={[
-                        {
-                          label: 'Edit job',
-                          href: `/job-portal/postings/edit?id=${encodeURIComponent(job.id)}`,
-                        },
-                        {
-                          label: 'View candidates',
-                          href: `/job-portal/applications?job=${encodeURIComponent(job.id)}`,
-                        },
-                        {
-                          label: 'Delete job',
-                          danger: true,
-                          onClick: () => handleDelete(job),
-                        },
-                      ]}
-                    />
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+      <div className="ats-job-list" role="list">
+        {jobs.map((job) => {
+          const count = getApplicantCount(job.id);
+          const canNotify = job.status === 'closed' && count > 0;
+          const meta = [
+            job.location || null,
+            job.department || null,
+            count === 1 ? '1 applicant' : `${count} applicants`,
+            formatRelativeTime(job.updatedAt || job.createdAt),
+          ].filter(Boolean);
+
+          return (
+            <article
+              key={job.id}
+              role="listitem"
+              className={`ats-job-row${job.status === 'archived' ? ' is-archived' : ''}`}
+              onClick={() => router.push(`/job-portal/postings/edit?id=${encodeURIComponent(job.id)}`)}
+            >
+              <div className="ats-job-row-main">
+                <div className="ats-job-row-title-line">
+                  <h3 className="ats-job-row-title">{job.title}</h3>
+                  <span className={`tag ${tagClass(job.status)}`}>{statusLabel(job.status)}</span>
+                </div>
+                <p className="ats-job-row-meta">{meta.join(' · ')}</p>
+              </div>
+
+              <div className="ats-job-row-actions" onClick={(event) => event.stopPropagation()}>
+                {canNotify ? (
+                  <button
+                    type="button"
+                    className="btn btn-outline btn-sm"
+                    onClick={() => setNotifyJob(job)}
+                  >
+                    Notify
+                  </button>
+                ) : null}
+                <ActionsMenu
+                  items={[
+                    {
+                      label: 'Edit job',
+                      href: `/job-portal/postings/edit?id=${encodeURIComponent(job.id)}`,
+                    },
+                    {
+                      label: 'View candidates',
+                      href: `/job-portal/applications?job=${encodeURIComponent(job.id)}`,
+                    },
+                    ...(job.status === 'closed'
+                      ? [
+                          {
+                            label: 'Notify other applicants',
+                            onClick: () => setNotifyJob(job),
+                          },
+                        ]
+                      : []),
+                    {
+                      label: 'Delete job',
+                      danger: true,
+                      onClick: () => handleDelete(job),
+                    },
+                  ]}
+                />
+              </div>
+            </article>
+          );
+        })}
       </div>
-      </div>
+
+      <NotifyPositionFilledModal
+        open={Boolean(notifyJob)}
+        job={notifyJob}
+        applications={notifyApplications}
+        companyName={notifyJob?.companyName || 'Blvck Sapphire'}
+        userEmail={user?.email || ''}
+        onClose={() => setNotifyJob(null)}
+      />
     </>
   );
 }

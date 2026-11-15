@@ -16,6 +16,20 @@ const TABS = [
   { id: 'closed', label: 'Closed' },
 ];
 
+function isClosedGroup(status) {
+  return status === 'closed' || status === 'archived';
+}
+
+function jobTimestamp(job) {
+  const value = job?.updatedAt || job?.publishedAt || job?.createdAt || 0;
+  const time = new Date(value).getTime();
+  return Number.isNaN(time) ? 0 : time;
+}
+
+function sortJobsLatestFirst(list) {
+  return [...list].sort((a, b) => jobTimestamp(b) - jobTimestamp(a));
+}
+
 export default function Postings() {
   const router = useRouter();
   const {
@@ -27,6 +41,7 @@ export default function Postings() {
   } = usePortal();
   const [activeTab, setActiveTab] = useState('all');
   const [search, setSearch] = useState('');
+  const [showArchived, setShowArchived] = useState(false);
 
   useEffect(() => {
     if (isReady && !isAuthed) {
@@ -35,20 +50,38 @@ export default function Postings() {
   }, [isReady, isAuthed, router]);
 
   const tabCounts = useMemo(() => {
-    const counts = { all: jobs.length, published: 0, draft: 0, closed: 0 };
+    const counts = { all: 0, published: 0, draft: 0, closed: 0 };
     jobs.forEach((j) => {
       if (j.status === 'published') counts.published += 1;
       else if (j.status === 'draft') counts.draft += 1;
-      else counts.closed += 1;
+      else if (j.status === 'closed') counts.closed += 1;
+
+      if (j.status !== 'archived' || showArchived) counts.all += 1;
     });
+    if (showArchived) {
+      counts.closed += jobs.filter((j) => j.status === 'archived').length;
+    }
     return counts;
-  }, [jobs]);
+  }, [jobs, showArchived]);
+
+  const archivedCount = useMemo(
+    () => jobs.filter((j) => j.status === 'archived').length,
+    [jobs]
+  );
 
   const filteredJobs = useMemo(() => {
     let list = jobs;
-    if (activeTab !== 'all') {
+
+    if (activeTab === 'closed') {
+      list = list.filter((j) =>
+        showArchived ? isClosedGroup(j.status) : j.status === 'closed'
+      );
+    } else if (activeTab === 'all') {
+      if (!showArchived) list = list.filter((j) => j.status !== 'archived');
+    } else {
       list = list.filter((j) => j.status === activeTab);
     }
+
     if (search.trim()) {
       const q = search.trim().toLowerCase();
       list = list.filter(
@@ -58,8 +91,9 @@ export default function Postings() {
           (j.department || '').toLowerCase().includes(q)
       );
     }
-    return list;
-  }, [jobs, activeTab, search]);
+
+    return sortJobsLatestFirst(list);
+  }, [jobs, activeTab, search, showArchived]);
 
   if (!isReady || !isAuthed) return null;
 
@@ -86,7 +120,18 @@ export default function Postings() {
         }
       />
 
-      <PageTabs tabs={tabs} active={activeTab} onChange={setActiveTab} />
+      <div className="ats-jobs-toolbar">
+        <PageTabs tabs={tabs} active={activeTab} onChange={setActiveTab} />
+        {archivedCount > 0 && (activeTab === 'all' || activeTab === 'closed') ? (
+          <button
+            type="button"
+            className="ats-jobs-archive-toggle"
+            onClick={() => setShowArchived((value) => !value)}
+          >
+            {showArchived ? 'Hide archived' : `Show archived (${archivedCount})`}
+          </button>
+        ) : null}
+      </div>
 
       {loading ? (
         <div className="ats-skeleton" style={{ marginTop: '1.25rem' }} />

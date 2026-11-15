@@ -11,10 +11,13 @@ import PageTabs from '../../components/PageTabs';
 import StickyFormBar from '../../components/StickyFormBar';
 import ScreeningQuestionsEditor from '../../components/ScreeningQuestionsEditor';
 import ApplicationFieldsEditor from '../../components/ApplicationFieldsEditor';
+import NotifyPositionFilledModal from '../../components/NotifyPositionFilledModal';
 import CustomSelect from '@/components/CustomSelect';
 import JobRichTextEditor from '@/components/JobRichTextEditor';
 import { useConfirm } from '@/components/ConfirmProvider';
 import { DEFAULT_APPLICATION_FIELDS } from '@/lib/job-api/application-fields';
+import { readPositionFilledCampaign } from '@/lib/job-api/position-filled-campaign';
+import { candidateDisplayName } from '@/lib/job-api/position-filled';
 
 const SECTIONS = [
   { id: 'details', label: 'Details' },
@@ -62,7 +65,18 @@ function PostingEditForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const id = searchParams.get('id');
-  const { isReady, isAuthed, categories, loadJobById, upsertJob, removeJob } = usePortal();
+  const {
+    isReady,
+    isAuthed,
+    categories,
+    loadJobById,
+    upsertJob,
+    removeJob,
+    applications,
+    user,
+    loadAllApplications,
+    mergeApplications,
+  } = usePortal();
   const confirm = useConfirm();
 
   const [job, setJob] = useState(emptyJob);
@@ -76,6 +90,8 @@ function PostingEditForm() {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewSrc, setPreviewSrc] = useState('');
   const [sectionErrors, setSectionErrors] = useState({});
+  const [notifyOpen, setNotifyOpen] = useState(false);
+  const [campaign, setCampaign] = useState(null);
 
   useEffect(() => {
     if (isReady && !isAuthed) {
@@ -97,6 +113,29 @@ function PostingEditForm() {
         .finally(() => setLoadingJob(false));
     }
   }, [isReady, isAuthed, id, job.id, router, loadJobById]);
+
+  useEffect(() => {
+    if (!id) {
+      setCampaign(null);
+      return;
+    }
+    setCampaign(readPositionFilledCampaign(id));
+  }, [id, notifyOpen]);
+
+  useEffect(() => {
+    if (!isReady || !isAuthed || !id || job.status !== 'closed') return undefined;
+    let cancelled = false;
+    loadAllApplications({ job_id: id })
+      .then(({ applications: rows }) => {
+        if (!cancelled) mergeApplications(rows || []);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [isReady, isAuthed, id, job.status, loadAllApplications, mergeApplications]);
+
+  const jobApplications = applications.filter((app) => app.jobId === id);
 
   useEffect(() => {
     const onLeave = (event) => {
@@ -416,23 +455,87 @@ function PostingEditForm() {
         ) : null}
 
         {section === 'publish' ? (
-          <div className="ats-form-grid cols-2">
-            <div className="ats-field">
-              <label className="ats-field-label" htmlFor="field-status">Status</label>
-              <CustomSelect
-                id="field-status"
-                value={job.status}
-                onChange={(v) => updateField('status', v)}
-                options={JOB_STATUSES.filter((s) => s !== 'archived').map((s) => ({
-                  value: s,
-                  label: s.charAt(0).toUpperCase() + s.slice(1),
-                }))}
-              />
-              <p className="ats-field-hint">Published roles appear on the public careers site.</p>
+          <>
+            <div className="ats-form-grid cols-2">
+              <div className="ats-field">
+                <label className="ats-field-label" htmlFor="field-status">Status</label>
+                <CustomSelect
+                  id="field-status"
+                  value={job.status}
+                  onChange={(v) => updateField('status', v)}
+                  options={JOB_STATUSES.filter((s) => s !== 'archived').map((s) => ({
+                    value: s,
+                    label: s.charAt(0).toUpperCase() + s.slice(1),
+                  }))}
+                />
+                <p className="ats-field-hint">Published roles appear on the public careers site.</p>
+              </div>
             </div>
-          </div>
+            {job.status === 'closed' && id ? (
+              <div className="ats-position-filled-panel">
+                <h3 className="ats-panel-title">Position filled</h3>
+                <p className="ats-field-hint">
+                  Email applicants who were not selected that this role has been filled. Hired and withdrawn
+                  candidates are left out. Each person gets their own email.
+                </p>
+                {campaign?.counts ? (
+                  <p className="ats-field-hint">
+                    Last notify: {campaign.counts.sent || 0} sent · {campaign.counts.failed || 0} failed ·{' '}
+                    {campaign.counts.excluded || 0} excluded
+                    {campaign.sentBy ? ` · by ${campaign.sentBy}` : ''}
+                    {campaign.updatedAt ? ` · ${new Date(campaign.updatedAt).toLocaleString()}` : ''}
+                  </p>
+                ) : null}
+                <div className="ats-position-filled-panel-actions">
+                  <button type="button" className="btn btn-primary btn-sm" onClick={() => setNotifyOpen(true)}>
+                    Notify other applicants
+                  </button>
+                  {campaign?.recipients?.length ? (
+                    <button
+                      type="button"
+                      className="btn btn-outline btn-sm"
+                      onClick={() => setNotifyOpen(true)}
+                    >
+                      View recipient list
+                    </button>
+                  ) : null}
+                </div>
+                {campaign?.recipients?.length ? (
+                  <ul className="ats-position-filled-list" style={{ marginTop: '0.85rem' }}>
+                    {campaign.recipients.slice(0, 8).map((row) => (
+                      <li key={row.applicationId}>
+                        <span>
+                          <strong>{row.name || candidateDisplayName({ email: row.email })}</strong>
+                          <em>{row.email}</em>
+                          <small>{row.status}</small>
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </div>
+            ) : null}
+          </>
         ) : null}
       </form>
+
+      <NotifyPositionFilledModal
+        open={notifyOpen}
+        job={job}
+        applications={jobApplications}
+        companyName={job.companyName || 'Blvck Sapphire'}
+        userEmail={user?.email || ''}
+        onClose={() => {
+          setNotifyOpen(false);
+          setCampaign(readPositionFilledCampaign(id));
+        }}
+        onComplete={(next) => {
+          setCampaign(next);
+          loadAllApplications({ job_id: id })
+            .then(({ applications: rows }) => mergeApplications(rows || []))
+            .catch(() => {});
+        }}
+      />
 
       {previewOpen ? (
         <aside className="ats-preview-drawer" aria-label="Job preview">

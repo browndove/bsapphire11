@@ -516,6 +516,12 @@ table.data tbody tr:hover td {
   border-color: rgba(251, 191, 36, 0.35);
 }
 
+.tag-archived {
+  background: var(--ats-surface-3, #f3f4f6);
+  color: var(--text-muted, #6b7280);
+  border: 1px solid var(--border-color, #e5e7eb);
+}
+
 .tag-closed {
   color: var(--text-muted);
 }

@@ -541,6 +541,27 @@ export async function inviteEmployerUser(body) {
   });
 }
 
+/** One individual position-filled email (backend enforces closed job + employer auth). */
+export async function sendPositionFilledEmail(jobId, { applicationId, emailSubject, emailBody, emailHtml }) {
+  const payload = {
+    application_id: applicationId,
+    email_subject: emailSubject,
+    email_body: emailBody,
+  };
+  if (emailHtml) {
+    payload.email_html = emailHtml;
+  }
+  return portalFetch(
+    `/employer/jobs/${jobId}/position-filled`,
+    {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    },
+    true,
+    'status-email'
+  );
+}
+
 export async function uploadFile(file, purpose = 'document') {
   if (!getAccessToken()) {
     const err = new Error('Sign in to upload files.');

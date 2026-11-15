@@ -2454,8 +2454,472 @@ button.ats-menu-item {
 .status-email-actions {
   display: flex;
   justify-content: flex-end;
+  flex-wrap: wrap;
   gap: 0.75rem;
   margin-top: 1.25rem;
+}
+
+.ats-position-filled-modal {
+  width: min(820px, 100%);
+}
+
+.ats-pf-steps {
+  display: flex;
+  gap: 0.35rem;
+  list-style: none;
+  margin: 0 0 1.25rem;
+  padding: 0;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.ats-pf-steps li {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  flex: 1;
+  min-width: 0;
+  padding: 0 0 0.75rem;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -1px;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+.ats-pf-steps li.is-current {
+  color: var(--text-color);
+  border-bottom-color: var(--text-color);
+}
+
+.ats-pf-steps li.is-done {
+  color: var(--text-color);
+}
+
+.ats-pf-step-num {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.35rem;
+  height: 1.35rem;
+  border-radius: 999px;
+  border: 1px solid currentColor;
+  font-size: 0.7rem;
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+.ats-pf-steps li.is-current .ats-pf-step-num,
+.ats-pf-steps li.is-done .ats-pf-step-num {
+  background: var(--text-color);
+  border-color: var(--text-color);
+  color: var(--ats-surface);
+}
+
+.ats-pf-step-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ats-pf-confirm-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: 10px;
+  background: var(--ats-surface-2);
+}
+
+.ats-pf-confirm-count {
+  margin: 0;
+  font-size: 1.05rem;
+  color: var(--text-color);
+  line-height: 1.35;
+}
+
+.ats-pf-confirm-sub {
+  margin: 0.35rem 0 0;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  line-height: 1.4;
+}
+
+.ats-pf-confirm-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-width: 4.5rem;
+  padding: 0.35rem 0.6rem;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.ats-pf-confirm-stat strong {
+  font-size: 1.75rem;
+  font-weight: 650;
+  line-height: 1;
+  letter-spacing: -0.02em;
+}
+
+.ats-pf-confirm-stat span {
+  margin-top: 0.25rem;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-muted);
+}
+
+.ats-pf-confirm-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 0.9fr) minmax(0, 1.1fr);
+  gap: 0.85rem;
+  margin-bottom: 0.85rem;
+}
+
+.ats-pf-confirm-panel {
+  min-width: 0;
+}
+
+.ats-pf-confirm-panel h3 {
+  margin: 0 0 0.5rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.ats-pf-confirm-panel h3 span {
+  font-weight: 500;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.ats-pf-confirm-list {
+  max-height: 12rem;
+}
+
+.ats-pf-email-preview {
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--ats-surface);
+  overflow: hidden;
+}
+
+.ats-pf-email-subject {
+  margin: 0;
+  padding: 0.65rem 0.75rem;
+  border-bottom: 1px solid var(--border-color);
+  font-size: 0.88rem;
+  font-weight: 500;
+  color: var(--text-color);
+  line-height: 1.35;
+}
+
+.ats-pf-email-subject span {
+  display: block;
+  margin-bottom: 0.2rem;
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.ats-pf-email-body {
+  margin: 0;
+  padding: 0.75rem;
+  max-height: 11rem;
+  overflow: auto;
+  font: inherit;
+  font-size: 0.82rem;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--text-color);
+  background: transparent;
+}
+
+.ats-pf-email-frame {
+  display: block;
+  width: 100%;
+  height: 16rem;
+  border: 0;
+  background: #f4f4f5;
+}
+
+.ats-pf-confirm-warn {
+  margin: 0 0 0.85rem;
+  padding: 0.7rem 0.85rem;
+  border-radius: 8px;
+  border: 1px solid #f0d3a8;
+  background: #fff8ed;
+  color: #7a4b12;
+  font-size: 0.84rem;
+  line-height: 1.4;
+}
+
+.ats-pf-confirm-check {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.6rem;
+  margin: 0;
+  padding: 0.75rem 0.85rem;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--ats-surface-2);
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-color);
+  cursor: pointer;
+}
+
+.ats-pf-confirm-check input {
+  margin-top: 0.15rem;
+}
+
+@media (max-width: 720px) {
+  .ats-pf-confirm-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .ats-pf-confirm-hero {
+    align-items: flex-start;
+  }
+
+  .ats-pf-step-label {
+    display: none;
+  }
+
+  .ats-pf-steps li {
+    justify-content: center;
+  }
+}
+
+.ats-position-filled-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin: 0.75rem 0;
+}
+
+.ats-position-filled-search {
+  flex: 1;
+  min-width: 12rem;
+  min-height: 2.1rem;
+  padding: 0 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  background: var(--ats-surface);
+  font: inherit;
+}
+
+.ats-position-filled-resend {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  margin: 0.75rem 0;
+  font-size: 0.875rem;
+  color: var(--text-color);
+}
+
+.ats-position-filled-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 18rem;
+  overflow: auto;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+}
+
+.ats-position-filled-list li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  padding: 0.65rem 0.75rem;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.ats-position-filled-list li:last-child {
+  border-bottom: 0;
+}
+
+.ats-position-filled-list label {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.55rem;
+  min-width: 0;
+  flex: 1;
+  cursor: pointer;
+}
+
+.ats-position-filled-list span {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.ats-position-filled-list strong {
+  font-size: 0.9rem;
+  font-weight: 500;
+}
+
+.ats-position-filled-list em,
+.ats-position-filled-list small {
+  font-style: normal;
+  font-size: 0.75rem;
+  color: var(--text-muted);
+}
+
+.ats-position-filled-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1.25rem;
+  margin-bottom: 0.85rem;
+  font-size: 0.9rem;
+}
+
+.ats-position-filled-panel {
+  margin-top: 1.25rem;
+  padding: 1rem;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  background: var(--ats-surface-2);
+}
+
+.ats-position-filled-panel-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.75rem;
+}
+
+.ats-jobs-toolbar {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.35rem;
+}
+
+.ats-jobs-toolbar .ats-tabs {
+  flex: 1;
+  min-width: 0;
+  margin-bottom: 0;
+}
+
+.ats-jobs-archive-toggle {
+  flex-shrink: 0;
+  margin: 0 0 0.55rem;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--text-muted);
+  font: inherit;
+  font-size: 0.78rem;
+  cursor: pointer;
+}
+
+.ats-jobs-archive-toggle:hover {
+  color: var(--text-color);
+}
+
+.ats-job-list {
+  display: flex;
+  flex-direction: column;
+  border: 1px solid var(--border-color);
+  background: var(--ats-surface);
+  border-radius: var(--ats-radius);
+  overflow: hidden;
+}
+
+.ats-job-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.15rem;
+  border-bottom: 1px solid var(--border-color);
+  cursor: pointer;
+  transition: background var(--transition-snappy);
+}
+
+.ats-job-row:last-child {
+  border-bottom: 0;
+}
+
+.ats-job-row:hover {
+  background: var(--portal-hover);
+}
+
+.ats-job-row.is-archived {
+  opacity: 0.72;
+}
+
+.ats-job-row-main {
+  min-width: 0;
+  flex: 1;
+}
+
+.ats-job-row-title-line {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 0.5rem 0.65rem;
+}
+
+.ats-job-row-title {
+  margin: 0;
+  font-family: var(--font-heading);
+  font-size: 1.05rem;
+  font-weight: 500;
+  letter-spacing: -0.02em;
+  line-height: 1.25;
+  color: var(--text-color);
+}
+
+.ats-job-row-meta {
+  margin: 0.35rem 0 0;
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  line-height: 1.4;
+}
+
+.ats-job-row-actions {
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.35rem;
+  flex-shrink: 0;
+}
+
+@media (max-width: 700px) {
+  .ats-jobs-toolbar {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .ats-jobs-archive-toggle {
+    margin: 0.35rem 0 0.75rem;
+    align-self: flex-start;
+  }
+
+  .ats-job-row {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .ats-job-row-actions {
+    width: 100%;
+    justify-content: flex-start;
+  }
 }
 
 .status-email-error {
