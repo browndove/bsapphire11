@@ -1,5 +1,7 @@
 import {
+  POSITION_FILLED_MAX_CONSECUTIVE_FAILURES,
   POSITION_FILLED_SEND_GAP_MS,
+  isLikelyEmailDeliveryFailure,
   summarizeCampaignRecipients,
 } from './position-filled';
 
@@ -84,6 +86,7 @@ export function createPositionFilledCampaign({
     createdAt: previous?.createdAt || now,
     updatedAt: now,
     status: 'running',
+    pauseReason: '',
     recipients,
     counts: summarizeCampaignRecipients(recipients),
   };
@@ -114,13 +117,14 @@ export function updateCampaignRecipient(jobId, applicationId, patch) {
   return next;
 }
 
-export function finishCampaign(jobId, status = 'completed') {
+export function finishCampaign(jobId, status = 'completed', pauseReason = '') {
   const all = readAll();
   const campaign = all[jobId];
   if (!campaign) return null;
   const next = {
     ...campaign,
     status,
+    pauseReason: status === 'paused' ? pauseReason || campaign.pauseReason || '' : '',
     updatedAt: new Date().toISOString(),
     counts: summarizeCampaignRecipients(campaign.recipients),
   };
@@ -134,14 +138,16 @@ function sleep(ms) {
 }
 
 /**
- * Rate-limited sequential sender. Continues through failures.
- * sendOne(app) should return { ok: true } or throw / return { ok:false, error }.
+ * Rate-limited sequential sender.
+ * Stops early (paused, remaining stay queued) after repeated delivery failures
+ * so we do not keep marking applicants rejected while Resend is out of quota.
  */
 export async function runPositionFilledCampaign({
   jobId,
   applications,
   sendOne,
   gapMs = POSITION_FILLED_SEND_GAP_MS,
+  maxConsecutiveFailures = POSITION_FILLED_MAX_CONSECUTIVE_FAILURES,
   onProgress,
   onlyFailed = false,
 }) {
@@ -154,6 +160,8 @@ export async function runPositionFilledCampaign({
   );
 
   let latest = campaign;
+  let consecutiveDeliveryFailures = 0;
+
   for (let i = 0; i < queue.length; i += 1) {
     const row = queue[i];
     const app = byId.get(row.applicationId);
@@ -177,20 +185,39 @@ export async function runPositionFilledCampaign({
       if (result?.ok === false) {
         throw new Error(result.error || 'Send failed.');
       }
+      consecutiveDeliveryFailures = 0;
       latest = updateCampaignRecipient(jobId, row.applicationId, {
         status: 'sent',
         error: '',
       });
     } catch (err) {
+      const message = err?.message || 'Send failed.';
       latest = updateCampaignRecipient(jobId, row.applicationId, {
         status: 'failed',
-        error: err?.message || 'Send failed.',
+        error: message,
       });
+      if (isLikelyEmailDeliveryFailure(message)) {
+        consecutiveDeliveryFailures += 1;
+      } else {
+        consecutiveDeliveryFailures = 0;
+      }
     }
     onProgress?.(latest);
 
+    if (consecutiveDeliveryFailures >= maxConsecutiveFailures) {
+      return finishCampaign(
+        jobId,
+        'paused',
+        `Paused after ${consecutiveDeliveryFailures} email delivery failures in a row. Remaining applicants stayed queued — wait and resume later (often a Resend quota/rate limit).`
+      );
+    }
+
     if (i < queue.length - 1) {
-      await sleep(gapMs);
+      const backoff =
+        consecutiveDeliveryFailures > 0
+          ? gapMs * Math.min(1 + consecutiveDeliveryFailures, 5)
+          : gapMs;
+      await sleep(backoff);
     }
   }
 

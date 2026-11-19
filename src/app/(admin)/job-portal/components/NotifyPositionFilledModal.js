@@ -170,8 +170,9 @@ export default function NotifyPositionFilledModal({
     };
   };
 
-  const startSend = async ({ retryFailedOnly = false } = {}) => {
+  const startSend = async ({ retryFailedOnly = false, resumeRemaining = false } = {}) => {
     setError('');
+    setNotice('');
     try {
       assertCanNotifyPositionFilled(job, { isAuthed: true, isEmployer: true });
     } catch (err) {
@@ -179,7 +180,7 @@ export default function NotifyPositionFilledModal({
       return;
     }
 
-    if (!retryFailedOnly) {
+    if (!retryFailedOnly && !resumeRemaining) {
       if (!toSend.length) {
         setError('Select at least one recipient.');
         return;
@@ -212,7 +213,7 @@ export default function NotifyPositionFilledModal({
       const latest = await runPositionFilledCampaign({
         jobId: job.id,
         applications,
-        onlyFailed: retryFailedOnly,
+        onlyFailed: retryFailedOnly && !resumeRemaining,
         onProgress: setCampaign,
         sendOne: async (app) => {
           const payload = personalizedPayload(app, subject, body);
@@ -231,6 +232,9 @@ export default function NotifyPositionFilledModal({
         },
       });
       setCampaign(latest);
+      if (latest?.status === 'paused') {
+        setNotice(latest.pauseReason || 'Paused after repeated email delivery failures. Remaining stayed queued.');
+      }
       onComplete?.(latest);
     } catch (err) {
       setError(toUserMessage(err, 'status-email'));
@@ -343,6 +347,23 @@ export default function NotifyPositionFilledModal({
     failed: 0,
     excluded: excludedRecipients.length + alreadySent.length,
   };
+
+  const topFailureReason = (() => {
+    const tally = new Map();
+    for (const row of campaign?.recipients || []) {
+      if (row.status !== 'failed' || !row.error) continue;
+      tally.set(row.error, (tally.get(row.error) || 0) + 1);
+    }
+    let best = '';
+    let bestCount = 0;
+    for (const [message, count] of tally) {
+      if (count > bestCount) {
+        best = message;
+        bestCount = count;
+      }
+    }
+    return best ? { message: best, count: bestCount } : null;
+  })();
 
   return (
     <div className="status-email-overlay" role="presentation" onClick={() => (!busy ? onClose?.() : null)}>
@@ -628,7 +649,29 @@ export default function NotifyPositionFilledModal({
               <span><strong>{counts.excluded || 0}</strong> excluded</span>
               <span><strong>{counts.queued || 0}</strong> queued</span>
             </div>
-            {busy ? <p className="ats-field-hint">Sending in the background…</p> : null}
+            {busy ? <p className="ats-field-hint">Sending slowly to avoid email limits… leave this tab open.</p> : null}
+            {!busy && campaign?.status === 'paused' ? (
+              <p className="ats-toast is-warning">
+                {campaign.pauseReason ||
+                  'Paused after repeated delivery failures (often Resend quota/rate limit). Remaining applicants stayed queued.'}
+              </p>
+            ) : null}
+            {!busy && campaign?.status !== 'paused' && (counts.queued || 0) > 0 ? (
+              <p className="ats-toast is-warning">
+                {(counts.queued || 0)} still queued — sending stopped before they were attempted.
+              </p>
+            ) : null}
+            {topFailureReason ? (
+              <p className="ats-toast is-error">
+                Most common failure ({topFailureReason.count}×): {topFailureReason.message}
+              </p>
+            ) : null}
+            {!busy && (counts.failed || 0) > 50 && (counts.sent || 0) > 0 ? (
+              <p className="ats-field-hint">
+                Many failures after some successes usually means the email provider hit a daily/rate limit.
+                Wait, then resume — do not keep blasting retries.
+              </p>
+            ) : null}
             <ul className="ats-position-filled-list">
               {(campaign?.recipients || []).map((row) => (
                 <li key={row.applicationId}>
@@ -646,6 +689,15 @@ export default function NotifyPositionFilledModal({
               ))}
             </ul>
             <div className="status-email-actions">
+              {(counts.queued || 0) > 0 && !busy ? (
+                <button
+                  type="button"
+                  className="btn btn-outline"
+                  onClick={() => startSend({ resumeRemaining: true })}
+                >
+                  Resume remaining ({counts.queued})
+                </button>
+              ) : null}
               {(counts.failed || 0) > 0 && !busy ? (
                 <button type="button" className="btn btn-outline" onClick={() => startSend({ retryFailedOnly: true })}>
                   Retry all failed

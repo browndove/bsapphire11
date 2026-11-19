@@ -22,7 +22,22 @@ We wish you every success.
 The {{company_name}} Hiring Team
 {{company_email}}`;
 
-export const POSITION_FILLED_SEND_GAP_MS = 400;
+/** Space sends out — Resend quotas fail fast when blasting hundreds at 400ms. */
+export const POSITION_FILLED_SEND_GAP_MS = 1200;
+export const POSITION_FILLED_MAX_CONSECUTIVE_FAILURES = 8;
+
+export function isLikelyEmailDeliveryFailure(message) {
+  const text = String(message || '').toLowerCase();
+  return (
+    text.includes('failed to send email') ||
+    text.includes('email was not delivered') ||
+    text.includes('email is not configured') ||
+    text.includes('rate limit') ||
+    text.includes('too many') ||
+    text.includes('quota') ||
+    text.includes('temporarily unavailable')
+  );
+}
 
 export function resolvePublicCareersUrl(preferred) {
   const raw = String(preferred || '').trim();

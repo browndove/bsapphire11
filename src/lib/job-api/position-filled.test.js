@@ -3,6 +3,7 @@ import {
   assertCanNotifyPositionFilled,
   buildPositionFilledEmailHtml,
   buildPositionFilledStatusPatch,
+  isLikelyEmailDeliveryFailure,
   POSITION_FILLED_COMPANY_EMAIL,
   resolvePublicCareersUrl,
   resolvePositionFilledSendList,
@@ -125,5 +126,14 @@ describe('failure and retry path helpers', () => {
       { status: 'queued' },
     ]);
     expect(counts).toEqual({ queued: 1, sent: 1, failed: 2, excluded: 1 });
+  });
+
+  it('detects Resend/delivery-style failure messages', () => {
+    expect(
+      isLikelyEmailDeliveryFailure(
+        'Failed to send email to candidate. Status was updated; check server logs or retry with a corrected message.'
+      )
+    ).toBe(true);
+    expect(isLikelyEmailDeliveryFailure('Application no longer available.')).toBe(false);
   });
 });

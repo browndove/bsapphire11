@@ -10,6 +10,9 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 export const fetchCache = 'force-no-store';
 
+/** Upstream often caps page size near 20 even when a higher limit is requested. */
+const PAGE_SIZE = 20;
+
 function authHeaders(request) {
   const token = getBearerToken(request);
   return token ? { Authorization: `Bearer ${token}` } : {};
@@ -24,6 +27,40 @@ function httpError(status, message, code) {
 
 function unwrapJob(data) {
   return data?.data || data;
+}
+
+async function findJobApplication(jobId, applicationId, headers) {
+  const target = String(applicationId);
+  let offset = 0;
+  let total = null;
+  const seen = new Set();
+
+  for (;;) {
+    const listed = await apiRequest(
+      `/employer/jobs/${jobId}/applications?limit=${PAGE_SIZE}&offset=${offset}`,
+      { headers }
+    );
+    const rows = getPaginatedItems(listed);
+    if (total == null && listed?.total != null && Number.isFinite(Number(listed.total))) {
+      total = Number(listed.total);
+    }
+
+    for (const row of rows) {
+      const id = String(row?.id ?? '');
+      if (!id || seen.has(id)) continue;
+      seen.add(id);
+      if (id === target) return row;
+    }
+
+    const received = rows.length;
+    offset += received;
+    if (!received) break;
+    if (total != null && seen.size >= total) break;
+    if (received < PAGE_SIZE) break;
+    if (seen.size >= 10000) break;
+  }
+
+  return null;
 }
 
 /**
@@ -59,12 +96,7 @@ export async function POST(request, { params }) {
       throw httpError(err.status || 409, err.message, err.code);
     }
 
-    const listed = await apiRequest(
-      `/employer/jobs/${jobId}/applications?limit=500&offset=0`,
-      { headers }
-    );
-    const rows = getPaginatedItems(listed);
-    const appRaw = rows.find((row) => String(row.id) === String(applicationId));
+    const appRaw = await findJobApplication(jobId, applicationId, headers);
     if (!appRaw) {
       throw httpError(404, 'Application not found for this job.', 'not_found');
     }
